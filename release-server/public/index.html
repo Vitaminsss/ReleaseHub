@@ -315,8 +315,9 @@ select option{background:var(--bg2)}
   <div class="modal">
     <div class="modal-title">新建版本</div>
     <div class="field">
-      <label>版本号（格式：v1.0.0）</label>
-      <input type="text" id="new-ver-num" placeholder=".....">
+      <label id="new-ver-label" for="new-ver-num">版本号（格式：v1.0.0）</label>
+      <div id="new-ver-hint" style="font-size:11px;color:var(--text3);margin-bottom:6px;line-height:1.45;display:none"></div>
+      <input type="text" id="new-ver-num" placeholder="例如 v1.0.0" autocomplete="off" spellcheck="false" oninput="if($('ver-err')) $('ver-err').style.display='none'">
     </div>
     <div id="ver-err" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
     <div class="modal-actions">
@@ -502,8 +503,13 @@ function fileBadge(name) {
   return { label:'FILE', cls:'badge-file' };
 }
 
-// Semver validation
+// Semver validation（通用库：兼容旧格式）
 function isValidVer(v) { return /^v\d+\.\d+(\.\d+)?(-[\w.]+)?$/.test(v); }
+
+// SemVer 2.0.0 正式版：v + MAJOR.MINOR.PATCH，数字位不可前导零（与规范一致）
+function isSemVer2CoreWithVPrefix(v) {
+  return /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(v);
+}
 
 // ── API ─────────────────────────────────────────────
 async function api(method, path, body, isUpload=false) {
@@ -984,12 +990,46 @@ function confirmDeleteApp(app) {
 }
 
 // ── NEW VERSION ──────────────────────────────────────
-function showNewVerModal() { $('new-ver-num').value=''; $('ver-err').style.display='none'; openModal('modal-new-ver'); }
+function showNewVerModal() {
+  const appData = S.apps && S.apps.find(a => a.name === S.currentApp);
+  const repoType = appData && appData.repoType === 'tauri' ? 'tauri' : 'general';
+  const label = $('new-ver-label');
+  const hint = $('new-ver-hint');
+  const input = $('new-ver-num');
+  if (repoType === 'tauri') {
+    label.textContent = '版本号（SemVer 2.0 三段式）';
+    hint.textContent = '须为 MAJOR.MINOR.PATCH（如 1.0.0 或 v1.0.0）；不可含预发布/构建元数据；各位数不可前导零。';
+    hint.style.display = 'block';
+    input.placeholder = '例如 v1.0.0（SemVer 2.0 三段式）';
+    input.setAttribute('title', 'SemVer 2.0：仅允许 v 前缀 + 三段非负整数，无前导零');
+    input.setAttribute('pattern', '^(v?)(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$');
+  } else {
+    label.textContent = '版本号（格式：v1.0.0）';
+    hint.style.display = 'none';
+    input.placeholder = '例如 v1.0.0';
+    input.removeAttribute('title');
+    input.removeAttribute('pattern');
+  }
+  $('new-ver-num').value = '';
+  $('ver-err').style.display = 'none';
+  openModal('modal-new-ver');
+}
 async function createVersion() {
   let ver = $('new-ver-num').value.trim();
   if (!ver) return;
-  if (!ver.startsWith('v')) ver = 'v' + ver;
-  if (!isValidVer(ver)) { $('ver-err').textContent='格式不正确，请使用 v1.0.0 格式'; $('ver-err').style.display='block'; return; }
+  const appData = S.apps && S.apps.find(a => a.name === S.currentApp);
+  const repoType = appData && appData.repoType === 'tauri' ? 'tauri' : 'general';
+  if (repoType === 'tauri') {
+    if (!ver.startsWith('v')) ver = 'v' + ver;
+    if (!isSemVer2CoreWithVPrefix(ver)) {
+      $('ver-err').textContent = 'Tauri 库须使用 SemVer 2.0 三段式：MAJOR.MINOR.PATCH，数字不可前导零，例如 v1.0.0';
+      $('ver-err').style.display = 'block';
+      return;
+    }
+  } else {
+    if (!ver.startsWith('v')) ver = 'v' + ver;
+    if (!isValidVer(ver)) { $('ver-err').textContent='格式不正确，请使用 v1.0.0 格式'; $('ver-err').style.display='block'; return; }
+  }
   try {
     closeModal('modal-new-ver');
     const fd = new FormData(); fd.append('files', new File([''], '.gitkeep'));

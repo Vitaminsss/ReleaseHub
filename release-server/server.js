@@ -158,6 +158,11 @@ function isValidVersion(v) {
   return /^v\d+\.\d+(\.\d+)?(-[\w.]+)?$/.test(v);
 }
 
+// SemVer 2.0.0 normal version: v + MAJOR.MINOR.PATCH, numeric identifiers without leading zeros (except 0)
+function isSemVer2CoreWithVPrefix(v) {
+  return /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(v);
+}
+
 // ─── Routes ───────────────────────────────────────────
 app.post('/api/login', async (req, res) => {
   if (!await bcrypt.compare(req.body.password || '', CONFIG.ADMIN_PASSWORD_HASH))
@@ -209,7 +214,20 @@ app.get('/api/apps/:app/versions', auth, (req, res) => {
   })));
 });
 
-app.post('/api/apps/:app/versions/:version/upload', auth, upload.array('files', 20), (req, res) => {
+function validateVersionForUpload(req, res, next) {
+  const { app, version } = req.params;
+  const meta = readAppMeta(app);
+  if (meta.repoType === 'tauri') {
+    if (!isSemVer2CoreWithVPrefix(version)) {
+      return res.status(400).json({
+        error: 'Tauri 库版本须符合 SemVer 2.0：MAJOR.MINOR.PATCH 三段非负整数，且各位数不可前导零（例 v1.0.0）',
+      });
+    }
+  }
+  next();
+}
+
+app.post('/api/apps/:app/versions/:version/upload', auth, validateVersionForUpload, upload.array('files', 20), (req, res) => {
   const { app, version } = req.params;
   res.json({ uploaded: req.files.map(f => ({ name: f.originalname, size: f.size, url: fileUrl(app, version, f.originalname) })) });
 });
