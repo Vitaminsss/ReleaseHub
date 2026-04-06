@@ -87,7 +87,7 @@ function auth(req, res, next) {
 // ─── Multer ────────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(CONFIG.RELEASES_DIR, req.params.appName, req.params.version);
+    const dir = path.join(CONFIG.RELEASES_DIR, req.params.app, req.params.version);
     fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },

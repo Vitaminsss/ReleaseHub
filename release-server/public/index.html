@@ -111,6 +111,7 @@ select option{background:var(--bg2)}
 .tauri-left{padding:16px 18px;border-right:1px solid var(--border)}
 .tauri-right{padding:16px 18px;background:var(--bg)}
 .tauri-section-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--purple);margin-bottom:12px}
+.tauri-config-json{background:var(--bg);border:1px solid var(--border);padding:10px;font-size:11px;font-family:monospace;color:var(--accent-dim);overflow-x:auto;white-space:pre;line-height:1.55;margin-top:8px}
 
 /* VERSION GRID */
 .version-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:12px}
@@ -135,10 +136,9 @@ select option{background:var(--bg2)}
 
 /* Icon + file count row */
 .vcard-info{display:flex;align-items:center;padding:10px 14px;gap:10px;border-bottom:1px solid var(--border)}
-.vcard-filecount{display:flex;align-items:center;gap:6px}
-.vcard-fc-icon{font-size:16px;opacity:.6}
-.vcard-fc-num{font-size:13px;font-weight:700;color:var(--text)}
-.vcard-fc-label{font-size:11px;color:var(--text3)}
+.vcard-filecount{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.vcard-fc-icon{font-size:16px;opacity:.6;flex-shrink:0}
+.vcard-fc-num{font-size:12px;font-weight:500;color:var(--text);line-height:1.45}
 .vcard-set-latest-btn{margin-left:auto}
 
 /* Notes / desc row */
@@ -164,9 +164,9 @@ select option{background:var(--bg2)}
 .file-actions{display:flex;gap:4px;justify-content:flex-end}
 
 /* Upload zone */
-.upload-zone{border:1px dashed var(--border2);padding:12px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px}
+.upload-zone{border:1px dashed var(--border2);min-height:120px;padding:28px 16px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px}
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-glow2)}
-.upload-zone-text{font-size:13px;color:var(--text2)}
+.upload-zone-text{font-size:14px;color:var(--text2);line-height:1.5;max-width:280px}
 .upload-zone-text strong{color:var(--accent)}
 
 /* Notes textarea in card */
@@ -180,10 +180,6 @@ select option{background:var(--bg2)}
 /* Tauri force-publish */
 .force-row{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:10px;line-height:1.5}
 .force-row input{width:auto;margin-top:2px;flex-shrink:0}
-
-/* JSON preview in card */
-.vcard-json-label{font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
-.vcard-json-box{background:var(--bg);border:1px solid var(--border);padding:10px;font-size:11px;font-family:monospace;color:var(--accent-dim);overflow-x:auto;white-space:pre;max-height:220px;overflow-y:auto;line-height:1.55;margin-bottom:8px}
 
 /* TOAST */
 .toast-wrap{position:fixed;top:58px;right:18px;z-index:1000;display:flex;flex-direction:column;gap:7px}
@@ -607,7 +603,7 @@ function renderTauriApiCard(appName, versions) {
           <div class="api-hint" style="margin-top:10px">
             将上方地址填入 <code style="color:var(--accent)">tauri.conf.json</code>：
           </div>
-          <div class="vcard-json-box" style="margin-top:8px;font-size:11px">${esc(tauriJson)}</div>
+          <div class="tauri-config-json">${esc(tauriJson)}</div>
           <button class="btn btn-ghost btn-sm" onclick="copyText(${JSON.stringify(tauriJson)})">复制配置</button>
         </div>
         <div class="tauri-right">
@@ -635,6 +631,10 @@ async function loadLiveJson(appName) {
 function renderVersionCard(appName, v, repoType) {
   const files = (v.files||[]).filter(f=>f.name!=='.gitkeep');
   const mainFiles = files.filter(f=>!f.name.endsWith('.sig'));
+  const sigCount = files.filter(f=>f.name.endsWith('.sig')).length;
+  const fileCountLabel = files.length === 0
+    ? '暂无文件'
+    : `共 ${files.length} 个文件${sigCount ? `（含 ${sigCount} 个签名）` : ''}`;
   const notesKey = `${appName}::${v.version}`;
   const notes = S.notes[notesKey] || '';
 
@@ -652,13 +652,11 @@ function renderVersionCard(appName, v, repoType) {
       <div class="vcard-info">
         <div class="vcard-filecount">
           <span class="vcard-fc-icon">📄</span>
-          <span class="vcard-fc-num">${mainFiles.length}</span>
-          <span class="vcard-fc-label">文件</span>
-          ${files.some(f=>f.name.endsWith('.sig')) ? '<span class="badge badge-sig" style="margin-left:4px">SIG</span>' : ''}
+          <span class="vcard-fc-num">${esc(fileCountLabel)}</span>
         </div>
         ${!v.isLatest
           ? `<button class="btn btn-primary btn-sm vcard-set-latest-btn" onclick="quickPublish('${appName}','${v.version}','${repoType}')">▶ 设为最新发布</button>`
-          : `<span class="vcard-set-latest-btn" style="font-size:11px;color:var(--accent);font-weight:700">✓ 当前发布版本</span>`
+          : `<button class="btn btn-ghost btn-sm vcard-set-latest-btn" onclick="publishVersion('${appName}','${v.version}','${repoType}')">↻ 重新发布</button>`
         }
       </div>
       <!-- Notes row -->
@@ -666,10 +664,10 @@ function renderVersionCard(appName, v, repoType) {
       <!-- Expand toggle -->
       <div class="vcard-toggle" onclick="toggleCard('${v.version}')">
         <span>文件 &amp; 发布设置</span>
-        <span class="vcard-toggle-arrow" id="arrow-${v.version}">▾</span>
+        <span class="vcard-toggle-arrow" id="arrow-${v.version}" style="transform:rotate(180deg)">▾</span>
       </div>
       <!-- Body -->
-      <div class="vcard-body" id="vbody-${v.version}">
+      <div class="vcard-body open" id="vbody-${v.version}">
         <div class="vcard-body-inner">
           ${files.length > 0 ? renderFileTable(appName, v, files) : ''}
           <!-- Upload -->
@@ -695,21 +693,10 @@ function renderVersionCard(appName, v, repoType) {
             <input type="checkbox" id="force-${v.version}">
             <span>强制发布（无 .sig 时仍可发布；Tauri 热更新需有效签名）</span>
           </label>` : ''}
-          <!-- Publish actions -->
+          <!-- Save / delete -->
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-            <button class="btn btn-ghost btn-sm" onclick="previewCard('${appName}','${v.version}','${repoType}')">预览 JSON</button>
-            <button class="btn btn-primary btn-sm" onclick="publishVersion('${appName}','${v.version}','${repoType}')">
-              ${v.isLatest ? '✓ 重新发布' : '发布为最新版本'}
-            </button>
+            <button class="btn btn-primary btn-sm" onclick="saveVersionDraft('${appName}','${v.version}')">保存</button>
             <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="confirmDeleteVersion('${appName}','${v.version}')">删除版本</button>
-          </div>
-          <!-- JSON preview -->
-          <div id="json-preview-${v.version}" class="hidden">
-            <div class="vcard-json-label">
-              <span>latest.json 预览</span>
-              <button class="btn btn-ghost btn-sm" onclick="copyJsonPrev('${v.version}')">复制</button>
-            </div>
-            <div class="vcard-json-box" id="json-content-${v.version}"></div>
           </div>
         </div>
       </div>
@@ -789,22 +776,14 @@ async function uploadFiles(app, ver, files) {
   } catch(e) { clearInterval(iv); prog.classList.add('hidden'); toast(e.message,'error'); }
 }
 
-// ── PUBLISH ──────────────────────────────────────────
-async function previewCard(app, ver, repoType) {
+async function saveVersionDraft(app, ver) {
   try {
-    const data = await api('GET', `/api/apps/${app}/versions/${ver}/preview-release`);
-    const ta = $('notes-'+ver);
-    if (ta) data.notes = ta.value;
-    const box = $(`json-content-${ver}`);
-    const prev = $(`json-preview-${ver}`);
-    if (box && prev) { box.textContent = JSON.stringify(data,null,2); prev.classList.remove('hidden'); }
+    await flushNote(app, ver);
+    toast('版本说明已保存');
   } catch(e) { toast(e.message,'error'); }
 }
-function copyJsonPrev(ver) {
-  const t = $(`json-content-${ver}`)?.textContent;
-  if (t) copyText(t);
-}
 
+// ── PUBLISH ──────────────────────────────────────────
 async function quickPublish(app, ver, repoType) {
   // Publish using current state with no prompt - just set as latest
   try {
