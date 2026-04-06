@@ -1,20 +1,19 @@
 #!/bin/bash
 # ============================================
-# Release Hub 一键部署脚本
+# Release Hub 一键部署脚本（无交互提问；依赖环境变量默认值）
 # 使用方法：在仓库根目录执行 bash deploy.sh
 #
 # 安装目录 = 本脚本所在目录（与 server.js、releases/、.env 同级），不再使用 /opt
 #
-# Nginx：交互终端会询问是否启用；非交互请设置 USE_NGINX=0 或 USE_NGINX=1
-#   USE_NGINX=1    安装并配置 Nginx（HTTP 80 → 本机 :3721）
+# Nginx：默认安装；关闭：USE_NGINX=0 或 SKIP_NGINX=1
 #   USE_NGINX=0    不安装 Nginx
 #   SKIP_NGINX=1   等同于 USE_NGINX=0（兼容旧用法）
-#   NGINX_PREFIX   非交互时：HTTP 路径前缀（如 release-hub），留空=整站根路径 /
+#   NGINX_PREFIX   未设置时默认路径前缀 releasehub；显式 NGINX_PREFIX= 空字符串=整站根路径 /
 #
 # HTTPS（Let's Encrypt + Certbot，仅在已启用 Nginx 时可用）：
 #   USE_HTTPS=0              不尝试自动申请证书（仅 HTTP；仍可用 DOMAIN 生成 http://域名 的 BASE_URL）
 #   USE_HTTPS=1 或未设置     尝试自动 HTTPS：DNS 预检 → certbot --dry-run → 成功后再正式签发；失败则回退 HTTP
-#   DOMAIN=releases.example.com      非交互时优先使用的域名（须解析到本机公网 IP）
+#   DOMAIN=releases.example.com      优先使用的域名（须解析到本机公网 IP）；未设置时尝试 hostname -f
 #   CERTBOT_EMAIL=you@example.com    Certbot 注册邮箱（可选，缺省为 admin@域名）
 # ============================================
 
@@ -150,38 +149,28 @@ fi
 # ── 公网 IP（用于 BASE_URL 与提示）──────────
 PUBLIC_IP=$(curl -s --connect-timeout 5 ifconfig.me 2>/dev/null || curl -s --connect-timeout 5 icanhazip.com 2>/dev/null || echo "YOUR_SERVER_IP")
 
-# ── 是否启用 Nginx ────────────────────────
+# ── 是否启用 Nginx（默认启用）────────────────
 USE_NGINX_RESOLVED=0
 if [ "${SKIP_NGINX:-0}" = "1" ]; then
   echo "✓ 跳过 Nginx（SKIP_NGINX=1）"
-elif [ -t 0 ]; then
-  echo ""
-  read -r -p "是否安装并启用 Nginx，将 HTTP 80 反代到本机 :${PORT}？[Y/n] " NGINX_REPLY
-  case "${NGINX_REPLY:-Y}" in
-    [yY][eE][sS]|[yY]|'') USE_NGINX_RESOLVED=1 ;;
-    *) USE_NGINX_RESOLVED=0 ;;
-  esac
+elif [ "${USE_NGINX:-}" = "0" ]; then
+  echo "✓ 跳过 Nginx（USE_NGINX=0）"
 else
-  if [ "${USE_NGINX:-}" = "1" ]; then
-    USE_NGINX_RESOLVED=1
-  else
-    USE_NGINX_RESOLVED=0
-  fi
-  echo "▸ 非交互模式：USE_NGINX=${USE_NGINX:-未设置} → $([ "$USE_NGINX_RESOLVED" = "1" ] && echo 启用 Nginx || echo 不安装 Nginx)"
+  USE_NGINX_RESOLVED=1
+  echo "▸ 默认启用 Nginx（HTTP 80 → 本机 :${PORT}；USE_NGINX=0 或 SKIP_NGINX=1 可关闭）"
 fi
 
-# ── Nginx 路径前缀（与子路径反代一致；留空=整站根路径）────────
+# ── Nginx 路径前缀（未设置时默认 releasehub；显式 NGINX_PREFIX= 为空表示整站根）──
 NGINX_PREFIX_SLUG=""
 if [ "$USE_NGINX_RESOLVED" = "1" ]; then
-  if [ -t 0 ]; then
-    echo ""
-    read -r -p "HTTP 路径前缀（仅字母数字下划线连字符，留空=整站 / ；示例 release-hub）: " NGINX_PREFIX_INPUT
-    NGINX_PREFIX_RAW="${NGINX_PREFIX_INPUT:-}"
-  else
-    NGINX_PREFIX_RAW="${NGINX_PREFIX:-}"
-  fi
+  NGINX_PREFIX_RAW="${NGINX_PREFIX-releasehub}"
   NGINX_PREFIX_SLUG="$(echo "$NGINX_PREFIX_RAW" | sed 's/^\/\+//;s/\/\+$//')"
   NGINX_PREFIX_SLUG="$(echo "$NGINX_PREFIX_SLUG" | tr -cd 'a-zA-Z0-9_-')"
+  if [ -n "$NGINX_PREFIX_SLUG" ]; then
+    echo "▸ Nginx 路径前缀: /${NGINX_PREFIX_SLUG}/（NGINX_PREFIX= 置空可改为整站 /）"
+  else
+    echo "▸ Nginx 路径前缀: /（整站根）"
+  fi
 fi
 
 # ── Nginx 反向代理 ─────────────────────────
@@ -220,28 +209,18 @@ if [ "$NGINX_ENABLED" = "1" ]; then
     echo ""
     echo "▸ HTTPS：将自动尝试 Let's Encrypt（DNS 预检 → certbot --dry-run → 正式签发），失败则使用 HTTP。"
     echo "  需域名 DNS（A/AAAA）指向本机公网 IP（当前检测: $PUBLIC_IP），且公网可访问 80。"
-    if [ -t 0 ]; then
-      echo ""
-      read -r -p "域名（留空则跳过 HTTPS 申请）: " DOMAIN_INPUT
-      DOMAIN_RESOLVED="$(echo "${DOMAIN_INPUT:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-      read -r -p "Certbot 注册邮箱（可选，回车默认 admin@域名）: " EMAIL_INPUT
-      CERTBOT_EMAIL_VAL="$(echo "${EMAIL_INPUT:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    else
-      DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-      if [ -z "$DOMAIN_RESOLVED" ]; then
-        HFN="$(hostname -f 2>/dev/null || true)"
-        if [ -n "$HFN" ] && [ "$HFN" != "localhost" ] && [[ "$HFN" == *.* ]]; then
-          DOMAIN_RESOLVED="$HFN"
-          echo "▸ 非交互：未设置 DOMAIN，使用 hostname -f: $DOMAIN_RESOLVED"
-        fi
-      else
-        echo "▸ 非交互：使用 DOMAIN=$DOMAIN_RESOLVED"
+    DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    if [ -z "$DOMAIN_RESOLVED" ]; then
+      HFN="$(hostname -f 2>/dev/null || true)"
+      if [ -n "$HFN" ] && [ "$HFN" != "localhost" ] && [[ "$HFN" == *.* ]]; then
+        DOMAIN_RESOLVED="$HFN"
+        echo "▸ 未设置 DOMAIN，使用 hostname -f: $DOMAIN_RESOLVED"
       fi
-      CERTBOT_EMAIL_VAL="$(echo "${CERTBOT_EMAIL:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    else
+      echo "▸ 使用 DOMAIN=$DOMAIN_RESOLVED"
     fi
-    if [ ! -t 0 ]; then
-      echo "▸ 非交互模式：USE_HTTPS=${USE_HTTPS:-未设置} → 尝试自动 HTTPS（USE_HTTPS=0 可关闭）"
-    fi
+    CERTBOT_EMAIL_VAL="$(echo "${CERTBOT_EMAIL:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    echo "▸ USE_HTTPS=${USE_HTTPS:-未设置} → 尝试自动 HTTPS（USE_HTTPS=0 可关闭）；邮箱：环境变量 CERTBOT_EMAIL 或 admin@域名"
 
     if [ -z "$DOMAIN_RESOLVED" ]; then
       echo "⚠ 未配置域名，跳过 HTTPS。可稍后执行: sudo certbot --nginx -d 你的域名"

@@ -7,7 +7,7 @@ Tauri 应用发布管理后台：多应用、多版本、文件上传、`latest.
 ## 管理后台：登录方式
 
 - 管理页面与 **API 同源**（由同一 Node 服务提供静态页与接口）。
-- **只需输入管理员密码**，无需填写服务器地址；请用浏览器直接打开已部署的地址（例如 `http://服务器IP/`、`http://服务器IP:3721` 或 `https://你的域名/`）。
+- **只需输入管理员密码**，无需填写服务器地址；请用浏览器直接打开已部署的地址（例如 `http://服务器IP/releasehub/`（默认前缀）、`http://服务器IP:3721` 或 `https://你的域名/releasehub/`）。
 
 ---
 
@@ -30,47 +30,37 @@ chmod +x deploy.sh
 bash deploy.sh
 ```
 
-### Nginx：交互与非交互
+### Nginx 与环境变量（无交互提问）
 
-在**交互式终端**中运行 `deploy.sh` 时，脚本会询问：
+`deploy.sh` **不再询问**是否安装 Nginx、路径前缀、域名或 Certbot 邮箱；通过环境变量覆盖即可。
 
-> 是否安装并启用 Nginx，将 HTTP 80 反代到本机 :3721？
-
-- 直接回车或输入 `y`：**安装并配置 Nginx**（访问 `http://<公网IP>/`）。
-- 输入 `n`：**不安装 Nginx**（通常访问 `http://<公网IP>:3721`）。
-
-**非交互**环境（如 CI、管道、无 TTY）不会提问，请用环境变量显式指定：
-
+**默认行为**：安装 **Nginx**（HTTP 80 反代到本机 `:3721`）；HTTP 路径前缀默认为 **`releasehub`**（访问 `http://<公网IP>/releasehub/`）。不需要 Nginx 时显式关闭。
 
 | 变量             | 含义                                                                  |
 | -------------- | ------------------------------------------------------------------- |
-| `USE_NGINX=1`  | 安装并配置 Nginx                                                         |
-| `USE_NGINX=0`  | 不安装 Nginx                                                           |
-| `SKIP_NGINX=1` | 与 `USE_NGINX=0` 相同（兼容旧用法）                                           |
-| `NGINX_PREFIX` | 非交互时指定 **HTTP 路径前缀**（仅字母数字 `_` `-`），如 `release-hub`；留空表示占用整站根路径 `/` |
+| `USE_NGINX=0`  | **不**安装 Nginx（直连 `http://<公网IP>:3721`） |
+| `SKIP_NGINX=1` | 与 `USE_NGINX=0` 相同（兼容旧用法） |
+| 未设置 `USE_NGINX` | **默认安装 Nginx**（交互与非交互一致） |
+| `NGINX_PREFIX` | **HTTP 路径前缀**（仅字母数字 `_` `-`）。**未设置**时默认为 `releasehub`；**显式设为空** `NGINX_PREFIX=` 表示整站根路径 `/`；其他值如 `NGINX_PREFIX=my-app` 会覆盖默认 |
 | `USE_HTTPS=0` | 已启用 Nginx 时**不尝试**自动申请证书（仅 HTTP）；可配合 `DOMAIN` 生成 `http://域名` 的 **BASE_URL** |
 | `USE_HTTPS=1` 或未设置 | 已启用 Nginx 时**尝试**自动 HTTPS（见下方「HTTPS 自动试签发」） |
-| `DOMAIN` | 非交互时优先使用的域名；未设置时若 `hostname -f` 为合法 FQDN（含 `.` 且非 `localhost`）则自动采用 |
+| `DOMAIN` | 优先使用的域名；未设置时若 `hostname -f` 为合法 FQDN（含 `.` 且非 `localhost`）则自动采用 |
 | `CERTBOT_EMAIL` | Let's Encrypt 注册邮箱（可选；缺省为 `admin@域名`） |
 
-
-未设置且非交互时，**默认不安装 Nginx**。
-
 ```bash
-USE_NGINX=1 bash deploy.sh   # CI 中强制安装 Nginx
-USE_NGINX=0 bash deploy.sh   # CI 中跳过 Nginx
-USE_NGINX=1 NGINX_PREFIX=release-hub bash deploy.sh   # 仅反代到 http://<IP>/release-hub/，避免占满 80 端口根路径
-USE_NGINX=1 DOMAIN=releases.example.com bash deploy.sh   # 非交互：自动试签发 HTTPS（见下）
-USE_NGINX=1 USE_HTTPS=0 DOMAIN=releases.example.com bash deploy.sh   # 仅用 HTTP，但 BASE_URL 用域名
+bash deploy.sh   # 默认：Nginx + 前缀 releasehub + 自动 HTTPS 试签发（若可解析域名）
+USE_NGINX=0 bash deploy.sh   # 不装 Nginx
+NGINX_PREFIX= bash deploy.sh   # 整站根路径 /（无前缀）
+NGINX_PREFIX=custom bash deploy.sh   # 自定义前缀 /custom/
+DOMAIN=releases.example.com bash deploy.sh   # 指定域名，自动试签发 HTTPS
+USE_HTTPS=0 DOMAIN=releases.example.com bash deploy.sh   # 仅用 HTTP，BASE_URL 仍可用域名
 ```
-
-交互式部署时，若启用 Nginx，脚本会询问路径前缀；留空则与以前一致（`location /`）。填写 `release-hub` 时，访问地址为 `http://<公网IP>/release-hub/`，首次生成的 **BASE_URL** 为 `http://<公网IP>/release-hub`（管理页与前端会自动适配子路径）。
 
 ### HTTPS 自动试签发（Let's Encrypt）
 
 在**已安装 Nginx** 的前提下（交互式默认会走该流程，除非设置 `USE_HTTPS=0`）：
 
-1. **域名**：交互式会询问一次（留空则跳过证书申请）；非交互式使用 `DOMAIN`，否则在 `hostname -f` 为合法 FQDN 时自动采用。
+1. **域名**：使用环境变量 `DOMAIN`，否则在 `hostname -f` 为合法 FQDN 时自动采用；均无则跳过证书申请。
 2. **DNS 预检**：脚本的公网 IP（`curl` 检测）须与域名 `A`/`AAAA` 记录之一一致（需安装 `dig`，通常来自 `dnsutils` / `bind9-dnsutils`）。不一致则**不调用 certbot**，Nginx 保持 HTTP，**BASE_URL** 仍为 `http://域名/...`（便于稍后修好 DNS 再部署）。
 3. **试签发**：`certbot certonly --nginx --dry-run`（staging，不占正式额度）。仅当 dry-run **成功** 后才执行正式 `certbot --nginx` 并配置 HTTPS 与跳转。
 4. **失败回退**：任一步失败（dry-run、正式申请、certbot 安装失败等）会恢复 `server_name _` 的 HTTP 反代，**保留域名**写入 **BASE_URL**（`http://`），可在修正 DNS/防火墙后再次运行 `deploy.sh` 或手动 `sudo certbot --nginx -d 你的域名`。
@@ -78,9 +68,9 @@ USE_NGINX=1 USE_HTTPS=0 DOMAIN=releases.example.com bash deploy.sh   # 仅用 HT
 ### 部署结果摘要
 
 - 安装 Node.js 20（若未安装）、PM2。
-- 若启用 Nginx：写入 `/etc/nginx/sites-available/release-hub`，HTTP 80 → `127.0.0.1:3721`。
+- 若启用 Nginx：写入 `/etc/nginx/sites-available/release-hub`，HTTP 80 → `127.0.0.1:3721`；默认路径前缀为 `releasehub`（`/releasehub/` → 应用），除非 `NGINX_PREFIX=` 空或自定义。
 - **程序与数据目录**：`deploy.sh` 所在目录（与 `server.js` 同级），其中 `**releases/`** 存放安装包与 `latest.json`，`**.env`** 在同目录。
-- 首次生成 `.env`（含 `JWT_SECRET`、`ADMIN_PASSWORD_HASH`、`RELEASES_DIR`（指向本目录下 `releases/`）、`BASE_URL`、`PORT`）。启用 Nginx 且无路径前缀时首次 `BASE_URL` 多为 `http://<公网IP>`（无端口）；有前缀时为 `http://<公网IP>/<前缀>`；若配置了域名且 HTTPS 未成功，则可能为 `http://<域名>/...`；HTTPS 成功时为 `https://<域名>/...`；未启用 Nginx 时为 `http://<公网IP>:3721`。
+- 首次生成 `.env`（含 `JWT_SECRET`、`ADMIN_PASSWORD_HASH`、`RELEASES_DIR`（指向本目录下 `releases/`）、`BASE_URL`、`PORT`）。启用 Nginx 且使用默认前缀时首次 `BASE_URL` 多为 `http://<公网IP>/releasehub`；无前缀（整站根）时为 `http://<公网IP>`；若配置了域名且 HTTPS 未成功，则可能为 `http://<域名>/...`；HTTPS 成功时为 `https://<域名>/...`；未启用 Nginx 时为 `http://<公网IP>:3721`。
 - PM2 进程名：`release-hub`；防火墙在启用 Nginx 时通常放行 **80** 与 **3721**；仅在 HTTPS 成功时额外放行 **443**。
 
 **默认密码**：`admin123`，登录后请在「设置」中修改，并核对 **BASE_URL**。
