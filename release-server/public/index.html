@@ -87,14 +87,14 @@ select option{background:var(--bg2)}
 .page-title span{color:var(--accent)}
 .page-sub{font-size:12px;color:var(--text3);margin-top:3px}
 
-/* API CARD - left/right split */
+/* API CARD - left/right split（左：检查更新接口优先占宽；右：当前 JSON 次之） */
 .api-card{border:1px solid var(--border2);background:var(--bg1);margin-bottom:20px;position:relative;overflow:hidden}
 .api-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--green),var(--purple))}
-.api-card-inner{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.api-left{padding:16px 18px;border-right:1px solid var(--border)}
-.api-right{padding:16px 18px;background:var(--bg)}
+.api-card-inner{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,0.75fr);gap:0;align-items:start}
+.api-left{padding:16px 18px;border-right:1px solid var(--border);min-width:0}
+.api-right{padding:16px 18px;background:var(--bg);min-width:0;max-width:100%}
 .api-section-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:12px}
-.api-row{display:flex;align-items:stretch;border:1px solid var(--border2);overflow:hidden;margin-bottom:8px}
+.api-row{display:flex;align-items:stretch;border:1px solid var(--border2);overflow:hidden;margin-bottom:8px;min-width:0}
 .api-method{background:var(--bg3);padding:0 10px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;border-right:1px solid var(--border2);flex-shrink:0}
 .api-url{flex:1;padding:8px 10px;background:var(--bg);font-size:12px;color:var(--blue);font-family:monospace;word-break:break-all;line-height:1.4;display:flex;align-items:center}
 .api-copy{background:var(--bg3);border:none;border-left:1px solid var(--border2);color:var(--text3);cursor:pointer;padding:0 12px;font-size:11px;font-weight:600;letter-spacing:.5px;transition:all .15s;flex-shrink:0;text-transform:uppercase}
@@ -107,9 +107,9 @@ select option{background:var(--bg2)}
 /* TAURI API CARD */
 .tauri-api-card{border:1px solid var(--border2);background:var(--bg1);margin-bottom:20px;position:relative;overflow:hidden}
 .tauri-api-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),var(--accent))}
-.tauri-api-inner{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.tauri-left{padding:16px 18px;border-right:1px solid var(--border)}
-.tauri-right{padding:16px 18px;background:var(--bg)}
+.tauri-api-inner{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,0.75fr);gap:0;align-items:start}
+.tauri-left{padding:16px 18px;border-right:1px solid var(--border);min-width:0}
+.tauri-right{padding:16px 18px;background:var(--bg);min-width:0;max-width:100%}
 .tauri-section-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--purple);margin-bottom:12px}
 .tauri-config-json{background:var(--bg);border:1px solid var(--border);padding:10px;font-size:11px;font-family:monospace;color:var(--accent-dim);overflow-x:auto;white-space:pre;line-height:1.55;margin-top:8px}
 
@@ -378,16 +378,27 @@ function openModal(id)  { $(id).classList.add('open'); }
 function closeModal(id) { $(id).classList.remove('open'); }
 
 function copyText(text) {
-  navigator.clipboard.writeText(text)
-    .then(() => toast('已复制'))
-    .catch(() => {
-      // fallback
-      const ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); toast('已复制'); } catch { toast('复制失败', 'error'); }
-      document.body.removeChild(ta);
-    });
+  const s = String(text);
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = s; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try {
+      const ok = document.execCommand('copy');
+      if (ok) toast('已复制'); else toast('复制失败', 'error');
+    } catch { toast('复制失败', 'error'); }
+    document.body.removeChild(ta);
+  };
+  try {
+    const cp = navigator.clipboard;
+    if (cp && typeof cp.writeText === 'function') {
+      cp.writeText(s).then(() => toast('已复制')).catch(fallback);
+    } else {
+      fallback();
+    }
+  } catch {
+    fallback();
+  }
 }
 
 function fileBadge(name) {
@@ -569,7 +580,7 @@ function renderGeneralApiCard(appName, versions) {
           <div class="api-row">
             <span class="api-method">GET</span>
             <span class="api-url" id="check-url-${appName}">${esc(checkUrl)}</span>
-            <button class="api-copy" onclick="copyText('${esc(checkUrl)}')">复制</button>
+            <button type="button" class="api-copy" onclick='copyText(${JSON.stringify(checkUrl)})'>复制</button>
           </div>
           <div class="api-hint">
             客户端请求此接口，获取 <code style="color:var(--accent)">version</code> 字段与本地版本比较；有更新时从 <code style="color:var(--accent)">files</code> 数组下载资源。
@@ -598,7 +609,7 @@ function renderTauriApiCard(appName, versions) {
           <div class="api-row">
             <span class="api-method" style="color:var(--purple)">JSON</span>
             <span class="api-url">${esc(latestUrl)}</span>
-            <button class="api-copy" onclick="copyText('${esc(latestUrl)}')">复制</button>
+            <button type="button" class="api-copy" onclick='copyText(${JSON.stringify(latestUrl)})'>复制</button>
           </div>
           <div class="api-hint" style="margin-top:10px">
             将上方地址填入 <code style="color:var(--accent)">tauri.conf.json</code>：
@@ -716,7 +727,7 @@ function renderFileTable(appName, v, files) {
             <td><span class="file-size">${fmtBytes(f.size)}</span></td>
             <td><span class="badge ${b.cls}">${b.label}</span></td>
             <td><div class="file-actions">
-              <button class="btn btn-ghost btn-sm" onclick="copyText('${esc(f.url)}')">⎘</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick='copyText(${JSON.stringify(f.url)})'>⎘</button>
               <a href="${esc(f.url)}" target="_blank" class="btn btn-ghost btn-sm">↓</a>
               <button class="btn btn-danger btn-sm" onclick="deleteFile('${appName}','${v.version}','${en}')">✕</button>
             </div></td>
