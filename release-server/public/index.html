@@ -323,7 +323,7 @@ select option{background:var(--bg2)}
     <div class="modal-title">设置</div>
     <div class="settings-section">
       <div class="settings-title">对外访问地址 BASE_URL</div>
-      <p style="color:var(--text3);font-size:11px;margin-bottom:12px;line-height:1.6">文件下载直链和 latest.json 内的 URL 均依赖此地址。打开本页时会按<strong>当前浏览器地址</strong>（与顶栏一致）自动校准；若仍不对请改后点保存。</p>
+      <p style="color:var(--text3);font-size:11px;margin-bottom:12px;line-height:1.6">文件下载、复制链接、右侧 latest 预览及发布时的 URL 均以<strong>当前访问地址</strong>（与顶栏一致）为统一数据源；登录后会尽量同步到服务端 .env。若仍不对请修改后保存并重新发布。</p>
       <div class="field">
         <label>BASE_URL</label>
         <input type="url" id="base-url-input" placeholder="https://releases.example.com">
@@ -349,6 +349,8 @@ const S = {
   token: localStorage.getItem('rh_token'),
   apps: [], currentApp: null, currentRepoType: 'general',
   versions: [], pendingConfirm: null, notes: {},
+  /** 与顶栏一致：对外访问根（无末尾 /），下载/发布统一用此重写接口里的 URL */
+  publicBaseUrl: '',
 };
 
 // ── UTILS ───────────────────────────────────────────
@@ -379,6 +381,69 @@ function pickBaseUrlForSettings(serverBase, derived) {
     if (d && new URL(server).origin !== new URL(d).origin) return d;
   } catch (_) { return d; }
   return server;
+}
+function isLocalBaseUrl(u) {
+  try {
+    const o = new URL(u);
+    return o.hostname === 'localhost' || o.hostname === '127.0.0.1';
+  } catch { return true; }
+}
+/** 用当前页的对外根地址重写接口返回的绝对 URL（统一下载/复制/发布数据源） */
+function canonicalPublicUrl(serverUrl) {
+  if (!serverUrl || typeof serverUrl !== 'string') return serverUrl;
+  if (!/^https?:\/\//i.test(serverUrl)) return serverUrl;
+  try {
+    const base = normalizeBaseUrl(S.publicBaseUrl || suggestedBaseUrlFromLocation());
+    const u = new URL(serverUrl);
+    let path = u.pathname;
+    const basePathOnly = new URL(base + '/').pathname.replace(/\/$/, '');
+    if (basePathOnly && (path === basePathOnly || path.startsWith(basePathOnly + '/'))) {
+      path = path.slice(basePathOnly.length) || '/';
+    }
+    if (!path.startsWith('/')) path = '/' + path;
+    return base + path + (u.search || '') + (u.hash || '');
+  } catch (_) { return serverUrl; }
+}
+function rewriteLatestJsonForDisplay(data) {
+  if (!data || typeof data !== 'object') return data;
+  const d = JSON.parse(JSON.stringify(data));
+  const walk = (o) => {
+    if (Array.isArray(o)) o.forEach(walk);
+    else if (o && typeof o === 'object') {
+      Object.keys(o).forEach((k) => {
+        if (k === 'url' && typeof o[k] === 'string') o[k] = canonicalPublicUrl(o[k]);
+        else walk(o[k]);
+      });
+    }
+  };
+  walk(d);
+  return d;
+}
+function rewritePreviewUrls(preview) {
+  if (!preview) return;
+  if (preview.platforms) {
+    Object.keys(preview.platforms).forEach((k) => {
+      const p = preview.platforms[k];
+      if (p && p.url) p.url = canonicalPublicUrl(p.url);
+    });
+  }
+  if (preview.files) {
+    preview.files.forEach((f) => { if (f.url) f.url = canonicalPublicUrl(f.url); });
+  }
+}
+async function syncPublicBaseUrlToServer() {
+  const derived = suggestedBaseUrlFromLocation();
+  S.publicBaseUrl = derived;
+  try {
+    const s = await api('GET', '/api/settings');
+    const want = normalizeBaseUrl(pickBaseUrlForSettings(s.baseUrl, derived));
+    S.publicBaseUrl = want;
+    if (want !== normalizeBaseUrl(s.baseUrl) && !isLocalBaseUrl(want)) {
+      await api('POST', '/api/base-url', { baseUrl: want });
+    }
+  } catch (_) {
+    S.publicBaseUrl = derived;
+  }
 }
 function fmtBytes(b) { return b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
 
@@ -461,6 +526,7 @@ async function enterMain() {
   $('topbar-url').textContent = originWithBase();
   $('login-err').style.display='none';
   await migrateLegacy();
+  await syncPublicBaseUrlToServer();
   await loadApps();
 }
 window.onload = () => { if (S.token) enterMain().catch(()=>logout()); };
@@ -645,7 +711,7 @@ async function loadLiveJson(appName) {
   try {
     const data = await api('GET', `/api/apps/${appName}/latest`);
     el.className = 'api-json-box';
-    el.textContent = JSON.stringify(data, null, 2);
+    el.textContent = JSON.stringify(rewriteLatestJsonForDisplay(data), null, 2);
   } catch {
     el.className = 'api-json-empty';
     el.textContent = '尚未发布任何版本';
@@ -731,13 +797,14 @@ function renderFileTable(appName, v, files) {
         ${files.map(f => {
           const b = fileBadge(f.name);
           const en = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          const fileUrl = canonicalPublicUrl(f.url);
           return `<tr>
             <td><span class="${f.name.endsWith('.sig')?'file-sig':'file-name'}">${esc(f.name)}</span></td>
             <td><span class="file-size">${fmtBytes(f.size)}</span></td>
             <td><span class="badge ${b.cls}">${b.label}</span></td>
             <td><div class="file-actions">
-              <button type="button" class="btn btn-ghost btn-sm" onclick='copyText(${JSON.stringify(f.url)})'>⎘</button>
-              <a href="${esc(f.url)}" target="_blank" class="btn btn-ghost btn-sm">↓</a>
+              <button type="button" class="btn btn-ghost btn-sm" onclick='copyText(${JSON.stringify(fileUrl)})'>⎘</button>
+              <a href="${esc(fileUrl)}" target="_blank" class="btn btn-ghost btn-sm">↓</a>
               <button class="btn btn-danger btn-sm" onclick="deleteFile('${appName}','${v.version}','${en}')">✕</button>
             </div></td>
           </tr>`;
@@ -810,6 +877,7 @@ async function quickPublish(app, ver, repoType) {
     await flushNote(app, ver);
     const preview = await api('GET', `/api/apps/${app}/versions/${ver}/preview-release`);
     const k = `${app}::${ver}`; preview.notes = S.notes[k] ?? '';
+    rewritePreviewUrls(preview);
     if (repoType === 'tauri') {
       const miss = Object.entries(preview.platforms||{}).filter(([,p])=>p.signature?.includes('未找到'));
       if (miss.length > 0) { toast(`缺少 .sig: ${miss.map(([k])=>k).join(', ')}`, 'error'); return; }
@@ -825,6 +893,7 @@ async function publishVersion(app, ver, repoType) {
     await flushNote(app, ver);
     const preview = await api('GET', `/api/apps/${app}/versions/${ver}/preview-release`);
     const k = `${app}::${ver}`; preview.notes = S.notes[k] ?? '';
+    rewritePreviewUrls(preview);
     if (repoType === 'tauri') {
       const miss = Object.entries(preview.platforms||{}).filter(([,p])=>p.signature?.includes('未找到'));
       if (miss.length > 0) { toast(`缺少 .sig: ${miss.map(([k])=>k).join(', ')}`, 'error'); return; }
@@ -900,17 +969,26 @@ async function createApp() {
 async function showSettings() {
   openModal('modal-settings');
   const derived = suggestedBaseUrlFromLocation();
+  S.publicBaseUrl = derived;
   try {
     const s = await api('GET', '/api/settings');
-    $('base-url-input').value = pickBaseUrlForSettings(s.baseUrl, derived);
+    const v = pickBaseUrlForSettings(s.baseUrl, derived);
+    $('base-url-input').value = v;
+    S.publicBaseUrl = normalizeBaseUrl(v);
   } catch {
     $('base-url-input').value = derived;
+    S.publicBaseUrl = derived;
   }
 }
 async function saveBaseUrl() {
   const u = $('base-url-input').value.trim();
   if (!u) { toast('请输入 BASE_URL','error'); return; }
-  try { await api('POST','/api/base-url',{baseUrl:u}); toast('BASE_URL 已保存'); if(S.currentApp) await renderApp(S.currentApp); }
+  try {
+    await api('POST','/api/base-url',{baseUrl:u});
+    S.publicBaseUrl = normalizeBaseUrl(u);
+    toast('BASE_URL 已保存');
+    if (S.currentApp) await renderApp(S.currentApp);
+  }
   catch(e) { toast(e.message,'error'); }
 }
 async function changePassword() {
