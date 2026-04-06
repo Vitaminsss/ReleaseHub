@@ -177,10 +177,6 @@ select option{background:var(--bg2)}
 .progress-bar{height:2px;background:var(--border);margin:6px 0}
 .progress-fill{height:100%;background:var(--accent);transition:width .3s;box-shadow:0 0 8px var(--accent)}
 
-/* Tauri force-publish */
-.force-row{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:10px;line-height:1.5}
-.force-row input{width:auto;margin-top:2px;flex-shrink:0}
-
 /* TOAST */
 .toast-wrap{position:fixed;top:58px;right:18px;z-index:1000;display:flex;flex-direction:column;gap:7px}
 .toast{padding:11px 14px;border:1px solid;font-size:12px;max-width:300px;animation:slideIn .2s ease;display:flex;align-items:center;gap:7px;background:var(--bg1)}
@@ -564,8 +560,7 @@ async function renderApp(appName) {
 
   bindNotes(appName, versions);
 
-  // Load live latest JSON for general api card
-  if (repoType === 'general') loadLiveJson(appName);
+  loadLiveJson(appName);
 }
 
 // ── API CARDS ───────────────────────────────────────
@@ -699,15 +694,10 @@ function renderVersionCard(appName, v, repoType) {
             <div class="notes-label">版本说明</div>
             <textarea id="notes-${v.version}" rows="2" placeholder="描述本版本更新内容…"></textarea>
           </div>
-          ${repoType==='tauri' ? `
-          <label class="force-row">
-            <input type="checkbox" id="force-${v.version}">
-            <span>强制发布（无 .sig 时仍可发布；Tauri 热更新需有效签名）</span>
-          </label>` : ''}
-          <!-- Save / delete -->
+          <!-- Delete / save -->
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-            <button class="btn btn-primary btn-sm" onclick="saveVersionDraft('${appName}','${v.version}')">保存</button>
-            <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="confirmDeleteVersion('${appName}','${v.version}')">删除版本</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmDeleteVersion('${appName}','${v.version}')">删除版本</button>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="saveVersionDraft('${appName}','${v.version}')">保存</button>
           </div>
         </div>
       </div>
@@ -803,7 +793,7 @@ async function quickPublish(app, ver, repoType) {
     const k = `${app}::${ver}`; preview.notes = S.notes[k] ?? '';
     if (repoType === 'tauri') {
       const miss = Object.entries(preview.platforms||{}).filter(([,p])=>p.signature?.includes('未找到'));
-      if (miss.length > 0) { toast(`缺少 .sig: ${miss.map(([k])=>k).join(', ')}，请在版本内勾选强制发布`, 'error'); return; }
+      if (miss.length > 0) { toast(`缺少 .sig: ${miss.map(([k])=>k).join(', ')}`, 'error'); return; }
     }
     await api('POST', `/api/apps/${app}/publish`, preview);
     toast(`✓ ${ver} 已设为最新发布版本`);
@@ -817,15 +807,13 @@ async function publishVersion(app, ver, repoType) {
     const preview = await api('GET', `/api/apps/${app}/versions/${ver}/preview-release`);
     const k = `${app}::${ver}`; preview.notes = S.notes[k] ?? '';
     if (repoType === 'tauri') {
-      const force = $(`force-${ver}`)?.checked;
       const miss = Object.entries(preview.platforms||{}).filter(([,p])=>p.signature?.includes('未找到'));
-      if (!force && miss.length > 0) { toast(`缺少 .sig: ${miss.map(([k])=>k).join(', ')}`, 'error'); return; }
+      if (miss.length > 0) { toast(`缺少 .sig: ${miss.map(([k])=>k).join(', ')}`, 'error'); return; }
     }
     await api('POST', `/api/apps/${app}/publish`, preview);
     toast(`✓ ${ver} 已发布`);
     await loadApps();
-    // Refresh live JSON
-    if (S.currentRepoType !== 'tauri' || true) loadLiveJson(app);
+    loadLiveJson(app);
   } catch(e) { toast(e.message,'error'); }
 }
 
