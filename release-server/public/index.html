@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Release Hub</title>
+<title>数据分发控制台</title>
 <style>
 :root {
+  --radius: 6px;
+  --radius-sm: 4px;
   --bg: #0c0b09; --bg1: #12100e; --bg2: #1a1714; --bg3: #221f1b;
   --border: #2c2820; --border2: #3d3529;
   --accent: #e8a035; --accent-dim: #c98728;
@@ -21,7 +23,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 /* LOGIN */
 #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
-.login-box{width:100%;max-width:380px;border:1px solid var(--border2);background:linear-gradient(165deg,var(--bg1) 0%,var(--bg2) 100%);padding:44px 40px;position:relative;box-shadow:0 24px 48px rgba(0,0,0,.35)}
+.login-box{width:100%;max-width:380px;border:1px solid var(--border2);background:linear-gradient(165deg,var(--bg1) 0%,var(--bg2) 100%);padding:44px 40px;position:relative;box-shadow:0 24px 48px rgba(0,0,0,.35);border-radius:var(--radius)}
 .login-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),#d4a574,transparent)}
 .login-logo{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.35em;text-transform:uppercase;margin-bottom:10px}
 .login-title{font-size:26px;font-weight:800;color:var(--text);margin-bottom:28px;line-height:1.15}
@@ -33,13 +35,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* FORM */
 .field{margin-bottom:14px}
 .field label{display:block;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
-input[type=text],input[type=password],input[type=url],textarea,select{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-size:14px;padding:9px 11px;outline:none;transition:border-color .2s}
+input[type=text],input[type=password],input[type=url],textarea,select{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-size:14px;padding:9px 11px;outline:none;transition:border-color .2s;border-radius:var(--radius-sm)}
 input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow2)}
 textarea{resize:vertical;min-height:72px}
 select option{background:var(--bg2)}
 
 /* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;font-size:13px;font-weight:600;letter-spacing:.5px;border:none;cursor:pointer;transition:all .15s;text-transform:uppercase;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;font-size:13px;font-weight:600;letter-spacing:.5px;border:none;cursor:pointer;transition:all .15s;text-transform:uppercase;white-space:nowrap;border-radius:var(--radius-sm)}
 .btn-primary{background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208}
 .btn-primary:hover{filter:brightness(1.07);box-shadow:0 0 24px var(--accent-glow)}
 .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
@@ -64,16 +66,23 @@ select option{background:var(--bg2)}
 /* SIDEBAR */
 .sidebar{border-right:1px solid var(--border);background:var(--bg1);padding:14px 0;overflow-y:auto}
 .sidebar-label{font-size:9px;letter-spacing:3px;color:var(--text3);text-transform:uppercase;padding:8px 14px 5px}
-.app-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border:1px solid transparent;margin:0 6px 2px;border-radius:2px;transition:all .15s}
+.sidebar-memory{margin:0 10px 12px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)}
+.sidebar-mem-title{font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:8px}
+.mem-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.mem-row .mem-val{font-size:12px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.mem-bar{height:4px;background:var(--border);border-radius:4px;overflow:hidden}
+.mem-bar-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--accent));border-radius:4px;transition:width .45s ease}
+.mem-sub{font-size:10px;color:var(--text3);margin-top:6px;line-height:1.45}
+.app-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border:1px solid transparent;margin:0 6px 2px;border-radius:var(--radius-sm);transition:all .15s}
 .app-item:hover{background:var(--bg2);border-color:var(--border)}
 .app-item.active{background:var(--accent-glow2);border-color:var(--accent)}
-.app-icon{width:26px;height:26px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text2);flex-shrink:0;font-weight:700}
+.app-icon{width:26px;height:26px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text2);flex-shrink:0;font-weight:700;border-radius:var(--radius-sm)}
 .active .app-icon{border-color:var(--accent);color:var(--accent)}
 .app-info{flex:1;min-width:0}
 .app-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .app-meta{font-size:10px;color:var(--text3);margin-top:1px;display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .active .app-meta{color:var(--accent-dim)}
-.type-pill{display:inline-flex;align-items:center;font-size:9px;letter-spacing:.6px;padding:1px 5px;border:1px solid;border-radius:2px;text-transform:uppercase;flex-shrink:0}
+.type-pill{display:inline-flex;align-items:center;font-size:9px;letter-spacing:.6px;padding:1px 5px;border:1px solid;border-radius:var(--radius-sm);text-transform:uppercase;flex-shrink:0}
 .type-general{color:var(--green);border-color:rgba(82,212,138,.4);background:rgba(82,212,138,.07)}
 .type-tauri{color:var(--purple);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.07)}
 
@@ -88,36 +97,36 @@ select option{background:var(--bg2)}
 .page-sub{font-size:12px;color:var(--text3);margin-top:3px}
 
 /* API CARD - left/right split（左：检查更新接口优先占宽；右：当前 JSON 次之） */
-.api-card{border:1px solid var(--border2);background:var(--bg1);margin-bottom:20px;position:relative;overflow:hidden}
+.api-card{border:1px solid var(--border2);background:var(--bg1);margin-bottom:20px;position:relative;overflow:hidden;border-radius:var(--radius)}
 .api-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--green),var(--purple))}
 .api-card-inner{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,0.75fr);gap:0;align-items:start}
 .api-left{padding:16px 18px;border-right:1px solid var(--border);min-width:0}
 .api-right{padding:16px 18px;background:var(--bg);min-width:0;max-width:100%}
 .api-section-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:12px}
-.api-row{display:flex;align-items:stretch;border:1px solid var(--border2);overflow:hidden;margin-bottom:8px;min-width:0}
+.api-row{display:flex;align-items:stretch;border:1px solid var(--border2);overflow:hidden;margin-bottom:8px;min-width:0;border-radius:var(--radius-sm)}
 .api-method{background:var(--bg3);padding:0 10px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;border-right:1px solid var(--border2);flex-shrink:0}
 .api-url{flex:1;padding:8px 10px;background:var(--bg);font-size:12px;color:var(--blue);font-family:monospace;word-break:break-all;line-height:1.4;display:flex;align-items:center}
 .api-copy{background:var(--bg3);border:none;border-left:1px solid var(--border2);color:var(--text3);cursor:pointer;padding:0 12px;font-size:11px;font-weight:600;letter-spacing:.5px;transition:all .15s;flex-shrink:0;text-transform:uppercase}
 .api-copy:hover{background:var(--accent-glow);color:var(--accent)}
-.api-hint{font-size:11px;color:var(--text3);line-height:1.6;margin-top:6px;padding:8px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
+.api-hint{font-size:11px;color:var(--text3);line-height:1.6;margin-top:6px;padding:8px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:var(--radius-sm)}
 .api-json-label{font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
-.api-json-box{background:var(--bg1);border:1px solid var(--border);padding:10px;font-size:11px;font-family:monospace;color:var(--accent-dim);overflow-x:auto;white-space:pre;max-height:200px;overflow-y:auto;line-height:1.55}
-.api-json-empty{font-size:12px;color:var(--text3);padding:20px;text-align:center;border:1px dashed var(--border);font-style:italic}
+.api-json-box{background:var(--bg1);border:1px solid var(--border);padding:10px;font-size:11px;font-family:monospace;color:var(--accent-dim);overflow-x:auto;white-space:pre;max-height:200px;overflow-y:auto;line-height:1.55;border-radius:var(--radius-sm)}
+.api-json-empty{font-size:12px;color:var(--text3);padding:20px;text-align:center;border:1px dashed var(--border);font-style:italic;border-radius:var(--radius-sm)}
 
 /* TAURI API CARD */
-.tauri-api-card{border:1px solid var(--border2);background:var(--bg1);margin-bottom:20px;position:relative;overflow:hidden}
+.tauri-api-card{border:1px solid var(--border2);background:var(--bg1);margin-bottom:20px;position:relative;overflow:hidden;border-radius:var(--radius)}
 .tauri-api-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),var(--accent))}
 .tauri-api-inner{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,0.75fr);gap:0;align-items:start}
 .tauri-left{padding:16px 18px;border-right:1px solid var(--border);min-width:0}
 .tauri-right{padding:16px 18px;background:var(--bg);min-width:0;max-width:100%}
 .tauri-section-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--purple);margin-bottom:12px}
-.tauri-config-json{background:var(--bg);border:1px solid var(--border);padding:10px;font-size:11px;font-family:monospace;color:var(--accent-dim);overflow-x:auto;white-space:pre;line-height:1.55;margin-top:8px}
+.tauri-config-json{background:var(--bg);border:1px solid var(--border);padding:10px;font-size:11px;font-family:monospace;color:var(--accent-dim);overflow-x:auto;white-space:pre;line-height:1.55;margin-top:8px;border-radius:var(--radius-sm)}
 
 /* VERSION GRID */
 .version-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:12px}
 
 /* VERSION CARD - sketch layout: title bar / icon+name / desc */
-.vcard{border:1px solid var(--border);background:var(--bg1);transition:border-color .2s,box-shadow .2s,transform .2s;display:flex;flex-direction:column}
+.vcard{border:1px solid var(--border);background:var(--bg1);transition:border-color .2s,box-shadow .2s,transform .2s;display:flex;flex-direction:column;border-radius:var(--radius);overflow:hidden}
 .vcard:hover{border-color:var(--border2);box-shadow:0 8px 28px rgba(0,0,0,.22);transform:translateY(-1px)}
 .vcard.is-latest{border-color:var(--accent);box-shadow:0 0 0 1px rgba(232,160,53,.12)}
 
@@ -125,7 +134,7 @@ select option{background:var(--bg2)}
 .vcard-titlebar{display:flex;align-items:center;padding:10px 14px;gap:8px;background:var(--bg2);border-bottom:1px solid var(--border)}
 .vcard-ver{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em}
 .vcard-badges{display:flex;gap:5px;flex:1;flex-wrap:wrap}
-.badge{font-size:9px;letter-spacing:1px;padding:2px 6px;border:1px solid;text-transform:uppercase}
+.badge{font-size:9px;letter-spacing:1px;padding:2px 6px;border:1px solid;text-transform:uppercase;border-radius:var(--radius-sm)}
 .badge-latest{color:var(--accent);border-color:var(--accent);background:var(--accent-glow2)}
 .badge-draft{color:var(--text3);border-color:var(--border2)}
 .badge-win{color:#7ecbff;border-color:rgba(126,203,255,.45);background:rgba(126,203,255,.08)}
@@ -164,7 +173,7 @@ select option{background:var(--bg2)}
 .file-actions{display:flex;gap:4px;justify-content:flex-end}
 
 /* Upload zone */
-.upload-zone{border:1px dashed var(--border2);min-height:120px;padding:28px 16px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px}
+.upload-zone{border:1px dashed var(--border2);min-height:120px;padding:28px 16px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px;border-radius:var(--radius-sm)}
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-glow2)}
 .upload-zone-text{font-size:14px;color:var(--text2);line-height:1.5;max-width:280px}
 .upload-zone-text strong{color:var(--accent)}
@@ -174,12 +183,12 @@ select option{background:var(--bg2)}
 .notes-label{font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
 
 /* Progress */
-.progress-bar{height:2px;background:var(--border);margin:6px 0}
-.progress-fill{height:100%;background:var(--accent);transition:width .3s;box-shadow:0 0 8px var(--accent)}
+.progress-bar{height:2px;background:var(--border);margin:6px 0;border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);transition:width .3s;box-shadow:0 0 8px var(--accent);border-radius:2px}
 
 /* TOAST */
 .toast-wrap{position:fixed;top:58px;right:18px;z-index:1000;display:flex;flex-direction:column;gap:7px}
-.toast{padding:11px 14px;border:1px solid;font-size:12px;max-width:300px;animation:slideIn .2s ease;display:flex;align-items:center;gap:7px;background:var(--bg1)}
+.toast{padding:11px 14px;border:1px solid;font-size:12px;max-width:300px;animation:slideIn .2s ease;display:flex;align-items:center;gap:7px;background:var(--bg1);border-radius:var(--radius-sm)}
 .toast-success{border-color:var(--accent);color:var(--accent)}
 .toast-error{border-color:var(--red);color:var(--red)}
 .toast-info{border-color:var(--blue);color:var(--blue)}
@@ -188,7 +197,7 @@ select option{background:var(--bg2)}
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:var(--bg1);border:1px solid var(--border2);padding:26px;width:100%;max-width:460px;position:relative;animation:fadeUp .2s ease}
+.modal{background:var(--bg1);border:1px solid var(--border2);padding:26px;width:100%;max-width:460px;position:relative;animation:fadeUp .2s ease;border-radius:var(--radius)}
 .modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
 .modal-title{font-size:14px;font-weight:700;margin-bottom:18px;color:var(--text)}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
@@ -196,7 +205,7 @@ select option{background:var(--bg2)}
 
 /* TYPE SELECTOR */
 .type-selector{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.type-option{border:1px solid var(--border2);padding:14px 12px;cursor:pointer;transition:all .15s;text-align:center;background:var(--bg)}
+.type-option{border:1px solid var(--border2);padding:14px 12px;cursor:pointer;transition:all .15s;text-align:center;background:var(--bg);border-radius:var(--radius-sm)}
 .type-option:hover{border-color:var(--accent-dim);background:var(--bg2)}
 .type-option.selected{border-color:var(--accent);background:var(--accent-glow2)}
 .type-icon{font-size:20px;margin-bottom:5px}
@@ -205,7 +214,7 @@ select option{background:var(--bg2)}
 .type-option.selected .type-name{color:var(--accent)}
 
 /* SETTINGS */
-.settings-section{border:1px solid var(--border);background:var(--bg1);padding:18px;margin-bottom:14px}
+.settings-section{border:1px solid var(--border);background:var(--bg1);padding:18px;margin-bottom:14px;border-radius:var(--radius)}
 .settings-title{font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:14px}
 
 .hidden{display:none!important}
@@ -218,8 +227,8 @@ select option{background:var(--bg2)}
 <!-- LOGIN -->
 <div id="login-page">
   <div class="login-box">
-    <div class="login-logo">Release Hub</div>
-    <div class="login-title">管理<span>控制台</span></div>
+    <div class="login-logo">数据分发控制台</div>
+    <div class="login-title">管理<span>登录</span></div>
     <div class="field">
       <label>管理员密码</label>
       <input type="password" id="login-pwd" placeholder="输入密码" autocomplete="current-password">
@@ -232,7 +241,7 @@ select option{background:var(--bg2)}
 <!-- MAIN -->
 <div id="main-page">
   <div class="topbar">
-    <div class="topbar-logo">Release Hub</div>
+    <div class="topbar-logo">数据分发控制台</div>
     <span class="topbar-url" id="topbar-url"></span>
     <div class="topbar-sep"></div>
     <div class="status-dot"></div>
@@ -243,6 +252,16 @@ select option{background:var(--bg2)}
     <div class="sidebar">
       <div class="sidebar-label">资源库</div>
       <div id="app-list"></div>
+      <div class="sidebar-label">服务器</div>
+      <div id="sidebar-memory" class="sidebar-memory">
+        <div class="sidebar-mem-title">内存</div>
+        <div class="mem-row">
+          <span style="font-size:10px;color:var(--text3)">剩余</span>
+          <span class="mem-val" id="mem-free-text">--</span>
+        </div>
+        <div class="mem-bar"><div class="mem-bar-fill" id="mem-bar-fill" style="width:0%"></div></div>
+        <div class="mem-sub" id="mem-sub">加载中…</div>
+      </div>
       <div style="padding:0 6px;margin-top:8px">
         <button class="btn btn-ghost btn-sm btn-full" onclick="showNewAppModal()">＋ 新建资源库</button>
       </div>
@@ -520,7 +539,38 @@ async function login() {
   $('login-btn').disabled = false; $('login-btn').textContent = '登录';
 }
 function showLoginErr(m) { $('login-err').textContent = m; $('login-err').style.display = 'block'; }
-function logout() { S.token = null; localStorage.removeItem('rh_token'); $('login-page').style.display='flex'; $('main-page').style.display='none'; }
+let memRefreshTimer = null;
+function fmtMemBytes(n) {
+  const b = Number(n) || 0;
+  if (b >= 1024 ** 3) return (b / (1024 ** 3)).toFixed(1) + ' GB';
+  return (b / (1024 ** 2)).toFixed(0) + ' MB';
+}
+async function refreshSidebarMemory() {
+  if (!S.token) return;
+  const sub = $('mem-sub');
+  const freeEl = $('mem-free-text');
+  const fill = $('mem-bar-fill');
+  if (!sub || !freeEl || !fill) return;
+  try {
+    const data = await api('GET', '/api/system');
+    const { total, free } = data.memory || {};
+    if (!total) throw new Error('no');
+    const used = total - free;
+    const usedPct = Math.min(100, Math.round((used / total) * 100));
+    const freePct = Math.round((free / total) * 100);
+    freeEl.textContent = fmtMemBytes(free);
+    fill.style.width = usedPct + '%';
+    sub.textContent = `已用 ${fmtMemBytes(used)} / 共 ${fmtMemBytes(total)} · 剩余约 ${freePct}%`;
+  } catch {
+    sub.textContent = '暂时无法获取';
+    freeEl.textContent = '--';
+    fill.style.width = '0%';
+  }
+}
+function logout() {
+  if (memRefreshTimer) { clearInterval(memRefreshTimer); memRefreshTimer = null; }
+  S.token = null; localStorage.removeItem('rh_token'); $('login-page').style.display='flex'; $('main-page').style.display='none';
+}
 async function enterMain() {
   $('login-page').style.display='none'; $('main-page').style.display='block';
   $('topbar-url').textContent = originWithBase();
@@ -528,6 +578,9 @@ async function enterMain() {
   await migrateLegacy();
   await syncPublicBaseUrlToServer();
   await loadApps();
+  refreshSidebarMemory();
+  if (memRefreshTimer) clearInterval(memRefreshTimer);
+  memRefreshTimer = setInterval(refreshSidebarMemory, 60000);
 }
 window.onload = () => { if (S.token) enterMain().catch(()=>logout()); };
 

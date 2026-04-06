@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const cors = require('cors');
 
 const app = express();
@@ -302,6 +303,15 @@ app.get('/api/apps/:app/latest', auth, (req, res) => {
   d ? res.json(d) : res.status(404).json({ error: '尚未发布任何版本' });
 });
 
+// 系统信息（内存等）
+app.get('/api/system', auth, (req, res) => {
+  const total = os.totalmem();
+  const free = os.freemem();
+  res.json({
+    memory: { total, free, used: total - free },
+  });
+});
+
 // Settings
 app.get('/api/settings', auth, (req, res) => res.json({ baseUrl: CONFIG.BASE_URL }));
 
@@ -333,6 +343,6 @@ app.post('/api/change-password', auth, async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Release Hub running at http://localhost:${PORT}`);
+  console.log(`🚀 数据分发控制台 running at http://localhost:${PORT}`);
   console.log(`📁 Releases dir: ${CONFIG.RELEASES_DIR}`);
 });

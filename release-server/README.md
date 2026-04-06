@@ -1,4 +1,4 @@
-# Release Hub
+# 数据分发控制台（Release Hub）
 
 Tauri 应用发布管理后台：多应用、多版本、文件上传、`latest.json` 一键发布。对外提供 `**/releases/:appName/latest.json**` 供 Tauri updater 拉取。
 
