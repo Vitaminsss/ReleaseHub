@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# Release Hub 一键部署脚本（无交互提问；依赖环境变量默认值）
+# Release Hub 一键部署脚本（交互终端下可询问 HTTPS；否则依赖环境变量）
 # 使用方法：在仓库根目录执行 bash deploy.sh
 #
 # 安装目录 = 本脚本所在目录（与 server.js、releases/、.env 同级），不再使用 /opt
@@ -11,10 +11,10 @@
 #   NGINX_PREFIX   未设置时默认路径前缀 releasehub；显式 NGINX_PREFIX= 空字符串=整站根路径 /
 #
 # HTTPS（Let's Encrypt + Certbot，仅在已启用 Nginx 时可用）：
-#   USE_HTTPS=0              不尝试自动申请证书（仅 HTTP；仍可用 DOMAIN 生成 http://域名 的 BASE_URL）
-#   USE_HTTPS=1 或未设置     尝试自动 HTTPS：DNS 预检 → certbot --dry-run → 成功后再正式签发；失败则回退 HTTP
-#   DOMAIN=releases.example.com      优先使用的域名（须解析到本机公网 IP）；未设置时尝试 hostname -f
-#   CERTBOT_EMAIL=you@example.com    Certbot 注册邮箱（可选，缺省为 admin@域名）
+#   USE_HTTPS=0              不尝试证书（仅 HTTP）
+#   USE_HTTPS=1              非交互：自动试签发（DOMAIN / hostname -f，*.local 忽略）
+#   USE_HTTPS 未设置         交互终端：询问是否 HTTPS，选「是」则只提示输入一次域名；非交互：同 USE_HTTPS=1
+#   DOMAIN / CERTBOT_EMAIL   非交互或已设 USE_HTTPS=1 时使用；邮箱默认 admin@域名
 # ============================================
 
 set -e
@@ -106,6 +106,20 @@ dns_resolves_to_public_ip() {
   while read -r line; do
     [ -n "$line" ] && [ "$line" = "$pub" ] && return 0
   done < <(dig +short "$dom" AAAA 2>/dev/null)
+  return 1
+}
+
+# 是否为不适合公网访问 / Let's Encrypt 的主机名（如 mDNS 的 *.local）。返回 0=是保留名应忽略
+domain_is_nonpublic_hostname() {
+  local d="$1"
+  [ -z "$d" ] && return 0
+  case "$d" in
+    localhost|localhost.*) return 0 ;;
+  esac
+  [[ "$d" == *.local ]] && return 0
+  [[ "$d" == *.localdomain ]] && return 0
+  [[ "$d" == *.lan ]] && return 0
+  [[ "$d" == *.internal ]] && return 0
   return 1
 }
 
@@ -202,28 +216,73 @@ if [ "$NGINX_ENABLED" = "1" ]; then
     echo ""
     echo "▸ USE_HTTPS=0，跳过自动申请证书（仅 HTTP）"
     DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    if [ -n "$DOMAIN_RESOLVED" ] && domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
+      echo "  ⚠ DOMAIN=$DOMAIN_RESOLVED 为内网保留名，已忽略；BASE_URL 将用公网 IP"
+      DOMAIN_RESOLVED=""
+    fi
     if [ -n "$DOMAIN_RESOLVED" ]; then
       echo "  将使用 DOMAIN=$DOMAIN_RESOLVED 生成 BASE_URL（http）"
     fi
     else
     echo ""
-    echo "▸ HTTPS：将自动尝试 Let's Encrypt（DNS 预检 → certbot --dry-run → 正式签发），失败则使用 HTTP。"
+    echo "▸ HTTPS：Let's Encrypt（DNS 预检 → certbot --dry-run → 正式签发），失败则使用 HTTP。"
     echo "  需域名 DNS（A/AAAA）指向本机公网 IP（当前检测: $PUBLIC_IP），且公网可访问 80。"
-    DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    if [ -z "$DOMAIN_RESOLVED" ]; then
-      HFN="$(hostname -f 2>/dev/null || true)"
-      if [ -n "$HFN" ] && [ "$HFN" != "localhost" ] && [[ "$HFN" == *.* ]]; then
-        DOMAIN_RESOLVED="$HFN"
-        echo "▸ 未设置 DOMAIN，使用 hostname -f: $DOMAIN_RESOLVED"
-      fi
-    else
-      echo "▸ 使用 DOMAIN=$DOMAIN_RESOLVED"
-    fi
+    DOMAIN_RESOLVED=""
     CERTBOT_EMAIL_VAL="$(echo "${CERTBOT_EMAIL:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    echo "▸ USE_HTTPS=${USE_HTTPS:-未设置} → 尝试自动 HTTPS（USE_HTTPS=0 可关闭）；邮箱：环境变量 CERTBOT_EMAIL 或 admin@域名"
+    HTTPS_DECLINED_INTERACTIVE=0
 
+    if [ -t 0 ] && [ -z "${USE_HTTPS+x}" ]; then
+      read -r -p "是否使用 HTTPS（Let's Encrypt）？[y/N] " HTTPS_INTERACTIVE
+      case "${HTTPS_INTERACTIVE}" in
+        [yY][eE][sS]|[yY])
+          echo "  （域名只需输入一次；须已在 DNS 解析到本机 $PUBLIC_IP）"
+          if [ -n "${DOMAIN:-}" ]; then
+            read -r -p "请输入域名 [默认: ${DOMAIN}]: " DOMAIN_INPUT
+            DOMAIN_RESOLVED="$(echo "${DOMAIN_INPUT:-$DOMAIN}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          else
+            read -r -p "请输入域名（如 www.example.com）: " DOMAIN_INPUT
+            DOMAIN_RESOLVED="$(echo "${DOMAIN_INPUT:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          fi
+          if [ -z "$DOMAIN_RESOLVED" ]; then
+            echo "⚠ 未输入域名，跳过 HTTPS，将仅使用 HTTP。"
+          fi
+          ;;
+        *)
+          HTTPS_DECLINED_INTERACTIVE=1
+          echo "▸ 已选择仅使用 HTTP，跳过证书申请。"
+          ;;
+      esac
+    else
+      if [ -n "${USE_HTTPS+x}" ]; then
+        echo "▸ USE_HTTPS=${USE_HTTPS} → 自动尝试 HTTPS（非交互/已显式设置）"
+      else
+        echo "▸ 非交互：自动尝试 HTTPS（设置 DOMAIN=… 或依赖 hostname；USE_HTTPS=0 可关闭）"
+      fi
+      DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      if [ -z "$DOMAIN_RESOLVED" ]; then
+        HFN="$(hostname -f 2>/dev/null || true)"
+        if [ -n "$HFN" ] && [ "$HFN" != "localhost" ] && [[ "$HFN" == *.* ]]; then
+          if domain_is_nonpublic_hostname "$HFN"; then
+            echo "⚠ hostname -f 为「$HFN」（多为内网 .local，与公网域名无关），已忽略。"
+            echo "  请设置 DOMAIN=你的公网域名，否则 BASE_URL 使用公网 IP。"
+          else
+            DOMAIN_RESOLVED="$HFN"
+            echo "▸ 未设置 DOMAIN，使用 hostname -f: $DOMAIN_RESOLVED"
+          fi
+        fi
+      else
+        echo "▸ 使用 DOMAIN=$DOMAIN_RESOLVED"
+      fi
+    fi
+
+    if [ -n "$DOMAIN_RESOLVED" ] && domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
+      echo "⚠ 域名「$DOMAIN_RESOLVED」不适合 Let's Encrypt / 公网链接，已忽略。"
+      DOMAIN_RESOLVED=""
+    fi
     if [ -z "$DOMAIN_RESOLVED" ]; then
-      echo "⚠ 未配置域名，跳过 HTTPS。可稍后执行: sudo certbot --nginx -d 你的域名"
+      if [ "$HTTPS_DECLINED_INTERACTIVE" != "1" ]; then
+        echo "⚠ 未配置域名，跳过 HTTPS。可稍后执行: sudo certbot --nginx -d 你的域名"
+      fi
     else
       if [ -z "$CERTBOT_EMAIL_VAL" ]; then
         CERTBOT_EMAIL_VAL="admin@${DOMAIN_RESOLVED}"

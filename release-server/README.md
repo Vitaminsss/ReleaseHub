@@ -30,9 +30,9 @@ chmod +x deploy.sh
 bash deploy.sh
 ```
 
-### Nginx 与环境变量（无交互提问）
+### Nginx 与环境变量
 
-`deploy.sh` **不再询问**是否安装 Nginx、路径前缀、域名或 Certbot 邮箱；通过环境变量覆盖即可。
+默认**不询问**是否安装 Nginx、路径前缀（见下表）；**HTTPS** 在**交互式终端**且**未设置** `USE_HTTPS` 时，会询问是否使用 HTTPS，选「是」则**只提示输入一次域名**（若已 `export DOMAIN=...`，可作为默认值回车使用）。非交互（CI / 管道）或已设置 `USE_HTTPS=0` / `USE_HTTPS=1` 时不提问。
 
 **默认行为**：安装 **Nginx**（HTTP 80 反代到本机 `:3721`）；HTTP 路径前缀默认为 **`releasehub`**（访问 `http://<公网IP>/releasehub/`）。不需要 Nginx 时显式关闭。
 
@@ -42,13 +42,15 @@ bash deploy.sh
 | `SKIP_NGINX=1` | 与 `USE_NGINX=0` 相同（兼容旧用法） |
 | 未设置 `USE_NGINX` | **默认安装 Nginx**（交互与非交互一致） |
 | `NGINX_PREFIX` | **HTTP 路径前缀**（仅字母数字 `_` `-`）。**未设置**时默认为 `releasehub`；**显式设为空** `NGINX_PREFIX=` 表示整站根路径 `/`；其他值如 `NGINX_PREFIX=my-app` 会覆盖默认 |
-| `USE_HTTPS=0` | 已启用 Nginx 时**不尝试**自动申请证书（仅 HTTP）；可配合 `DOMAIN` 生成 `http://域名` 的 **BASE_URL** |
-| `USE_HTTPS=1` 或未设置 | 已启用 Nginx 时**尝试**自动 HTTPS（见下方「HTTPS 自动试签发」） |
-| `DOMAIN` | 优先使用的域名；未设置时若 `hostname -f` 为合法 FQDN（含 `.` 且非 `localhost`）则自动采用 |
+| `USE_HTTPS=0` | 不尝试证书（仅 HTTP）；可配合 `DOMAIN` 生成 **BASE_URL** |
+| `USE_HTTPS=1` | **不提问**：按环境变量 `DOMAIN` / `hostname` 自动试签发（见「HTTPS 自动试签发」） |
+| `USE_HTTPS` **未设置** | **交互终端**：询问是否 HTTPS，选是则输入一次域名；**非交互**：与 `USE_HTTPS=1` 相同，自动试签发 |
+| `DOMAIN` | **公网域名**（如 `www.example.com`），须与 DNS 一致；**务必设置**，勿依赖 `hostname -f`。`*.local` / `*.lan` 等内网保留名会被忽略，此时 **BASE_URL** 用公网 IP |
 | `CERTBOT_EMAIL` | Let's Encrypt 注册邮箱（可选；缺省为 `admin@域名`） |
 
 ```bash
-bash deploy.sh   # 默认：Nginx + 前缀 releasehub + 自动 HTTPS 试签发（若可解析域名）
+bash deploy.sh   # 交互：可选 HTTPS 并输入域名；非交互：Nginx + releasehub + 自动 HTTPS 试签发（见 DOMAIN）
+USE_HTTPS=1 DOMAIN=www.example.com bash deploy.sh   # 无提问，直接按域名试签发
 USE_NGINX=0 bash deploy.sh   # 不装 Nginx
 NGINX_PREFIX= bash deploy.sh   # 整站根路径 /（无前缀）
 NGINX_PREFIX=custom bash deploy.sh   # 自定义前缀 /custom/
@@ -58,9 +60,9 @@ USE_HTTPS=0 DOMAIN=releases.example.com bash deploy.sh   # 仅用 HTTP，BASE_UR
 
 ### HTTPS 自动试签发（Let's Encrypt）
 
-在**已安装 Nginx** 的前提下（交互式默认会走该流程，除非设置 `USE_HTTPS=0`）：
+在**已安装 Nginx** 的前提下：
 
-1. **域名**：使用环境变量 `DOMAIN`，否则在 `hostname -f` 为合法 FQDN 时自动采用；均无则跳过证书申请。
+1. **域名**：**交互且未设置 `USE_HTTPS`**：选 HTTPS 后只输入一次公网域名。**非交互或 `USE_HTTPS=1`**：使用环境变量 **`DOMAIN`**；若未设置且 `hostname -f` 为**非**内网保留名（非 `*.local` 等）才自动采用。云主机常见 `hostname` 为 `.local`，与 DNS 中的域名无关，**请设置 `DOMAIN` 或在交互时输入域名**。
 2. **DNS 预检**：脚本的公网 IP（`curl` 检测）须与域名 `A`/`AAAA` 记录之一一致（需安装 `dig`，通常来自 `dnsutils` / `bind9-dnsutils`）。不一致则**不调用 certbot**，Nginx 保持 HTTP，**BASE_URL** 仍为 `http://域名/...`（便于稍后修好 DNS 再部署）。
 3. **试签发**：`certbot certonly --nginx --dry-run`（staging，不占正式额度）。仅当 dry-run **成功** 后才执行正式 `certbot --nginx` 并配置 HTTPS 与跳转。
 4. **失败回退**：任一步失败（dry-run、正式申请、certbot 安装失败等）会恢复 `server_name _` 的 HTTP 反代，**保留域名**写入 **BASE_URL**（`http://`），可在修正 DNS/防火墙后再次运行 `deploy.sh` 或手动 `sudo certbot --nginx -d 你的域名`。
