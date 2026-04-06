@@ -417,6 +417,12 @@ function canonicalPublicUrl(serverUrl) {
     return base + path + (u.search || '') + (u.hash || '');
   } catch (_) { return serverUrl; }
 }
+/** 可分享的独立下载页 /d/:app/:version/:filename */
+function downloadPagePublicUrl(appName, version, fileName) {
+  const base = normalizeBaseUrl(S.publicBaseUrl || suggestedBaseUrlFromLocation());
+  const p = '/d/' + [appName, version, fileName].map(encodeURIComponent).join('/');
+  return canonicalPublicUrl(base + p);
+}
 function rewriteLatestJsonForDisplay(data) {
   if (!data || typeof data !== 'object') return data;
   const d = JSON.parse(JSON.stringify(data));
@@ -851,12 +857,14 @@ function renderFileTable(appName, v, files) {
           const b = fileBadge(f.name);
           const en = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
           const fileUrl = canonicalPublicUrl(f.url);
+          const sharePageUrl = downloadPagePublicUrl(appName, v.version, f.name);
           return `<tr>
             <td><span class="${f.name.endsWith('.sig')?'file-sig':'file-name'}">${esc(f.name)}</span></td>
             <td><span class="file-size">${fmtBytes(f.size)}</span></td>
             <td><span class="badge ${b.cls}">${b.label}</span></td>
             <td><div class="file-actions">
-              <button type="button" class="btn btn-ghost btn-sm" onclick='copyText(${JSON.stringify(fileUrl)})'>⎘</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick='copyText(${JSON.stringify(fileUrl)})' title="复制直链">⎘</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick='copyText(${JSON.stringify(sharePageUrl)})' title="复制下载页链接">🔗</button>
               <a href="${esc(fileUrl)}" target="_blank" class="btn btn-ghost btn-sm">↓</a>
               <button class="btn btn-danger btn-sm" onclick="deleteFile('${appName}','${v.version}','${en}')">✕</button>
             </div></td>
