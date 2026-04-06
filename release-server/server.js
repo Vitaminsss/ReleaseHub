@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const cors = require('cors');
 
 const app = express();
@@ -303,13 +302,24 @@ app.get('/api/apps/:app/latest', auth, (req, res) => {
   d ? res.json(d) : res.status(404).json({ error: '尚未发布任何版本' });
 });
 
-// 系统信息（内存等）
+// 系统信息：releases 所在卷的磁盘空间（需 Node ≥18.15 且平台支持 statfs）
 app.get('/api/system', auth, (req, res) => {
-  const total = os.totalmem();
-  const free = os.freemem();
-  res.json({
-    memory: { total, free, used: total - free },
-  });
+  if (typeof fs.statfsSync !== 'function') {
+    return res.json({ disk: null });
+  }
+  try {
+    const p = CONFIG.RELEASES_DIR;
+    if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+    const s = fs.statfsSync(p);
+    const bs = Number(s.bsize) || 4096;
+    const blocks = Number(s.blocks);
+    const bavail = Number(s.bavail != null ? s.bavail : s.bfree);
+    const total = blocks * bs;
+    const free = bavail * bs;
+    res.json({ disk: { total, free, used: total - free } });
+  } catch {
+    res.json({ disk: null });
+  }
 });
 
 // Settings

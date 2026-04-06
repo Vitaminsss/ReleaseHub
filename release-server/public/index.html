@@ -66,8 +66,18 @@ select option{background:var(--bg2)}
 /* SIDEBAR */
 .sidebar{border-right:1px solid var(--border);background:var(--bg1);padding:14px 0;overflow-y:auto}
 .sidebar-label{font-size:9px;letter-spacing:3px;color:var(--text3);text-transform:uppercase;padding:8px 14px 5px}
-.sidebar-memory{margin:0 10px 12px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)}
-.sidebar-mem-title{font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:8px}
+.sidebar-disk{margin:0 10px 10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)}
+.sidebar-disk-title{font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:8px}
+.sidebar-manual{margin:0 10px 12px;border:1px solid var(--border);background:var(--bg2);border-radius:var(--radius);overflow:hidden}
+.sidebar-manual summary{cursor:pointer;list-style:none;padding:8px 12px;font-size:10px;letter-spacing:1.5px;color:var(--text2);text-transform:uppercase;user-select:none;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:background .15s}
+.sidebar-manual summary::-webkit-details-marker{display:none}
+.sidebar-manual summary::after{content:'▸';font-size:9px;color:var(--text3);transition:transform .2s}
+.sidebar-manual[open] summary::after{transform:rotate(90deg)}
+.sidebar-manual summary:hover{background:rgba(255,255,255,.03);color:var(--text)}
+.sidebar-manual-body{padding:0 12px 10px;font-size:11px;color:var(--text3);line-height:1.55;border-top:1px solid var(--border)}
+.sidebar-manual-body p{margin-bottom:8px}
+.sidebar-manual-body ul{margin:0 0 6px 14px;padding:0}
+.sidebar-manual-body li{margin-bottom:4px}
 .mem-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
 .mem-row .mem-val{font-size:12px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
 .mem-bar{height:4px;background:var(--border);border-radius:4px;overflow:hidden}
@@ -250,18 +260,27 @@ select option{background:var(--bg2)}
   </div>
   <div class="layout">
     <div class="sidebar">
-      <div class="sidebar-label">资源库</div>
-      <div id="app-list"></div>
-      <div class="sidebar-label">服务器</div>
-      <div id="sidebar-memory" class="sidebar-memory">
-        <div class="sidebar-mem-title">内存</div>
+      <div id="sidebar-disk" class="sidebar-disk">
+        <div class="sidebar-disk-title">磁盘空间</div>
         <div class="mem-row">
           <span style="font-size:10px;color:var(--text3)">剩余</span>
-          <span class="mem-val" id="mem-free-text">--</span>
+          <span class="mem-val" id="disk-free-text">--</span>
         </div>
-        <div class="mem-bar"><div class="mem-bar-fill" id="mem-bar-fill" style="width:0%"></div></div>
-        <div class="mem-sub" id="mem-sub">加载中…</div>
+        <div class="mem-bar"><div class="mem-bar-fill" id="disk-bar-fill" style="width:0%"></div></div>
+        <div class="mem-sub" id="disk-sub">加载中…</div>
       </div>
+      <details class="sidebar-manual" id="sidebar-manual">
+        <summary>使用说明</summary>
+        <div class="sidebar-manual-body">
+          <p><strong style="color:var(--text2)">登录</strong>：使用管理员密码进入控制台。</p>
+          <p><strong style="color:var(--text2)">资源库</strong>：左侧列表为各项目；点「＋ 新建资源库」可创建，标识符用于 URL 与接口路径。</p>
+          <p><strong style="color:var(--text2)">类型</strong>：通用库提供标准 JSON 检查更新；Tauri 库会为热更新生成含签名的 latest.json。</p>
+          <p><strong style="color:var(--text2)">版本与文件</strong>：进入资源库后可新建版本、拖拽上传安装包；可将某版本标为「当前最新」。右侧可复制各环境的检查更新地址。</p>
+          <p><strong style="color:var(--text2)">设置</strong>：顶栏「设置」可修改对外 BASE_URL（影响生成的链接）。</p>
+        </div>
+      </details>
+      <div class="sidebar-label">资源库</div>
+      <div id="app-list"></div>
       <div style="padding:0 6px;margin-top:8px">
         <button class="btn btn-ghost btn-sm btn-full" onclick="showNewAppModal()">＋ 新建资源库</button>
       </div>
@@ -539,28 +558,29 @@ async function login() {
   $('login-btn').disabled = false; $('login-btn').textContent = '登录';
 }
 function showLoginErr(m) { $('login-err').textContent = m; $('login-err').style.display = 'block'; }
-let memRefreshTimer = null;
-function fmtMemBytes(n) {
+let diskRefreshTimer = null;
+function fmtBytes(n) {
   const b = Number(n) || 0;
   if (b >= 1024 ** 3) return (b / (1024 ** 3)).toFixed(1) + ' GB';
   return (b / (1024 ** 2)).toFixed(0) + ' MB';
 }
-async function refreshSidebarMemory() {
+async function refreshSidebarDisk() {
   if (!S.token) return;
-  const sub = $('mem-sub');
-  const freeEl = $('mem-free-text');
-  const fill = $('mem-bar-fill');
+  const sub = $('disk-sub');
+  const freeEl = $('disk-free-text');
+  const fill = $('disk-bar-fill');
   if (!sub || !freeEl || !fill) return;
   try {
     const data = await api('GET', '/api/system');
-    const { total, free } = data.memory || {};
-    if (!total) throw new Error('no');
+    const d = data.disk;
+    if (!d || !d.total) throw new Error('no');
+    const { total, free } = d;
     const used = total - free;
     const usedPct = Math.min(100, Math.round((used / total) * 100));
     const freePct = Math.round((free / total) * 100);
-    freeEl.textContent = fmtMemBytes(free);
+    freeEl.textContent = fmtBytes(free);
     fill.style.width = usedPct + '%';
-    sub.textContent = `已用 ${fmtMemBytes(used)} / 共 ${fmtMemBytes(total)} · 剩余约 ${freePct}%`;
+    sub.textContent = `已用 ${fmtBytes(used)} / 共 ${fmtBytes(total)} · 剩余约 ${freePct}%`;
   } catch {
     sub.textContent = '暂时无法获取';
     freeEl.textContent = '--';
@@ -568,7 +588,7 @@ async function refreshSidebarMemory() {
   }
 }
 function logout() {
-  if (memRefreshTimer) { clearInterval(memRefreshTimer); memRefreshTimer = null; }
+  if (diskRefreshTimer) { clearInterval(diskRefreshTimer); diskRefreshTimer = null; }
   S.token = null; localStorage.removeItem('rh_token'); $('login-page').style.display='flex'; $('main-page').style.display='none';
 }
 async function enterMain() {
@@ -578,9 +598,9 @@ async function enterMain() {
   await migrateLegacy();
   await syncPublicBaseUrlToServer();
   await loadApps();
-  refreshSidebarMemory();
-  if (memRefreshTimer) clearInterval(memRefreshTimer);
-  memRefreshTimer = setInterval(refreshSidebarMemory, 60000);
+  refreshSidebarDisk();
+  if (diskRefreshTimer) clearInterval(diskRefreshTimer);
+  diskRefreshTimer = setInterval(refreshSidebarDisk, 60000);
 }
 window.onload = () => { if (S.token) enterMain().catch(()=>logout()); };
 
