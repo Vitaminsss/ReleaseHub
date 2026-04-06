@@ -47,13 +47,15 @@ textarea{resize:vertical;min-height:72px}
 select option{background:var(--bg2)}
 
 /* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;font-size:14px;font-weight:600;letter-spacing:.5px;border:none;cursor:pointer;transition:all .15s;text-transform:uppercase;white-space:nowrap;border-radius:var(--radius-sm)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;font-size:14px;font-weight:600;letter-spacing:.5px;border:none;cursor:pointer;text-transform:uppercase;white-space:nowrap;border-radius:var(--radius-sm);
+  transition:transform .45s cubic-bezier(.175,.885,.32,1.275),filter .15s,box-shadow .2s,border-color .15s,background-color .15s,color .15s}
+.btn:not(:disabled):active{transform:scale(.94);transition:transform .1s cubic-bezier(.4,0,.2,1)}
 .btn-primary{background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208}
-.btn-primary:hover{filter:brightness(1.07);box-shadow:0 0 24px var(--accent-glow)}
+.btn-primary:hover:not(:disabled){filter:brightness(1.07);box-shadow:0 0 24px var(--accent-glow)}
 .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
-.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-ghost:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(232,93,76,.35)}
-.btn-danger:hover{background:var(--red-dim)}
+.btn-danger:hover:not(:disabled){background:var(--red-dim)}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-icon{padding:6px 8px;min-width:34px;min-height:34px;justify-content:center}
 .btn-icon .ico{width:17px;height:17px}
@@ -172,7 +174,8 @@ a.btn-icon{text-decoration:none}
 .vcard-fc-icon{color:var(--text3);flex-shrink:0;display:flex;align-items:center}
 .vcard-fc-icon .ico{width:18px;height:18px;opacity:.85}
 .vcard-fc-num{font-size:12px;font-weight:500;color:var(--text);line-height:1.45;min-width:0}
-.vcard-set-latest-btn{margin-left:auto;flex-shrink:0;white-space:nowrap}
+.vcard-set-latest-btn{margin-left:auto;flex-shrink:0;white-space:nowrap;padding:3px 8px!important;font-size:10px!important;font-weight:600;letter-spacing:.02em;text-transform:none;gap:4px!important;line-height:1.2}
+.vcard-set-latest-btn .ico{width:12px!important;height:12px!important;min-width:12px}
 
 /* Notes / desc row */
 .vcard-notes{padding:8px 14px;font-size:13px;color:var(--text3);line-height:1.5;border-bottom:1px solid var(--border-hairline);min-height:36px}
@@ -854,8 +857,8 @@ function renderVersionCard(appName, v, repoType) {
           <span class="vcard-fc-num">${esc(fileCountLabel)}</span>
         </div>
         ${!v.isLatest
-          ? `<button type="button" class="btn btn-primary btn-sm vcard-set-latest-btn" onclick="quickPublish('${appName}','${v.version}','${repoType}')">${Ico.play}<span style="margin-left:6px">设为最新发布</span></button>`
-          : `<button type="button" class="btn btn-ghost btn-sm vcard-set-latest-btn" onclick="publishVersion('${appName}','${v.version}','${repoType}')">${Ico.refresh}<span style="margin-left:6px">重新发布</span></button>`
+          ? `<button type="button" class="btn btn-primary btn-sm vcard-set-latest-btn" onclick="quickPublish('${appName}','${v.version}','${repoType}')">${Ico.play}<span>设为最新发布</span></button>`
+          : `<button type="button" class="btn btn-ghost btn-sm vcard-set-latest-btn" onclick="publishVersion('${appName}','${v.version}','${repoType}')">${Ico.refresh}<span>重新发布</span></button>`
         }
       </div>
       <!-- Notes row -->
