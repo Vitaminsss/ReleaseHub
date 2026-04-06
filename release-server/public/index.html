@@ -323,7 +323,7 @@ select option{background:var(--bg2)}
     <div class="modal-title">设置</div>
     <div class="settings-section">
       <div class="settings-title">对外访问地址 BASE_URL</div>
-      <p style="color:var(--text3);font-size:11px;margin-bottom:12px;line-height:1.6">文件下载直链和 latest.json 内的 URL 均依赖此地址，需与实际访问的域名/协议一致。</p>
+      <p style="color:var(--text3);font-size:11px;margin-bottom:12px;line-height:1.6">文件下载直链和 latest.json 内的 URL 均依赖此地址。打开本页时会按<strong>当前浏览器地址</strong>（与顶栏一致）自动校准；若仍不对请改后点保存。</p>
       <div class="field">
         <label>BASE_URL</label>
         <input type="url" id="base-url-input" placeholder="https://releases.example.com">
@@ -361,6 +361,25 @@ function basePath() {
 }
 function apiUrl(p) { return p.startsWith('/') ? basePath() + p : p; }
 function originWithBase() { const b = basePath(); return b ? location.origin + b : location.origin; }
+/** 与 .env 中 BASE_URL 同格式：无末尾 /，与顶栏「当前访问」一致 */
+function suggestedBaseUrlFromLocation() {
+  return originWithBase().replace(/\/$/, '');
+}
+function normalizeBaseUrl(u) {
+  return String(u || '').trim().replace(/\/$/, '');
+}
+/** 打开设置时：优先用当前浏览器地址，避免 .env 仍为 localhost 或缺少 /releasehub 等子路径 */
+function pickBaseUrlForSettings(serverBase, derived) {
+  const server = normalizeBaseUrl(serverBase);
+  const d = normalizeBaseUrl(derived);
+  if (!server || server === 'http://localhost:3721') return d;
+  try {
+    const bp = basePath();
+    if (bp && !server.endsWith(bp)) return d;
+    if (d && new URL(server).origin !== new URL(d).origin) return d;
+  } catch (_) { return d; }
+  return server;
+}
 function fmtBytes(b) { return b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
 
 function toast(msg, type='success') {
@@ -880,7 +899,13 @@ async function createApp() {
 // ── SETTINGS ─────────────────────────────────────────
 async function showSettings() {
   openModal('modal-settings');
-  try { const s = await api('GET','/api/settings'); $('base-url-input').value = s.baseUrl||''; } catch {}
+  const derived = suggestedBaseUrlFromLocation();
+  try {
+    const s = await api('GET', '/api/settings');
+    $('base-url-input').value = pickBaseUrlForSettings(s.baseUrl, derived);
+  } catch {
+    $('base-url-input').value = derived;
+  }
 }
 async function saveBaseUrl() {
   const u = $('base-url-input').value.trim();
