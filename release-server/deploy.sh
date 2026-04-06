@@ -3,13 +3,16 @@
 # Release Hub 一键部署脚本
 # 使用方法：在仓库根目录执行 bash deploy.sh
 #
-# 安装目录 = 本脚本所在目录（与 server.js、releases/、.env 同级），不再使用 /opt
+# 安装目录 = 本脚本所在目录（与 server.js、releases/、.env 同级）
 #
 # Nginx：交互终端会询问是否启用；非交互请设置 USE_NGINX=0 或 USE_NGINX=1
-#   USE_NGINX=1    安装并配置 Nginx（HTTP 80 → 本机 :3721）
+#   USE_NGINX=1    安装并配置 Nginx（反代到本机 :3721）
 #   USE_NGINX=0    不安装 Nginx
 #   SKIP_NGINX=1   等同于 USE_NGINX=0（兼容旧用法）
-#   NGINX_PREFIX   非交互时：HTTP 路径前缀（如 release-hub），留空=整站根路径 /
+#   NGINX_PREFIX   非交互时：HTTP 路径前缀（默认 release-hub）
+#                  留空=占用整站根路径 /
+#
+# 默认访问地址（启用 Nginx 后）：http://<公网IP>/release-hub/
 # ============================================
 
 set -e
@@ -85,10 +88,10 @@ NGINX_PREFIX_SLUG=""
 if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   if [ -t 0 ]; then
     echo ""
-    read -r -p "HTTP 路径前缀（仅字母数字下划线连字符，留空=整站 / ；示例 release-hub）: " NGINX_PREFIX_INPUT
-    NGINX_PREFIX_RAW="${NGINX_PREFIX_INPUT:-}"
+    read -r -p "HTTP 路径前缀（仅字母数字下划线连字符；默认 release-hub；留空=整站 / ）[release-hub]: " NGINX_PREFIX_INPUT
+    NGINX_PREFIX_RAW="${NGINX_PREFIX_INPUT:-release-hub}"
   else
-    NGINX_PREFIX_RAW="${NGINX_PREFIX:-}"
+    NGINX_PREFIX_RAW="${NGINX_PREFIX:-release-hub}"
   fi
   NGINX_PREFIX_SLUG="$(echo "$NGINX_PREFIX_RAW" | sed 's/^\/\+//;s/\/\+$//')"
   NGINX_PREFIX_SLUG="$(echo "$NGINX_PREFIX_SLUG" | tr -cd 'a-zA-Z0-9_-')"

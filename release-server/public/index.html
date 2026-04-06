@@ -14,19 +14,19 @@
     --border2: #3d3529;
     --accent: #e8a035;
     --accent-dim: #c98728;
-    --accent-glow: rgba(232, 160, 53, 0.18);
-    --accent-glow2: rgba(232, 160, 53, 0.09);
+    --accent-glow: rgba(232,160,53,0.18);
+    --accent-glow2: rgba(232,160,53,0.09);
     --red: #e85d4c;
-    --red-dim: rgba(232, 93, 76, 0.15);
+    --red-dim: rgba(232,93,76,0.15);
     --yellow: #e8c035;
     --blue: #6eb5ff;
+    --green: #52d48a;
+    --purple: #a78bfa;
     --text: #ebe6df;
     --text2: #9a9288;
     --text3: #6b6459;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
     background: var(--bg);
     color: var(--text);
@@ -35,737 +35,273 @@
     min-height: 100vh;
     overflow-x: hidden;
   }
-
-  /* ── 细网格 + 暖噪点 ── */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     background-image:
-      linear-gradient(rgba(232, 160, 53, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(232, 160, 53, 0.03) 1px, transparent 1px);
+      linear-gradient(rgba(232,160,53,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,160,53,0.03) 1px, transparent 1px);
     background-size: 24px 24px;
     pointer-events: none;
     z-index: 0;
   }
-
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.55;
-  }
-
   #app { position: relative; z-index: 1; }
 
-  /* ── 登录页 ── */
-  #login-page {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 24px;
-  }
-
+  /* ── 登录 ── */
+  #login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
   .login-box {
-    width: 100%;
-    max-width: 400px;
+    width: 100%; max-width: 400px;
     border: 1px solid var(--border2);
     background: linear-gradient(165deg, var(--bg1) 0%, var(--bg2) 100%);
     padding: 44px 40px;
     position: relative;
-    box-shadow:
-      0 24px 48px rgba(0,0,0,0.35),
-      inset 0 1px 0 rgba(232, 160, 53, 0.06);
+    box-shadow: 0 24px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(232,160,53,0.06);
   }
-
   .login-box::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
     background: linear-gradient(90deg, transparent, var(--accent), #d4a574, transparent);
   }
-
-  .login-logo {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: 0.35em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    animation: loginIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-  }
-
-  .login-title {
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--text);
-    margin-bottom: 28px;
-    line-height: 1.15;
-    animation: loginIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.08s backwards;
-  }
-
+  .login-logo { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 0.35em; text-transform: uppercase; margin-bottom: 10px; animation: loginIn 0.65s cubic-bezier(0.22,1,0.36,1) backwards; }
+  .login-title { font-size: 28px; font-weight: 800; color: var(--text); margin-bottom: 28px; line-height: 1.15; animation: loginIn 0.65s cubic-bezier(0.22,1,0.36,1) 0.08s backwards; }
   .login-title span { color: var(--accent); }
+  .login-box .field { animation: loginIn 0.65s cubic-bezier(0.22,1,0.36,1) 0.16s backwards; }
+  .login-box .btn-primary { animation: loginIn 0.65s cubic-bezier(0.22,1,0.36,1) 0.24s backwards; }
+  @keyframes loginIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 
-  .login-box .field {
-    animation: loginIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.16s backwards;
-  }
-
-  .login-box .btn-primary {
-    animation: loginIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.24s backwards;
-  }
-
-  @keyframes loginIn {
-    from { opacity: 0; transform: translateY(18px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ── 通用输入 ── */
+  /* ── 表单 ── */
   .field { margin-bottom: 16px; }
-  .field label {
-    display: block;
-    font-size: 11px;
-    letter-spacing: 2px;
-    color: var(--text3);
-    text-transform: uppercase;
-    margin-bottom: 6px;
+  .field label { display: block; font-size: 11px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; margin-bottom: 6px; }
+  input[type="text"], input[type="password"], input[type="url"], textarea, select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border2); color: var(--text);
+    font-size: 15px; padding: 10px 12px; outline: none; transition: border-color 0.2s;
   }
-
-  input[type="text"],
-  input[type="password"],
-  input[type="url"],
-  textarea,
-  select {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    font-size: 15px;
-    padding: 10px 12px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
   input:focus, textarea:focus, select:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-glow2);
-    outline: none;
   }
-
   textarea { resize: vertical; min-height: 100px; }
+  select option { background: var(--bg2); }
 
   /* ── 按钮 ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 18px;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.15s;
-    text-transform: uppercase;
-  }
-
-  .btn-primary {
-    background: linear-gradient(180deg, #f0b24a 0%, var(--accent) 100%);
-    color: #1a1208;
-  }
-  .btn-primary:hover {
-    filter: brightness(1.06);
-    box-shadow: 0 0 28px var(--accent-glow);
-  }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--text2);
-    border: 1px solid var(--border2);
-  }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; font-size: 14px; font-weight: 600; letter-spacing: 0.5px; border: none; cursor: pointer; transition: all 0.15s; text-transform: uppercase; }
+  .btn-primary { background: linear-gradient(180deg, #f0b24a 0%, var(--accent) 100%); color: #1a1208; }
+  .btn-primary:hover { filter: brightness(1.06); box-shadow: 0 0 28px var(--accent-glow); }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
   .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-
-  .btn-danger {
-    background: transparent;
-    color: var(--red);
-    border: 1px solid rgba(255,68,68,0.3);
-  }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(255,68,68,0.3); }
   .btn-danger:hover { background: var(--red-dim); }
-
   .btn-sm { padding: 6px 12px; font-size: 13px; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn-full { width: 100%; justify-content: center; }
 
-  /* ── 主布局 ── */
+  /* ── 布局 ── */
   #main-page { display: none; min-height: 100vh; }
-
   .topbar {
-    height: 54px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 22px;
-    gap: 16px;
+    height: 54px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 22px; gap: 16px;
     background: linear-gradient(180deg, var(--bg1) 0%, rgba(18,16,14,0.97) 100%);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    position: sticky; top: 0; z-index: 100;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
   }
-
-  .topbar-logo {
-    font-size: 16px;
-    font-weight: 800;
-    color: var(--accent);
-    letter-spacing: 0.06em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .topbar-logo::before {
-    content: '◆';
-    font-size: 14px;
-    opacity: 0.9;
-  }
-
+  .topbar-logo { font-size: 16px; font-weight: 800; color: var(--accent); letter-spacing: 0.06em; display: flex; align-items: center; gap: 10px; }
+  .topbar-logo::before { content: '◆'; font-size: 14px; opacity: 0.9; }
   .topbar-sep { flex: 1; }
-
-  .status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 10px var(--accent);
-    animation: pulse 2.2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 2.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
   .topbar-info { font-size: 13px; color: var(--text3); }
-
-  /* ── 主内容 ── */
-  .layout {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    min-height: calc(100vh - 54px);
-  }
+  .layout { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 54px); }
 
   /* ── 侧边栏 ── */
-  .sidebar {
-    border-right: 1px solid var(--border);
-    background: var(--bg1);
-    padding: 16px 0;
-    overflow-y: auto;
-  }
-
-  .sidebar-section {
-    padding: 0 12px;
-    margin-bottom: 4px;
-  }
-
-  .sidebar-label {
-    font-size: 9px;
-    letter-spacing: 3px;
-    color: var(--text3);
-    text-transform: uppercase;
-    padding: 8px 8px 6px;
-  }
-
+  .sidebar { border-right: 1px solid var(--border); background: var(--bg1); padding: 16px 0; overflow-y: auto; }
+  .sidebar-section { padding: 0 12px; margin-bottom: 4px; }
+  .sidebar-label { font-size: 9px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; padding: 8px 8px 6px; }
   .app-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    cursor: pointer;
-    border: 1px solid transparent;
-    border-radius: 2px;
-    margin-bottom: 2px;
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    cursor: pointer; border: 1px solid transparent; border-radius: 2px; margin-bottom: 2px;
     transition: all 0.15s;
   }
-
   .app-item:hover { background: var(--bg2); border-color: var(--border); transform: translateX(2px); }
   .app-item.active { background: var(--accent-glow2); border-color: var(--accent); color: var(--accent); }
-
   .app-item-icon {
-    width: 24px; height: 24px;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    color: var(--text2);
-    flex-shrink: 0;
+    width: 28px; height: 28px; background: var(--bg3); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text2); flex-shrink: 0;
   }
-
   .active .app-item-icon { border-color: var(--accent); color: var(--accent); }
-
   .app-item-info { flex: 1; min-width: 0; }
   .app-item-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .app-item-ver { font-size: 10px; color: var(--text3); margin-top: 1px; }
-  .active .app-item-ver { color: var(--accent-dim); }
+  .app-item-meta { font-size: 10px; color: var(--text3); margin-top: 1px; display: flex; gap: 5px; align-items: center; }
+  .active .app-item-meta { color: var(--accent-dim); }
+
+  /* 类型标签 */
+  .type-pill {
+    display: inline-flex; align-items: center;
+    font-size: 9px; letter-spacing: 0.8px; padding: 1px 5px;
+    border: 1px solid; border-radius: 2px; text-transform: uppercase; flex-shrink: 0;
+  }
+  .type-general { color: var(--green); border-color: rgba(82,212,138,0.4); background: rgba(82,212,138,0.07); }
+  .type-tauri   { color: var(--purple); border-color: rgba(167,139,250,0.4); background: rgba(167,139,250,0.07); }
 
   /* ── 内容区 ── */
   .content { padding: 24px; overflow-y: auto; }
-
-  /* ── 空态 ── */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 24px;
-    text-align: center;
-    color: var(--text3);
-  }
-
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; text-align: center; color: var(--text3); }
   .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
   .empty-state-text { font-size: 13px; margin-bottom: 20px; line-height: 1.6; }
 
-  /* ── 页面头部 ── */
-  .page-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .page-title {
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--text);
-    letter-spacing: -0.02em;
-  }
-
+  /* ── 页面头 ── */
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+  .page-title { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
   .page-title span { color: var(--accent); }
   .page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; }
 
+  /* ── 接口卡片（醒目展示） ── */
+  .api-card {
+    border: 1px solid var(--border2);
+    background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
+    padding: 20px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .api-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--blue), var(--green), var(--purple));
+  }
+  .api-card-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase;
+    color: var(--blue); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .api-card-title::before { content: '⬡'; font-size: 14px; }
+  .api-endpoint {
+    display: flex; align-items: stretch; gap: 0; margin-bottom: 10px;
+    border: 1px solid var(--border2); overflow: hidden;
+  }
+  .api-endpoint-label {
+    background: var(--bg3); padding: 10px 12px;
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text3); white-space: nowrap; display: flex; align-items: center;
+    border-right: 1px solid var(--border2); min-width: 80px; justify-content: center;
+  }
+  .api-endpoint-url {
+    flex: 1; padding: 10px 14px; background: var(--bg);
+    font-size: 13px; color: var(--blue); font-family: monospace;
+    word-break: break-all; display: flex; align-items: center;
+  }
+  .api-copy-btn {
+    background: var(--bg3); border: none; border-left: 1px solid var(--border2);
+    color: var(--text3); cursor: pointer; padding: 10px 16px; font-size: 12px;
+    white-space: nowrap; transition: all 0.15s; font-weight: 600; letter-spacing: 0.5px;
+  }
+  .api-copy-btn:hover { background: var(--accent-glow); color: var(--accent); }
+  .api-desc { font-size: 12px; color: var(--text3); margin-bottom: 14px; line-height: 1.6; }
+
+  /* Tauri JSON 预览块 */
+  .code-block {
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 14px; font-size: 12px; font-family: monospace;
+    color: var(--accent-dim); overflow-x: auto; white-space: pre;
+    max-height: 260px; overflow-y: auto; line-height: 1.6; margin-bottom: 8px;
+  }
+
   /* ── 版本卡片 ── */
-  .version-card {
-    border: 1px solid var(--border);
-    background: var(--bg1);
-    margin-bottom: 12px;
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-  }
-
-  .version-card:hover {
-    border-color: var(--border2);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.22);
-    transform: translateY(-1px);
-  }
-  .version-card.is-latest { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(232, 160, 53, 0.15); }
-
-  .version-header {
-    display: flex;
-    align-items: center;
-    padding: 14px 16px;
-    gap: 12px;
-    cursor: pointer;
-    user-select: none;
-  }
-
+  .version-card { border: 1px solid var(--border); background: var(--bg1); margin-bottom: 12px; transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
+  .version-card:hover { border-color: var(--border2); box-shadow: 0 12px 40px rgba(0,0,0,0.22); transform: translateY(-1px); }
+  .version-card.is-latest { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(232,160,53,0.15); }
+  .version-header { display: flex; align-items: center; padding: 14px 16px; gap: 12px; cursor: pointer; user-select: none; }
   .version-header:hover { background: var(--bg2); }
-
-  .version-tag {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .badge {
-    font-size: 9px;
-    letter-spacing: 1.5px;
-    padding: 2px 7px;
-    border: 1px solid;
-    text-transform: uppercase;
-  }
-
-  .badge-green { color: var(--accent); border-color: var(--accent); background: var(--accent-glow2); }
-  .badge-dim { color: var(--text3); border-color: var(--border2); }
-  .badge-yellow { color: var(--yellow); border-color: rgba(255,215,64,0.4); }
-  .badge-win { color: #7ecbff; border-color: rgba(126,203,255,0.45); background: rgba(126,203,255,0.08); }
-  .badge-linux { color: #f7c948; border-color: rgba(247,201,72,0.45); background: rgba(247,201,72,0.08); }
-  .badge-mac { color: #a78bfa; border-color: rgba(167,139,250,0.45); background: rgba(167,139,250,0.08); }
-
-  .version-sep { flex: 1; }
-
-  .version-body {
-    display: none;
-    padding: 0 18px 18px;
-    border-top: 1px solid var(--border);
-  }
-
+  .version-tag { font-size: 16px; font-weight: 700; color: var(--text); }
+  .badge { font-size: 9px; letter-spacing: 1.5px; padding: 2px 7px; border: 1px solid; text-transform: uppercase; }
+  .badge-latest { color: var(--accent); border-color: var(--accent); background: var(--accent-glow2); }
+  .badge-draft  { color: var(--text3); border-color: var(--border2); }
+  .badge-win    { color: #7ecbff; border-color: rgba(126,203,255,0.45); background: rgba(126,203,255,0.08); }
+  .badge-linux  { color: #f7c948; border-color: rgba(247,201,72,0.45); background: rgba(247,201,72,0.08); }
+  .badge-mac    { color: #a78bfa; border-color: rgba(167,139,250,0.45); background: rgba(167,139,250,0.08); }
+  .badge-sig    { color: var(--green); border-color: rgba(82,212,138,0.4); }
+  .badge-file   { color: var(--text3); border-color: var(--border2); }
+  .version-sep  { flex: 1; }
+  .version-body { display: none; padding: 0 18px 18px; border-top: 1px solid var(--border); }
   .version-body.open { display: block; }
+  .vc-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .vc-section:first-of-type { margin-top: 0; padding-top: 12px; border-top: none; }
 
-  .vc-section {
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-  }
-  .vc-section:first-of-type {
-    margin-top: 0;
-    padding-top: 12px;
-    border-top: none;
-  }
-
-  /* ── 文件列表 ── */
-  .file-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 16px;
-  }
-
-  .file-table th {
-    text-align: left;
-    font-size: 11px;
-    letter-spacing: 2px;
-    color: var(--text3);
-    text-transform: uppercase;
-    padding: 10px 8px 6px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .file-table td {
-    padding: 8px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }
-
+  /* ── 文件表格 ── */
+  .file-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  .file-table th { text-align: left; font-size: 11px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; padding: 10px 8px 6px; border-bottom: 1px solid var(--border); }
+  .file-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .file-table tr:last-child td { border-bottom: none; }
-
   .file-name { color: var(--text); font-weight: 500; }
-  .file-sig { color: var(--accent); font-size: 10px; }
+  .file-sig  { color: var(--green); font-size: 10px; }
   .file-size { color: var(--text3); font-size: 13px; }
+  .file-url-mini { font-size: 11px; color: var(--text3); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
   .file-actions { display: flex; gap: 6px; justify-content: flex-end; }
 
   /* ── 上传区 ── */
-  .upload-zone {
-    border: 1px dashed var(--border2);
-    padding: 14px 16px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 0;
-  }
-
-  .upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--accent);
-    background: var(--accent-glow2);
-  }
-
+  .upload-zone { border: 1px dashed var(--border2); padding: 14px 16px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: var(--accent-glow2); }
   .upload-zone-icon { font-size: 18px; margin-bottom: 4px; color: var(--text3); }
   .upload-zone-text { font-size: 14px; color: var(--text2); line-height: 1.45; }
   .upload-zone-text strong { color: var(--accent); }
 
-  /* ── 发布表单 ── */
-  .publish-panel {
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin-top: 0;
-  }
+  /* ── 发布面板 ── */
+  .publish-panel { background: transparent; border: none; padding: 0; margin-top: 0; }
+  .publish-title { font-size: 12px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; font-weight: 700; }
+  .publish-actions-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
 
-  .publish-title {
-    font-size: 12px;
-    letter-spacing: 2px;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    font-weight: 700;
-  }
-
-  .publish-actions-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    margin-top: 12px;
-  }
-
-  .platform-grid {
-    display: grid;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .platform-row {
-    display: grid;
-    grid-template-columns: 140px 1fr;
-    gap: 8px;
-    align-items: start;
-  }
-
-  .platform-label {
-    font-size: 10px;
-    color: var(--text2);
-    padding-top: 11px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .platform-label .os-icon { font-size: 14px; }
-
-  .platform-inputs { display: grid; gap: 6px; }
-
-  /* ── 消息弹窗 ── */
-  .toast-container {
-    position: fixed;
-    top: 60px;
-    right: 20px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .toast {
-    padding: 12px 16px;
-    border: 1px solid;
-    font-size: 12px;
-    max-width: 320px;
-    animation: slideIn 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg1);
-  }
-
+  /* ── Toast ── */
+  .toast-container { position: fixed; top: 60px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+  .toast { padding: 12px 16px; border: 1px solid; font-size: 12px; max-width: 320px; animation: slideIn 0.2s ease; display: flex; align-items: center; gap: 8px; background: var(--bg1); }
   .toast-success { border-color: var(--accent); color: var(--accent); }
-  .toast-error { border-color: var(--red); color: var(--red); }
-  .toast-info { border-color: var(--blue); color: var(--blue); }
-
-  @keyframes slideIn {
-    from { transform: translateX(20px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
+  .toast-error   { border-color: var(--red);   color: var(--red); }
+  .toast-info    { border-color: var(--blue);  color: var(--blue); }
+  @keyframes slideIn { from { transform:translateX(20px); opacity:0; } to { transform:translateX(0); opacity:1; } }
 
   /* ── 弹窗 ── */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-  }
-
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
-
-  .modal {
-    background: var(--bg1);
-    border: 1px solid var(--border2);
-    padding: 28px;
-    width: 100%;
-    max-width: 480px;
-    position: relative;
-    animation: fadeUp 0.2s ease;
-  }
-
-  .modal::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  }
-
-  .modal-title {
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: var(--text);
-  }
-
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
-
-  @keyframes fadeUp {
-    from { transform: translateY(12px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-
-  /* ── JSON 预览 ── */
-  .json-preview {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 14px;
-    font-size: 13px;
-    color: var(--accent-dim);
-    overflow-x: auto;
-    white-space: pre;
-    max-height: 300px;
-    overflow-y: auto;
-    line-height: 1.6;
-  }
+  .modal { background: var(--bg1); border: 1px solid var(--border2); padding: 28px; width: 100%; max-width: 480px; position: relative; animation: fadeUp 0.2s ease; }
+  .modal::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+  .modal-title { font-size: 14px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+  @keyframes fadeUp { from { transform:translateY(12px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 
   /* ── 进度条 ── */
-  .progress-bar {
-    height: 2px;
-    background: var(--border);
-    margin: 8px 0;
-  }
+  .progress-bar { height: 2px; background: var(--border); margin: 8px 0; }
+  .progress-fill { height: 100%; background: var(--accent); transition: width 0.3s; box-shadow: 0 0 8px var(--accent); }
 
-  .progress-fill {
-    height: 100%;
-    background: var(--accent);
-    transition: width 0.3s;
-    box-shadow: 0 0 8px var(--accent);
-  }
+  /* ── JSON 预览 ── */
+  .json-preview { background: var(--bg); border: 1px solid var(--border); padding: 14px; font-size: 13px; color: var(--accent-dim); overflow-x: auto; white-space: pre; max-height: 300px; overflow-y: auto; line-height: 1.6; }
 
-  /* ── API 端点展示 ── */
-  .endpoint-box {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 10px 14px;
-    font-size: 11px;
-    color: var(--blue);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
-  }
-
-  .endpoint-method {
-    font-size: 9px;
-    letter-spacing: 1px;
-    padding: 2px 6px;
-    background: rgba(64, 196, 255, 0.1);
-    border: 1px solid rgba(64, 196, 255, 0.3);
-    color: var(--blue);
-    flex-shrink: 0;
-  }
-
-  .endpoint-url { flex: 1; word-break: break-all; }
-
-  .api-inline {
-    margin-top: 28px;
-    border: 1px solid var(--border);
-    background: var(--bg1);
-    border-radius: 2px;
-  }
-  .api-inline-summary {
-    cursor: pointer;
-    padding: 14px 18px;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text);
-    list-style: none;
-  }
-  .api-inline-summary::-webkit-details-marker { display: none; }
-  .api-inline[open] .api-inline-summary { border-bottom: 1px solid var(--border); }
-  .api-inline-body { padding: 16px 18px; }
-  .endpoint-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 14px;
-    font-size: 14px;
-  }
-  .endpoint-row:last-child { margin-bottom: 0; }
-  .endpoint-label {
-    flex: 0 0 120px;
-    color: var(--text3);
-    font-size: 13px;
-    padding-top: 4px;
-  }
-  .endpoint-row code.endpoint-url {
-    flex: 1;
-    min-width: 200px;
-    font-size: 13px;
-    color: var(--blue);
-    word-break: break-all;
-  }
-
-  .copy-btn {
-    background: none;
-    border: none;
-    color: var(--text3);
-    cursor: pointer;
-    font-size: 12px;
-    padding: 2px;
-  }
-  .copy-btn:hover { color: var(--accent); }
-
-  /* ── 设置页 ── */
-  .settings-section {
-    border: 1px solid var(--border);
-    background: var(--bg1);
-    padding: 20px;
-    margin-bottom: 16px;
-  }
-
-  .settings-title {
-    font-size: 10px;
-    letter-spacing: 3px;
-    color: var(--text3);
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
+  /* ── 设置 ── */
+  .settings-section { border: 1px solid var(--border); background: var(--bg1); padding: 20px; margin-bottom: 16px; }
+  .settings-title { font-size: 10px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; margin-bottom: 16px; }
 
   /* ── 分隔线 ── */
-  .divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 16px 0;
-  }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
-  /* ── Tabs ── */
-  .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
-
-  .tab {
-    padding: 8px 16px;
-    font-size: 11px;
-    letter-spacing: 1px;
-    color: var(--text3);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: all 0.15s;
-    text-transform: uppercase;
-  }
-
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab:hover:not(.active) { color: var(--text); }
-
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
+  /* ── 类型选择器 ── */
+  .type-selector { display: flex; gap: 10px; margin-bottom: 16px; }
+  .type-option { flex: 1; border: 1px solid var(--border2); padding: 14px 12px; cursor: pointer; transition: all 0.15s; text-align: center; background: var(--bg); }
+  .type-option:hover { border-color: var(--accent-dim); background: var(--bg2); }
+  .type-option.selected { border-color: var(--accent); background: var(--accent-glow2); }
+  .type-option-icon { font-size: 22px; margin-bottom: 6px; }
+  .type-option-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .type-option-desc { font-size: 11px; color: var(--text3); line-height: 1.4; }
+  .type-option.selected .type-option-name { color: var(--accent); }
 
   /* ── 响应式 ── */
   @media (max-width: 700px) {
     .layout { grid-template-columns: 1fr; }
     .sidebar { display: none; }
-    .platform-row { grid-template-columns: 1fr; }
+    .type-selector { flex-direction: column; }
   }
 
   .hidden { display: none !important; }
-
-  /* ── URL 配置行 ── */
-  .config-url-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
-    font-size: 11px;
-    color: var(--text3);
-  }
-  .config-url-row input { flex: 1; }
 </style>
 </head>
 <body>
 <div id="app">
 
-<!-- ─── 登录 ─── -->
+<!-- 登录 -->
 <div id="login-page">
   <div class="login-box">
     <div class="login-logo">Release Hub</div>
@@ -774,58 +310,65 @@
       <label>管理员密码</label>
       <input type="password" id="login-pwd" placeholder="输入密码" autocomplete="current-password">
     </div>
-    <button class="btn btn-primary btn-full" onclick="login()" id="login-btn">
-      登录
-    </button>
+    <button class="btn btn-primary btn-full" onclick="login()" id="login-btn">登录</button>
     <div id="login-error" style="color:var(--red);font-size:11px;margin-top:12px;display:none"></div>
   </div>
 </div>
 
-<!-- ─── 主界面 ─── -->
+<!-- 主界面 -->
 <div id="main-page">
-  <!-- 顶栏 -->
   <div class="topbar">
     <div class="topbar-logo">Release Hub</div>
     <div class="topbar-info" id="server-label"></div>
     <div class="topbar-sep"></div>
     <div class="status-dot"></div>
-    <div class="topbar-info" id="topbar-info">在线</div>
+    <div class="topbar-info">在线</div>
     <button class="btn btn-ghost btn-sm" onclick="showSettings()">设置</button>
     <button class="btn btn-ghost btn-sm" onclick="logout()">退出</button>
   </div>
-
   <div class="layout">
-    <!-- 侧边栏 -->
     <div class="sidebar">
       <div class="sidebar-section">
-        <div class="sidebar-label">应用列表</div>
+        <div class="sidebar-label">资源库</div>
         <div id="app-list"></div>
-        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="showNewAppModal()">
-          + 新建应用
-        </button>
+        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="showNewAppModal()">＋ 新建资源库</button>
       </div>
     </div>
-
-    <!-- 内容区 -->
     <div class="content" id="content">
       <div class="empty-state">
         <div class="empty-state-icon">◈</div>
-        <div class="empty-state-text">从左侧选择应用<br>或新建一个应用开始管理</div>
+        <div class="empty-state-text">从左侧选择资源库<br>或新建一个开始管理</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ─── Toast ─── -->
+<!-- Toast -->
 <div class="toast-container" id="toasts"></div>
 
-<!-- ─── 新建 App 弹窗 ─── -->
+<!-- 新建 App 弹窗 -->
 <div class="modal-overlay" id="new-app-modal">
-  <div class="modal">
-    <div class="modal-title">新建应用</div>
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title">新建资源库</div>
     <div class="field">
-      <label>应用标识符</label>
-      <input type="text" id="new-app-name" placeholder="my-app（字母、数字、连字符）">
+      <label>库标识符</label>
+      <input type="text" id="new-app-name" placeholder="my-app（字母、数字、连字符、下划线）">
+    </div>
+    <div class="field">
+      <label>库类型</label>
+      <div class="type-selector">
+        <div class="type-option selected" id="type-general" onclick="selectRepoType('general')">
+          <div class="type-option-icon">📦</div>
+          <div class="type-option-name">通用资源库</div>
+          <div class="type-option-desc">适用于任何需要版本管理的资源。客户端通过标准 JSON 接口检查更新，下载对应文件。</div>
+        </div>
+        <div class="type-option" id="type-tauri" onclick="selectRepoType('tauri')">
+          <div class="type-option-icon">⚡</div>
+          <div class="type-option-name">Tauri 专用库</div>
+          <div class="type-option-desc">针对 Tauri 应用热更新。自动生成含 .sig 签名的 latest.json，直接填入 tauri.conf.json。</div>
+        </div>
+      </div>
+      <input type="hidden" id="new-repo-type" value="general">
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('new-app-modal')">取消</button>
@@ -834,7 +377,7 @@
   </div>
 </div>
 
-<!-- ─── 新建版本弹窗 ─── -->
+<!-- 新建版本弹窗 -->
 <div class="modal-overlay" id="new-version-modal">
   <div class="modal">
     <div class="modal-title">新建版本</div>
@@ -849,11 +392,11 @@
   </div>
 </div>
 
-<!-- ─── 确认删除弹窗 ─── -->
+<!-- 确认删除弹窗 -->
 <div class="modal-overlay" id="confirm-modal">
   <div class="modal">
     <div class="modal-title" id="confirm-title">确认删除</div>
-    <div style="color:var(--text2);font-size:12px;line-height:1.6" id="confirm-msg"></div>
+    <div style="color:var(--text2);font-size:13px;line-height:1.6" id="confirm-msg"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">取消</button>
       <button class="btn btn-danger" id="confirm-ok-btn">删除</button>
@@ -861,20 +404,20 @@
   </div>
 </div>
 
-<!-- ─── 设置弹窗 ─── -->
+<!-- 设置弹窗 -->
 <div class="modal-overlay" id="settings-modal">
   <div class="modal" style="max-width:500px">
     <div class="modal-title">设置</div>
     <div class="settings-section">
       <div class="settings-title">对外访问地址 BASE_URL</div>
       <p style="color:var(--text3);font-size:11px;margin-bottom:12px;line-height:1.6">
-        文件下载直链与 <code style="color:var(--accent)">latest.json</code> 内 <code style="color:var(--accent)">platforms.*.url</code> 均依赖此地址，需与浏览器访问的协议/域名一致（如已配 HTTPS 请填 <code style="color:var(--accent)">https://</code>）。
+        文件下载直链与 <code style="color:var(--accent)">latest.json</code> 内的 URL 均依赖此地址，需与浏览器访问的协议/域名一致。使用 HTTPS 请填 <code style="color:var(--accent)">https://</code> 开头。
       </p>
       <div class="field">
         <label>BASE_URL</label>
         <input type="url" id="base-url-input" placeholder="https://releases.example.com">
       </div>
-      <button class="btn btn-primary" onclick="saveBaseUrl()">保存 BASE_URL</button>
+      <button class="btn btn-primary" onclick="saveBaseUrl()">保存</button>
     </div>
     <div class="settings-section">
       <div class="settings-title">修改管理员密码</div>
@@ -904,141 +447,66 @@ let STATE = {
   token: localStorage.getItem('rh_token'),
   apps: [],
   currentApp: null,
+  currentRepoType: 'general',
   versions: [],
   pendingConfirm: null,
-  /** 更新日志草稿：key = appName + '::' + version */
   notes: {},
 };
 
-/** 将旧版浏览器 localStorage 草稿一次性迁到服务端 */
-let legacyNotesMigrated = false;
-async function migrateLegacyNotesFromLocalStorage() {
-  if (legacyNotesMigrated) return;
-  legacyNotesMigrated = true;
-  try {
-    const raw = localStorage.getItem('rh_notes_draft_v1');
-    if (!raw) return;
-    localStorage.removeItem('rh_notes_draft_v1');
-    const obj = JSON.parse(raw);
-    if (!obj || typeof obj !== 'object') return;
-    for (const [k, text] of Object.entries(obj)) {
-      if (typeof text !== 'string' || !text) continue;
-      const idx = k.indexOf('::');
-      if (idx <= 0) continue;
-      const appName = k.slice(0, idx);
-      const version = k.slice(idx + 2);
-      try {
-        await api('PUT', `/api/apps/${appName}/versions/${encodeURIComponent(version)}/notes`, { text });
-      } catch (_) {}
-    }
-  } catch (_) {}
-}
-
-const serverNoteTimers = {};
-function scheduleServerNotePersist(appName, version, text) {
-  const tkey = `${appName}::${version}`;
-  clearTimeout(serverNoteTimers[tkey]);
-  serverNoteTimers[tkey] = setTimeout(async () => {
-    STATE.notes[notesKey(appName, version)] = text;
-    try {
-      await api('PUT', `/api/apps/${appName}/versions/${encodeURIComponent(version)}/notes`, { text });
-    } catch (_) {}
-  }, 500);
-}
-
-async function flushNoteDraftToServer(appName, version) {
-  const ta = document.getElementById('notes-' + version);
-  const text = ta ? ta.value : (STATE.notes[notesKey(appName, version)] ?? '');
-  STATE.notes[notesKey(appName, version)] = text;
-  await api('PUT', `/api/apps/${appName}/versions/${encodeURIComponent(version)}/notes`, { text });
-}
-
-function notesKey(appName, version) {
-  return `${appName}::${version}`;
-}
-
+// ─── 工具 ───────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
 function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/"/g, '&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
-function apiOrigin() {
-  return window.location.origin || '';
-}
-
-/** 浏览器当前访问的「站点根路径」前缀，如 /release-hub；根部署时为 '' */
+function apiOrigin() { return window.location.origin || ''; }
 function publicBasePath() {
-  let p = (window.location.pathname || '/').replace(/\/index\.html$/i, '');
+  let p = (window.location.pathname || '/').replace(/\/index\.html$/i,'');
   if (!p || p === '/') return '';
-  return p.replace(/\/$/, '');
+  return p.replace(/\/$/,'');
 }
-
-/** API / 静态同源路径：/api/... → 含子路径前缀 */
-function apiUrl(path) {
-  if (!path.startsWith('/')) return path;
-  return publicBasePath() + path;
+function apiUrl(p) {
+  if (!p.startsWith('/')) return p;
+  return publicBasePath() + p;
 }
-
-/** 对外展示用的完整 origin+前缀（用于 latest.json、直链说明） */
 function publicOriginWithBase() {
   const base = publicBasePath();
   return base ? apiOrigin() + base : apiOrigin();
 }
-
-// ─── 工具函数 ───────────────────────────────────────
-function $(id) { return document.getElementById(id); }
-
-function toast(msg, type = 'success') {
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+function toast(msg, type='success') {
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
-  el.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span> ${msg}`;
+  el.innerHTML = `<span>${type==='success'?'✓':type==='error'?'✗':'ℹ'}</span> ${msg}`;
   $('toasts').appendChild(el);
   setTimeout(() => el.remove(), 3500);
 }
-
-function openModal(id) { $(id).classList.add('open'); }
+function openModal(id)  { $(id).classList.add('open'); }
 function closeModal(id) { $(id).classList.remove('open'); }
 
-function formatBytes(b) {
-  if (b < 1024) return b + ' B';
-  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-  return (b / 1048576).toFixed(1) + ' MB';
+function copyText(text, label) {
+  navigator.clipboard.writeText(text)
+    .then(() => toast(`已复制${label||''}`, 'success'))
+    .catch(() => toast('复制失败', 'error'));
 }
 
-/** 与后端 detectPlatform 对齐，用于展示平台标签 */
 function filePlatformBadge(filename) {
-  if (filename.endsWith('.sig')) return { label: 'SIG', cls: 'badge-green' };
+  if (filename.endsWith('.sig')) return { label:'SIG', cls:'badge-sig' };
   const f = filename.toLowerCase();
-  if (f.endsWith('.msi') || f.endsWith('.exe')) return { label: 'WIN', cls: 'badge-win' };
-  if (f.endsWith('.appimage.tar.gz') || f.endsWith('.appimage')) return { label: 'LINUX', cls: 'badge-linux' };
-  if (f.endsWith('.app.tar.gz') || f.endsWith('.dmg')) return { label: 'MAC', cls: 'badge-mac' };
-  return { label: 'FILE', cls: 'badge-dim' };
+  if (f.endsWith('.msi') || f.endsWith('.exe')) return { label:'WIN', cls:'badge-win' };
+  if (f.endsWith('.appimage.tar.gz') || f.endsWith('.appimage')) return { label:'LINUX', cls:'badge-linux' };
+  if (f.endsWith('.app.tar.gz') || f.endsWith('.dmg')) return { label:'MAC', cls:'badge-mac' };
+  return { label:'FILE', cls:'badge-file' };
 }
 
-function copyFileUrl(btn) {
-  const raw = btn.getAttribute('data-url');
-  if (!raw) return;
-  try {
-    const u = decodeURIComponent(raw);
-    navigator.clipboard.writeText(u).then(() => toast('已复制链接')).catch(() => toast('复制失败', 'error'));
-  } catch {
-    toast('链接解析失败', 'error');
-  }
-}
-
-async function api(method, path, body, isUpload = false) {
-  const opts = {
-    method,
-    headers: { 'Authorization': `Bearer ${STATE.token}` },
-  };
-  if (body && !isUpload) {
-    opts.headers['Content-Type'] = 'application/json';
-    opts.body = JSON.stringify(body);
-  } else if (body && isUpload) {
-    opts.body = body;
-  }
+// ─── API ────────────────────────────────────────────
+async function api(method, path, body, isUpload=false) {
+  const opts = { method, headers: { 'Authorization': `Bearer ${STATE.token}` } };
+  if (body && !isUpload) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  else if (body && isUpload) { opts.body = body; }
   const res = await fetch(apiUrl(path), opts);
   if (res.status === 401) { logout(); throw new Error('未授权'); }
   const data = await res.json();
@@ -1053,62 +521,90 @@ async function login() {
   $('login-btn').disabled = true;
   $('login-btn').textContent = '验证中…';
   try {
-    const res = await fetch(apiUrl('/api/login'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pwd }),
-    });
-    const data = await res.json().catch(() => ({}));
+    const res = await fetch(apiUrl('/api/login'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pwd}) });
+    const data = await res.json().catch(()=>({}));
     if (!res.ok) throw new Error(data.error || '登录失败');
     STATE.token = data.token;
     localStorage.setItem('rh_token', data.token);
     enterMain();
-  } catch (e) {
-    showLoginError(e.message || '登录失败，请检查密码');
-  }
+  } catch(e) { showLoginError(e.message || '登录失败，请检查密码'); }
   $('login-btn').disabled = false;
   $('login-btn').textContent = '登录';
 }
-
-function showLoginError(msg) {
-  const el = $('login-error');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-function logout() {
-  STATE.token = null;
-  localStorage.removeItem('rh_token');
-  $('login-page').style.display = 'flex';
-  $('main-page').style.display = 'none';
-}
-
+function showLoginError(msg) { const el = $('login-error'); el.textContent = msg; el.style.display = 'block'; }
+function logout() { STATE.token = null; localStorage.removeItem('rh_token'); $('login-page').style.display='flex'; $('main-page').style.display='none'; }
 async function enterMain() {
   $('login-page').style.display = 'none';
   $('main-page').style.display = 'block';
   $('server-label').textContent = publicOriginWithBase();
   $('login-error').style.display = 'none';
-  await migrateLegacyNotesFromLocalStorage();
+  await migrateLegacyNotes();
   await loadApps();
 }
-
-// ─── 初始化 ─────────────────────────────────────────
 window.onload = () => {
-  try { localStorage.removeItem('rh_server'); } catch (_) {}
-  if (STATE.token) {
-    enterMain().catch(() => logout());
-  }
+  try { localStorage.removeItem('rh_server'); } catch(_) {}
+  if (STATE.token) enterMain().catch(() => logout());
 };
 
-// ─── App 管理 ────────────────────────────────────────
+// ─── 草稿迁移（兼容旧版）────────────────────────────
+let legacyMigrated = false;
+async function migrateLegacyNotes() {
+  if (legacyMigrated) return;
+  legacyMigrated = true;
+  try {
+    const raw = localStorage.getItem('rh_notes_draft_v1');
+    if (!raw) return;
+    localStorage.removeItem('rh_notes_draft_v1');
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object') return;
+    for (const [k, text] of Object.entries(obj)) {
+      if (typeof text !== 'string' || !text) continue;
+      const idx = k.indexOf('::');
+      if (idx <= 0) continue;
+      const appName = k.slice(0, idx);
+      const version = k.slice(idx+2);
+      try { await api('PUT', `/api/apps/${appName}/versions/${encodeURIComponent(version)}/notes`, {text}); } catch(_) {}
+    }
+  } catch(_) {}
+}
+
+const noteTimers = {};
+function scheduleNoteSave(appName, version, text) {
+  const k = `${appName}::${version}`;
+  clearTimeout(noteTimers[k]);
+  noteTimers[k] = setTimeout(async () => {
+    STATE.notes[k] = text;
+    try { await api('PUT', `/api/apps/${appName}/versions/${encodeURIComponent(version)}/notes`, {text}); } catch(_) {}
+  }, 500);
+}
+async function flushNote(appName, version) {
+  const k = `${appName}::${version}`;
+  const ta = document.getElementById('notes-'+version);
+  const text = ta ? ta.value : (STATE.notes[k] ?? '');
+  STATE.notes[k] = text;
+  await api('PUT', `/api/apps/${appName}/versions/${encodeURIComponent(version)}/notes`, {text});
+}
+
+// ─── 类型选择 ─────────────────────────────────────
+function selectRepoType(type) {
+  $('new-repo-type').value = type;
+  $('type-general').classList.toggle('selected', type === 'general');
+  $('type-tauri').classList.toggle('selected', type === 'tauri');
+}
+
+// ─── App 列表 ────────────────────────────────────────
 async function loadApps() {
   try {
     STATE.apps = await api('GET', '/api/apps');
     renderAppList();
-    if (STATE.currentApp) renderAppPage(STATE.currentApp);
-  } catch (e) {
-    toast(e.message, 'error');
-  }
+    if (STATE.currentApp) {
+      const app = STATE.apps.find(a => a.name === STATE.currentApp);
+      if (app) {
+        STATE.currentRepoType = app.repoType || 'general';
+        renderAppPage(STATE.currentApp);
+      }
+    }
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 function renderAppList() {
@@ -1117,176 +613,159 @@ function renderAppList() {
   STATE.apps.forEach(app => {
     const el = document.createElement('div');
     el.className = 'app-item' + (STATE.currentApp === app.name ? ' active' : '');
+    const typePill = `<span class="type-pill ${app.repoType === 'tauri' ? 'type-tauri' : 'type-general'}">${app.repoType === 'tauri' ? 'Tauri' : '通用'}</span>`;
     el.innerHTML = `
       <div class="app-item-icon">${app.name[0].toUpperCase()}</div>
       <div class="app-item-info">
-        <div class="app-item-name">${app.name}</div>
-        <div class="app-item-ver">${app.latestVersion ? 'v' + app.latestVersion : '未发布'}</div>
+        <div class="app-item-name">${escapeHtml(app.name)}</div>
+        <div class="app-item-meta">
+          ${typePill}
+          <span>${app.latestVersion ? 'v'+app.latestVersion : '未发布'}</span>
+        </div>
       </div>
     `;
-    el.onclick = () => selectApp(app.name);
+    el.onclick = () => selectApp(app.name, app.repoType || 'general');
     list.appendChild(el);
   });
 }
 
-function selectApp(name) {
+function selectApp(name, repoType) {
   STATE.currentApp = name;
+  STATE.currentRepoType = repoType || 'general';
   renderAppList();
   renderAppPage(name);
 }
 
-function renderApiInlineHtml(appName) {
+// ─── API 卡片渲染 ─────────────────────────────────────
+function renderApiCard(appName, repoType) {
   const origin = publicOriginWithBase();
-  const latestUrl = `${origin}/releases/${appName}/latest.json`;
+  const latestUrl   = `${origin}/releases/${appName}/latest.json`;
+  const publicUrl   = `${origin}/api/public/${appName}/latest`;
   const filePattern = `${origin}/releases/${appName}/{version}/{filename}`;
-  const tauriJson = JSON.stringify(
-    {
-      plugins: {
-        updater: {
-          pubkey: '你的公钥内容',
-          endpoints: [latestUrl],
-        },
-      },
-    },
-    null,
-    2
-  );
-  const enc = (t) => encodeURIComponent(t);
-  return `
-    <details class="api-inline">
-      <summary class="api-inline-summary">API 端点与 Tauri 配置</summary>
-      <div class="api-inline-body">
-        <p style="color:var(--text2);font-size:14px;margin-bottom:16px;line-height:1.6">
-          将 <strong>updater JSON</strong> 地址填入 <code style="color:var(--accent)">tauri.conf.json</code> 的 <code style="color:var(--accent)">plugins.updater.endpoints</code>。
-        </p>
-        <div class="endpoint-row">
-          <span class="endpoint-label">updater JSON</span>
-          <code class="endpoint-url">${escapeHtml(latestUrl)}</code>
-          <button type="button" class="btn btn-ghost btn-sm" data-copy="${enc(latestUrl)}">复制</button>
+
+  if (repoType === 'tauri') {
+    const tauriJson = JSON.stringify({
+      plugins: { updater: { pubkey: '你的公钥内容', endpoints: [latestUrl] } }
+    }, null, 2);
+    return `
+      <div class="api-card">
+        <div class="api-card-title">Tauri Updater 接口</div>
+        <p class="api-desc">将下方 <strong>latest.json</strong> 地址填入 <code style="color:var(--accent)">tauri.conf.json</code> → <code style="color:var(--accent)">plugins.updater.endpoints</code>，即可接入 Tauri 热更新。</p>
+        <div class="api-endpoint">
+          <span class="api-endpoint-label">热更新 JSON</span>
+          <span class="api-endpoint-url">${escapeHtml(latestUrl)}</span>
+          <button class="api-copy-btn" onclick="copyText('${escapeHtml(latestUrl)}','')">复制</button>
         </div>
-        <div class="endpoint-row">
-          <span class="endpoint-label">文件直链</span>
-          <code class="endpoint-url">${escapeHtml(filePattern)}</code>
-          <button type="button" class="btn btn-ghost btn-sm" data-copy="${enc(filePattern)}">复制</button>
+        <div class="api-endpoint">
+          <span class="api-endpoint-label">文件直链</span>
+          <span class="api-endpoint-url">${escapeHtml(filePattern)}</span>
+          <button class="api-copy-btn" onclick="copyText('${escapeHtml(filePattern)}','')">复制</button>
         </div>
-        <div class="endpoint-row" style="flex-direction:column;align-items:stretch">
-          <span class="endpoint-label" style="flex:none">tauri.conf.json 示例</span>
-          <div class="json-preview" style="max-height:220px">${escapeHtml(tauriJson)}</div>
-          <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start;margin-top:8px" data-copy="${enc(tauriJson)}">复制整段 JSON</button>
+        <div style="margin-top:14px">
+          <div style="font-size:11px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">tauri.conf.json 配置示例</div>
+          <div class="code-block">${escapeHtml(tauriJson)}</div>
+          <button class="btn btn-ghost btn-sm" onclick="copyText(${JSON.stringify(tauriJson)}, ' JSON')">复制配置</button>
         </div>
-      </div>
-    </details>
-  `;
+      </div>`;
+  } else {
+    // 通用库接口说明
+    const exampleResponse = JSON.stringify({
+      version: "1.2.0",
+      notes: "本次更新修复若干问题",
+      pub_date: "2025-01-01T00:00:00.000Z",
+      files: [
+        { name: "myapp-1.2.0.zip", url: `${origin}/releases/${appName}/v1.2.0/myapp-1.2.0.zip`, size: 10485760 }
+      ]
+    }, null, 2);
+
+    return `
+      <div class="api-card">
+        <div class="api-card-title">通用更新接口</div>
+        <p class="api-desc">客户端向以下接口发起 <code style="color:var(--green)">GET</code> 请求，获取最新版本信息。比较本地版本号后，按需下载文件列表中的资源。</p>
+        <div class="api-endpoint">
+          <span class="api-endpoint-label">检查更新</span>
+          <span class="api-endpoint-url">${escapeHtml(publicUrl)}</span>
+          <button class="api-copy-btn" onclick="copyText('${escapeHtml(publicUrl)}','')">复制</button>
+        </div>
+        <div class="api-endpoint" style="margin-top:0">
+          <span class="api-endpoint-label">文件直链</span>
+          <span class="api-endpoint-url">${escapeHtml(filePattern)}</span>
+          <button class="api-copy-btn" onclick="copyText('${escapeHtml(filePattern)}','')">复制</button>
+        </div>
+        <div style="margin-top:14px">
+          <div style="font-size:11px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">响应示例 JSON</div>
+          <div class="code-block">${escapeHtml(exampleResponse)}</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:10px;line-height:1.7;padding:10px;background:var(--bg);border:1px solid var(--border)">
+          <strong style="color:var(--text2)">集成说明：</strong>
+          客户端请求接口，获得 <code style="color:var(--accent)">version</code> 字段后与本地版本比较。若有新版本，按 <code style="color:var(--accent)">files</code> 数组下载所需文件。
+        </div>
+      </div>`;
+  }
 }
 
-function bindNotesAfterRender(appName, versions) {
-  const content = $('content');
-  content.oninput = function (e) {
-    if (e.target.tagName !== 'TEXTAREA' || !e.target.id.startsWith('notes-')) return;
-    const version = e.target.id.slice(6);
-    const text = e.target.value;
-    STATE.notes[notesKey(appName, version)] = text;
-    scheduleServerNotePersist(appName, version, text);
-  };
-  versions.forEach((v) => {
-    const ta = document.getElementById('notes-' + v.version);
-    if (!ta) return;
-    const k = notesKey(appName, v.version);
-    if (STATE.notes[k] !== undefined) ta.value = STATE.notes[k];
-  });
-}
-
+// ─── 应用页面 ─────────────────────────────────────────
 async function renderAppPage(appName) {
   const app = STATE.apps.find(a => a.name === appName);
+  const repoType = app?.repoType || 'general';
   let versions = [];
-  try {
-    versions = await api('GET', `/api/apps/${appName}/versions`);
-    STATE.versions = versions;
-  } catch (e) {}
+  try { versions = await api('GET', `/api/apps/${appName}/versions`); STATE.versions = versions; } catch(e) {}
   try {
     const nd = await api('GET', `/api/apps/${appName}/notes-drafts`);
     Object.entries(nd.drafts || {}).forEach(([ver, text]) => {
-      STATE.notes[notesKey(appName, ver)] = text;
+      STATE.notes[`${appName}::${ver}`] = text;
     });
-  } catch (e) {}
+  } catch(e) {}
+
+  const latestVer = app?.latestVersion ? 'v' + app.latestVersion : '未发布';
+  const typePill = `<span class="type-pill ${repoType === 'tauri' ? 'type-tauri' : 'type-general'}" style="font-size:10px;padding:2px 8px">${repoType === 'tauri' ? '⚡ Tauri' : '📦 通用'}</span>`;
 
   $('content').innerHTML = `
     <div class="page-header">
       <div>
-        <div class="page-title">/<span>${appName}</span></div>
-        <div class="page-subtitle">${versions.length} 个版本 · 最新 ${app?.latestVersion ? 'v' + app.latestVersion : '未发布'}</div>
+        <div class="page-title" style="display:flex;align-items:center;gap:10px">
+          <span>/<span>${escapeHtml(appName)}</span></span>
+          ${typePill}
+        </div>
+        <div class="page-subtitle">${versions.length} 个版本 · 当前发布 ${latestVer}</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="confirmDeleteApp('${appName}')">删除应用</button>
-        <button class="btn btn-primary btn-sm" onclick="showNewVersionModal()">+ 新建版本</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteApp('${appName}')">删除库</button>
+        <button class="btn btn-primary btn-sm" onclick="showNewVersionModal()">＋ 新建版本</button>
       </div>
     </div>
+
+    ${renderApiCard(appName, repoType)}
 
     ${versions.length === 0 ? `
       <div class="empty-state">
         <div class="empty-state-icon">↑</div>
         <div class="empty-state-text">还没有版本<br>点击右上角「新建版本」开始</div>
       </div>
-    ` : versions.map(v => renderVersionCard(appName, v)).join('')}
-    ${renderApiInlineHtml(appName)}
+    ` : versions.map(v => renderVersionCard(appName, v, repoType)).join('')}
   `;
 
-  bindNotesAfterRender(appName, versions);
+  bindNotes(appName, versions);
 }
 
-function renderVersionCard(appName, v) {
+// ─── 版本卡片 ─────────────────────────────────────────
+function renderVersionCard(appName, v, repoType) {
   const files = (v.files || []).filter(f => f.name !== '.gitkeep');
-  const installPkgs = files.filter(f => !f.name.endsWith('.sig'));
+  const mainFiles = files.filter(f => !f.name.endsWith('.sig'));
 
   return `
     <div class="version-card ${v.isLatest ? 'is-latest' : ''}" id="vcard-${v.version}">
       <div class="version-header" onclick="toggleVersion('${v.version}')">
         <span class="version-tag">${v.version}</span>
-        ${v.isLatest ? '<span class="badge badge-green">LATEST</span>' : '<span class="badge badge-dim">draft</span>'}
-        <span class="badge badge-dim">${installPkgs.length} 文件</span>
+        ${v.isLatest ? '<span class="badge badge-latest">LATEST</span>' : '<span class="badge badge-draft">草稿</span>'}
+        <span class="badge badge-file">${mainFiles.length} 文件</span>
         <div class="version-sep"></div>
         <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();confirmDeleteVersion('${appName}','${v.version}')">删除</button>
         <span style="color:var(--text3);font-size:14px">▾</span>
       </div>
-      <div class="version-body open" id="vbody-${v.version}">
 
-        ${files.length > 0 ? `
-        <div class="vc-section">
-          <table class="file-table">
-            <thead>
-              <tr>
-                <th>文件名</th>
-                <th>大小</th>
-                <th>类型</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              ${files.map(f => {
-                const b = filePlatformBadge(f.name);
-                const safeUrl = encodeURIComponent(f.url || '');
-                const escName = f.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                return `
-                <tr>
-                  <td>
-                    <span class="${f.name.endsWith('.sig') ? 'file-sig' : 'file-name'}">${f.name}</span>
-                  </td>
-                  <td><span class="file-size">${formatBytes(f.size)}</span></td>
-                  <td><span class="badge ${b.cls}">${b.label}</span></td>
-                  <td>
-                    <div class="file-actions">
-                      <a href="${f.url}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">下载</a>
-                      <button type="button" class="btn btn-ghost btn-sm" title="复制链接" data-url="${safeUrl}" onclick="copyFileUrl(this)">⎘</button>
-                      <button class="btn btn-danger btn-sm" onclick="deleteFile('${appName}','${v.version}','${escName}')">✕</button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-        ` : ''}
+      <div class="version-body open" id="vbody-${v.version}">
+        ${files.length > 0 ? renderFileTable(appName, v, files) : ''}
 
         <div class="vc-section">
           <div class="upload-zone" id="upload-${v.version}"
@@ -1295,7 +774,7 @@ function renderVersionCard(appName, v) {
             ondragleave="event.stopPropagation();this.classList.remove('drag-over')"
             ondrop="event.preventDefault();event.stopPropagation();handleDrop(event,'${appName}','${v.version}')">
             <div class="upload-zone-icon">↑</div>
-            <div class="upload-zone-text">拖拽文件到此处，或 <strong>点击选择</strong> · 支持安装包与 .sig</div>
+            <div class="upload-zone-text">拖拽文件到此处，或 <strong>点击选择文件</strong>${repoType === 'tauri' ? ' · 支持安装包与 .sig' : ''}</div>
           </div>
           <input type="file" id="file-input-${v.version}" style="display:none" multiple
             onclick="event.stopPropagation()"
@@ -1307,41 +786,99 @@ function renderVersionCard(appName, v) {
         </div>
 
         <div class="vc-section publish-panel" id="publish-panel-${v.version}">
-          <div class="publish-title">发布此版本</div>
+          <div class="publish-title">发布设置</div>
           <div class="field" style="margin-bottom:12px">
-            <label>更新日志</label>
-            <textarea id="notes-${v.version}" rows="4" placeholder="请输入更新日志…"></textarea>
+            <label>更新日志 / 版本说明</label>
+            <textarea id="notes-${v.version}" rows="3" placeholder="描述本版本的更新内容…"></textarea>
           </div>
-          <label class="force-pub-label" style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--text2);cursor:pointer;margin:0 0 12px;line-height:1.5">
+          ${repoType === 'tauri' ? `
+          <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text2);cursor:pointer;margin:0 0 12px;line-height:1.5">
             <input type="checkbox" id="force-publish-${v.version}" style="width:auto;margin-top:3px;flex-shrink:0">
-            <span>强制发布（无 .sig 时仍可发布；Tauri 热更新仍需有效签名）</span>
-          </label>
+            <span>强制发布（无 .sig 时仍发布；Tauri 热更新仍需有效签名才能生效）</span>
+          </label>` : ''}
           <div class="publish-actions-row">
             <button type="button" class="btn btn-ghost btn-sm" onclick="previewRelease('${appName}','${v.version}')">预览 latest.json</button>
-            <button type="button" class="btn btn-primary" onclick="publishVersion('${appName}','${v.version}')">发布为最新版本</button>
+            <button type="button" class="btn btn-primary" onclick="publishVersion('${appName}','${v.version}','${repoType}')">
+              ${v.isLatest ? '✓ 重新发布此版本' : '发布为最新版本'}
+            </button>
           </div>
           <div id="json-preview-${v.version}" class="hidden" style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:11px;color:var(--text3)">latest.json 预览</span>
+              <button class="btn btn-ghost btn-sm" onclick="copyJsonPreview('${v.version}')">复制 JSON</button>
+            </div>
             <div class="json-preview" id="json-content-${v.version}"></div>
           </div>
         </div>
-
       </div>
     </div>
   `;
 }
 
-function toggleVersion(version) {
-  const body = $(`vbody-${version}`);
-  body.classList.toggle('open');
+function renderFileTable(appName, v, files) {
+  return `
+    <div class="vc-section">
+      <table class="file-table">
+        <thead>
+          <tr>
+            <th>文件名</th><th>大小</th><th>类型</th><th style="min-width:160px">直链</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${files.map(f => {
+            const b = filePlatformBadge(f.name);
+            const escName = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            const safeUrl = escapeHtml(f.url || '');
+            return `
+              <tr>
+                <td><span class="${f.name.endsWith('.sig')?'file-sig':'file-name'}">${escapeHtml(f.name)}</span></td>
+                <td><span class="file-size">${formatBytes(f.size)}</span></td>
+                <td><span class="badge ${b.cls}">${b.label}</span></td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="file-url-mini" title="${safeUrl}">${safeUrl}</span>
+                    <button type="button" class="btn btn-ghost btn-sm" style="flex-shrink:0;padding:4px 8px;font-size:11px" onclick="copyText('${safeUrl}','链接')">复制</button>
+                  </div>
+                </td>
+                <td>
+                  <div class="file-actions">
+                    <a href="${safeUrl}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">↓</a>
+                    <button class="btn btn-danger btn-sm" onclick="deleteFile('${appName}','${v.version}','${escName}')">✕</button>
+                  </div>
+                </td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
-// ─── 文件上传 ────────────────────────────────────────
-function bindUploadZone(appName, version) {} // 已内联
+function toggleVersion(version) {
+  $(`vbody-${version}`)?.classList.toggle('open');
+}
 
+// ─── 草稿绑定 ─────────────────────────────────────────
+function bindNotes(appName, versions) {
+  const content = $('content');
+  content.oninput = function(e) {
+    if (e.target.tagName !== 'TEXTAREA' || !e.target.id.startsWith('notes-')) return;
+    const version = e.target.id.slice(6);
+    const text = e.target.value;
+    STATE.notes[`${appName}::${version}`] = text;
+    scheduleNoteSave(appName, version, text);
+  };
+  versions.forEach(v => {
+    const ta = document.getElementById('notes-' + v.version);
+    if (!ta) return;
+    const k = `${appName}::${v.version}`;
+    if (STATE.notes[k] !== undefined) ta.value = STATE.notes[k];
+  });
+}
+
+// ─── 上传 ─────────────────────────────────────────────
 async function handleDrop(event, appName, version) {
   event.preventDefault();
-  event.stopPropagation();
-  const zone = document.getElementById('upload-' + version);
+  const zone = document.getElementById('upload-'+version);
   if (zone) zone.classList.remove('drag-over');
   await uploadFiles(appName, version, event.dataTransfer.files);
 }
@@ -1349,20 +886,13 @@ async function handleDrop(event, appName, version) {
 async function uploadFiles(appName, version, files) {
   if (!files || files.length === 0) return;
   const progressEl = $(`upload-progress-${version}`);
-  const fillEl = $(`progress-fill-${version}`);
+  const fillEl     = $(`progress-fill-${version}`);
   progressEl.classList.remove('hidden');
   fillEl.style.width = '0%';
-
   const formData = new FormData();
   for (let f of files) formData.append('files', f);
-
-  // 模拟进度
   let prog = 0;
-  const interval = setInterval(() => {
-    prog = Math.min(prog + 5, 85);
-    fillEl.style.width = prog + '%';
-  }, 100);
-
+  const interval = setInterval(() => { prog = Math.min(prog+5, 85); fillEl.style.width = prog+'%'; }, 100);
   try {
     await api('POST', `/api/apps/${appName}/versions/${version}/upload`, formData, true);
     clearInterval(interval);
@@ -1370,7 +900,7 @@ async function uploadFiles(appName, version, files) {
     toast(`${files.length} 个文件上传成功`);
     setTimeout(() => progressEl.classList.add('hidden'), 1000);
     await renderAppPage(appName);
-  } catch (e) {
+  } catch(e) {
     clearInterval(interval);
     progressEl.classList.add('hidden');
     toast(e.message, 'error');
@@ -1378,151 +908,119 @@ async function uploadFiles(appName, version, files) {
 }
 
 // ─── 发布 ─────────────────────────────────────────────
-function bindPublishForm(appName, version) {}
-
 async function previewRelease(appName, version) {
   try {
     const data = await api('GET', `/api/apps/${appName}/versions/${version}/preview-release`);
-    const nk = notesKey(appName, version);
-    const ta = document.getElementById('notes-' + version);
+    const ta = document.getElementById('notes-'+version);
     if (ta) data.notes = ta.value;
-    else if (STATE.notes[nk] !== undefined) data.notes = STATE.notes[nk];
+    else if (STATE.notes[`${appName}::${version}`] !== undefined) data.notes = STATE.notes[`${appName}::${version}`];
     $(`json-content-${version}`).textContent = JSON.stringify(data, null, 2);
     $(`json-preview-${version}`).classList.remove('hidden');
-  } catch (e) {
-    toast(e.message, 'error');
-  }
+  } catch(e) { toast(e.message, 'error'); }
 }
 
-async function publishVersion(appName, version) {
-  try {
-    await flushNoteDraftToServer(appName, version);
-    const nk = notesKey(appName, version);
-    const preview = await api('GET', `/api/apps/${appName}/versions/${version}/preview-release`);
-    preview.notes = STATE.notes[nk] ?? '';
+function copyJsonPreview(version) {
+  const text = $(`json-content-${version}`)?.textContent;
+  if (text) copyText(text, ' JSON');
+}
 
-    const force = $(`force-publish-${version}`)?.checked;
-    const missingSig = Object.entries(preview.platforms || {}).filter(([, pv]) => pv.signature?.includes('未找到'));
-    if (!force && missingSig.length > 0) {
-      toast(`以下平台缺少 .sig 文件: ${missingSig.map(([k]) => k).join(', ')}`, 'error');
-      return;
+async function publishVersion(appName, version, repoType) {
+  try {
+    await flushNote(appName, version);
+    const preview = await api('GET', `/api/apps/${appName}/versions/${version}/preview-release`);
+    const k = `${appName}::${version}`;
+    preview.notes = STATE.notes[k] ?? '';
+
+    if (repoType === 'tauri') {
+      const force = $(`force-publish-${version}`)?.checked;
+      const missingSig = Object.entries(preview.platforms || {}).filter(([,pv]) => pv.signature?.includes('未找到'));
+      if (!force && missingSig.length > 0) {
+        toast(`以下平台缺少 .sig 文件: ${missingSig.map(([k])=>k).join(', ')}`, 'error');
+        return;
+      }
     }
 
     await api('POST', `/api/apps/${appName}/publish`, preview);
     toast(`✓ ${version} 已发布为最新版本`);
     await loadApps();
-  } catch (e) {
-    toast(e.message, 'error');
-  }
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 // ─── 删除 ─────────────────────────────────────────────
 async function deleteFile(appName, version, filename) {
   try {
-    await api('DELETE', `/api/apps/${appName}/versions/${version}/files/${filename}`);
+    await api('DELETE', `/api/apps/${appName}/versions/${version}/files/${encodeURIComponent(filename)}`);
     toast(`已删除 ${filename}`);
     await renderAppPage(appName);
-  } catch (e) {
-    toast(e.message, 'error');
-  }
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 function confirmDeleteVersion(appName, version) {
   $('confirm-title').textContent = `删除版本 ${version}`;
   $('confirm-msg').textContent = `将删除版本 ${version} 下的所有文件，此操作不可恢复。`;
   STATE.pendingConfirm = async () => {
-    delete STATE.notes[notesKey(appName, version)];
+    delete STATE.notes[`${appName}::${version}`];
     await api('DELETE', `/api/apps/${appName}/versions/${version}`);
     toast(`版本 ${version} 已删除`);
     await loadApps();
     await renderAppPage(appName);
     closeModal('confirm-modal');
   };
-  $('confirm-ok-btn').onclick = () => STATE.pendingConfirm().catch(e => toast(e.message, 'error'));
+  $('confirm-ok-btn').onclick = () => STATE.pendingConfirm().catch(e => toast(e.message,'error'));
   openModal('confirm-modal');
 }
 
 function confirmDeleteApp(appName) {
-  $('confirm-title').textContent = `删除应用 ${appName}`;
-  $('confirm-msg').textContent = `将删除应用 ${appName} 及其所有版本文件，此操作不可恢复。`;
+  $('confirm-title').textContent = `删除资源库 ${appName}`;
+  $('confirm-msg').textContent = `将删除资源库 ${appName} 及其所有版本文件，此操作不可恢复。`;
   STATE.pendingConfirm = async () => {
-    Object.keys(STATE.notes).forEach((k) => {
-      if (k.startsWith(appName + '::')) delete STATE.notes[k];
-    });
+    Object.keys(STATE.notes).forEach(k => { if (k.startsWith(appName+'::')) delete STATE.notes[k]; });
     await api('DELETE', `/api/apps/${appName}`);
     STATE.currentApp = null;
-    toast(`应用 ${appName} 已删除`);
+    toast(`资源库 ${appName} 已删除`);
     await loadApps();
-    $('content').innerHTML = '<div class="empty-state"><div class="empty-state-icon">◈</div><div class="empty-state-text">从左侧选择应用</div></div>';
+    $('content').innerHTML = '<div class="empty-state"><div class="empty-state-icon">◈</div><div class="empty-state-text">从左侧选择资源库</div></div>';
     closeModal('confirm-modal');
   };
-  $('confirm-ok-btn').onclick = () => STATE.pendingConfirm().catch(e => toast(e.message, 'error'));
+  $('confirm-ok-btn').onclick = () => STATE.pendingConfirm().catch(e => toast(e.message,'error'));
   openModal('confirm-modal');
 }
 
-// ─── 版本新建 ─────────────────────────────────────────
-function showNewVersionModal() {
-  $('new-version-num').value = '';
-  openModal('new-version-modal');
-}
-
+// ─── 新建版本 ─────────────────────────────────────────
+function showNewVersionModal() { $('new-version-num').value = ''; openModal('new-version-modal'); }
 async function createVersion() {
   let ver = $('new-version-num').value.trim();
   if (!ver) return;
   if (!ver.startsWith('v')) ver = 'v' + ver;
   try {
-    // 通过创建目录来新建版本（后端在上传时自动创建）
-    // 先上传一个占位文件，或直接在后端添加接口
-    // 这里我们直接跳转到该版本并让用户上传文件
     closeModal('new-version-modal');
-    toast(`版本 ${ver} 已创建，请上传文件`, 'info');
-    // 在当前 app 下新建目录
     const fd = new FormData();
-    // 创建一个空的 .gitkeep 文件
-    const blob = new Blob([''], { type: 'text/plain' });
-    fd.append('files', new File([blob], '.gitkeep'));
+    fd.append('files', new File([''], '.gitkeep'));
     await api('POST', `/api/apps/${STATE.currentApp}/versions/${ver}/upload`, fd, true);
+    toast(`版本 ${ver} 已创建`);
     await renderAppPage(STATE.currentApp);
     await loadApps();
-  } catch(e) {
-    toast(e.message, 'error');
-  }
+  } catch(e) { toast(e.message, 'error'); }
 }
 
-// ─── App 新建 ─────────────────────────────────────────
+// ─── 新建 App ─────────────────────────────────────────
 function showNewAppModal() {
   $('new-app-name').value = '';
+  selectRepoType('general');
   openModal('new-app-modal');
 }
-
 async function createApp() {
   const name = $('new-app-name').value.trim();
+  const repoType = $('new-repo-type').value || 'general';
   if (!name) return;
   try {
-    await api('POST', '/api/apps', { name });
+    await api('POST', '/api/apps', { name, repoType });
     closeModal('new-app-modal');
-    toast(`应用 ${name} 已创建`);
+    toast(`资源库 ${name} 已创建`);
     await loadApps();
-    selectApp(name);
-  } catch(e) {
-    toast(e.message, 'error');
-  }
+    selectApp(name, repoType);
+  } catch(e) { toast(e.message, 'error'); }
 }
-
-// ─── 全局：复制按钮（data-copy 为 encodeURIComponent 后的文本）────────────────
-document.addEventListener('click', function (e) {
-  const btn = e.target.closest('[data-copy]');
-  if (!btn || !btn.hasAttribute('data-copy')) return;
-  const raw = btn.getAttribute('data-copy');
-  if (raw == null || raw === '') return;
-  e.preventDefault();
-  try {
-    const text = decodeURIComponent(raw);
-    navigator.clipboard.writeText(text).then(() => toast('已复制')).catch(() => toast('复制失败', 'error'));
-  } catch {
-    toast('复制失败', 'error');
-  }
-});
 
 // ─── 设置 ─────────────────────────────────────────────
 async function showSettings() {
@@ -1530,48 +1028,37 @@ async function showSettings() {
   try {
     const s = await api('GET', '/api/settings');
     $('base-url-input').value = s.baseUrl || '';
-  } catch (e) {
-    toast(e.message, 'error');
-  }
+  } catch(e) { toast(e.message, 'error'); }
 }
-
 async function saveBaseUrl() {
   const baseUrl = $('base-url-input').value.trim();
-  if (!baseUrl) {
-    toast('请输入 BASE_URL', 'error');
-    return;
-  }
+  if (!baseUrl) { toast('请输入 BASE_URL', 'error'); return; }
   try {
     await api('POST', '/api/base-url', { baseUrl });
-    toast('BASE_URL 已保存，文件直链将使用新地址');
+    toast('BASE_URL 已保存');
     if (STATE.currentApp) await renderAppPage(STATE.currentApp);
-  } catch (e) {
-    toast(e.message, 'error');
-  }
+  } catch(e) { toast(e.message, 'error'); }
 }
-
 async function changePassword() {
   const oldP = $('old-pwd').value;
-  const p1 = $('new-pwd').value;
-  const p2 = $('new-pwd2').value;
-  if (!oldP) { toast('请输入当前密码', 'error'); return; }
-  if (p1 !== p2) { toast('两次新密码不一致', 'error'); return; }
-  if (p1.length < 8) { toast('新密码至少8位', 'error'); return; }
+  const p1   = $('new-pwd').value;
+  const p2   = $('new-pwd2').value;
+  if (!oldP) { toast('请输入当前密码','error'); return; }
+  if (p1 !== p2) { toast('两次新密码不一致','error'); return; }
+  if (p1.length < 8) { toast('新密码至少8位','error'); return; }
   try {
-    await api('POST', '/api/change-password', { oldPassword: oldP, newPassword: p1 });
+    await api('POST', '/api/change-password', { oldPassword:oldP, newPassword:p1 });
     toast('密码已更新');
     $('old-pwd').value = '';
     $('new-pwd').value = '';
     $('new-pwd2').value = '';
     closeModal('settings-modal');
-  } catch(e) {
-    toast(e.message, 'error');
-  }
+  } catch(e) { toast(e.message,'error'); }
 }
 
-// ─── Enter 提交 ──────────────────────────────────────
+// Enter 提交
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('login-page').style.display !== 'none') login();
+  if (e.key === 'Enter' && $('login-page').style.display !== 'none') login();
 });
 </script>
 </body>
