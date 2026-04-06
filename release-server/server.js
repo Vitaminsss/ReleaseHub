@@ -8,12 +8,14 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 
+const { MIN_PASSWORD_LENGTH, defaultAdminPasswordHash } = require('./lib/admin-password-defaults');
+
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 3721;
 
 const CONFIG = {
   JWT_SECRET: process.env.JWT_SECRET || 'change-this-secret-in-production',
-  ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', 10),
+  ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH || defaultAdminPasswordHash(),
   RELEASES_DIR: process.env.RELEASES_DIR || path.join(__dirname, 'releases'),
   BASE_URL: process.env.BASE_URL || 'http://localhost:3721',
 };
@@ -360,7 +362,7 @@ app.post('/api/change-password', auth, async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   if (!oldPassword) return res.status(400).json({ error: '请提供当前密码' });
   if (!await bcrypt.compare(oldPassword, CONFIG.ADMIN_PASSWORD_HASH)) return res.status(400).json({ error: '当前密码错误' });
-  if (!newPassword || newPassword.length < 8) return res.status(400).json({ error: '新密码至少8位' });
+  if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ error: `新密码至少${MIN_PASSWORD_LENGTH}位` });
   const hash = await bcrypt.hash(newPassword, 10);
   const ep = path.join(__dirname, '.env');
   let ec = fs.existsSync(ep) ? fs.readFileSync(ep, 'utf-8') : '';

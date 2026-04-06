@@ -356,7 +356,7 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "▸ 初始化配置..."
 
   JWT_SECRET=$(openssl rand -hex 32)
-  DEFAULT_HASH=$(node -e "const bcrypt=require('bcryptjs');console.log(bcrypt.hashSync('admin123',10))" 2>/dev/null || echo "")
+  DEFAULT_HASH=$(node -e "const bcrypt=require('bcryptjs');console.log(bcrypt.hashSync('rainy',10))" 2>/dev/null || echo "")
 
   if [ "$HTTPS_ENABLED" = "1" ] && [ -n "$DOMAIN_RESOLVED" ]; then
     if [ -n "$NGINX_PREFIX_SLUG" ]; then
@@ -500,7 +500,7 @@ elif [ "$NGINX_ENABLED" = "1" ]; then
 else
   echo "  管理后台：http://$SERVER_IP:$PORT"
 fi
-echo "  默认密码：admin123（请登录后立即修改）"
+echo "  默认密码：rainy（请登录后立即修改）"
 echo ""
 echo "  查看日志：pm2 logs $SERVICE_NAME"
 echo "  重启服务：pm2 restart $SERVICE_NAME"

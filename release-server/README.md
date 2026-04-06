@@ -75,7 +75,7 @@ USE_HTTPS=0 DOMAIN=releases.example.com bash deploy.sh   # 仅用 HTTP，BASE_UR
 - 首次生成 `.env`（含 `JWT_SECRET`、`ADMIN_PASSWORD_HASH`、`RELEASES_DIR`（指向本目录下 `releases/`）、`BASE_URL`、`PORT`）。启用 Nginx 且使用默认前缀时首次 `BASE_URL` 多为 `http://<公网IP>/releasehub`；无前缀（整站根）时为 `http://<公网IP>`；若配置了域名且 HTTPS 未成功，则可能为 `http://<域名>/...`；HTTPS 成功时为 `https://<域名>/...`；未启用 Nginx 时为 `http://<公网IP>:3721`。
 - PM2 进程名：`release-hub`；防火墙在启用 Nginx 时通常放行 **80** 与 **3721**；仅在 HTTPS 成功时额外放行 **443**。
 
-**默认密码**：`admin123`，登录后请在「设置」中修改，并核对 **BASE_URL**。
+**默认密码**：`rainy`，登录后请在「设置」中修改，并核对 **BASE_URL**。
 
 ---
 
@@ -83,7 +83,7 @@ USE_HTTPS=0 DOMAIN=releases.example.com bash deploy.sh   # 仅用 HTTP，BASE_UR
 
 ### 在网页中修改
 
-「设置」中填写 **当前密码**、新密码并确认。
+「设置」中填写 **当前密码**、新密码并确认。新密码**至少 5 位**。
 
 接口：`POST /api/change-password`（需登录，Header：`Authorization: Bearer <token>`）
 
@@ -92,30 +92,33 @@ USE_HTTPS=0 DOMAIN=releases.example.com bash deploy.sh   # 仅用 HTTP，BASE_UR
 ```json
 {
   "oldPassword": "当前密码",
-  "newPassword": "新密码至少8位"
+  "newPassword": "新密码至少5位"
 }
 ```
 
 - 当前密码错误时返回 **HTTP 400**（不会把登录态清掉）。
-- 新密码至少 8 位。
+- 新密码至少 5 位。
 
-### 忘记密码（在服务器上重置）
+### 忘记密码（重置为初始密码）
 
-需要能 SSH 登录服务器，先 `cd` 到你的**项目根目录**（与 `server.js`、`deploy.sh` 同级），再执行（示例将新密码设为 `MyNewPass123`，请自行替换）：
+需要能 SSH 登录服务器，进入**项目根目录**（与 `server.js`、`deploy.sh` 同级，即 `release-server` 目录），执行仓库自带的重置脚本，将管理员密码恢复为默认 **`rainy`**，并写回同目录下的 `.env`：
 
 ```bash
 cd ~/release-server   # 换成你 clone 的实际路径
-node -e "const b=require('bcryptjs'); console.log(b.hashSync('MyNewPass123', 10))"
-```
-
-将输出的**整段哈希**写入该目录下的 `.env` 中 `ADMIN_PASSWORD_HASH=`（替换原有值），例如：
-
-```bash
-# 编辑 .env，修改一行：
-# ADMIN_PASSWORD_HASH=$2a$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
+node scripts/reset-admin-password.js
 pm2 restart release-hub
 ```
+
+脚本会更新或追加 `ADMIN_PASSWORD_HASH=` 一行；重启后使用默认密码 `rainy` 登录，再在「设置」中改为新密码。
+
+**备选（自定义新密码）**：若不想恢复为 `rainy`，可自行生成 bcrypt 哈希写入 `.env`：
+
+```bash
+cd ~/release-server
+node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 10))"
+```
+
+将输出的**整段哈希**写入 `.env` 中 `ADMIN_PASSWORD_HASH=`（替换原有值），然后 `pm2 restart release-hub`。
 
 ---
 
@@ -202,7 +205,7 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 | POST | `/api/login`                          | 否     | 登录                              |
 | GET  | `/api/settings`                       | 是     | 当前 `BASE_URL` 等                 |
 | POST | `/api/base-url`                       | 是     | 更新 `BASE_URL`                   |
-| POST | `/api/change-password`                | 是     | 修改密码（需 `oldPassword`）           |
+| POST | `/api/change-password`                | 是     | 修改密码（需 `oldPassword`，新密码至少 5 位） |
 | GET  | `/api/apps`                           | 是     | 应用列表                            |
 | POST | `/api/apps`                           | 是     | 创建应用                            |
 | GET  | `/api/apps/:app/versions`             | 是     | 版本与文件                           |
