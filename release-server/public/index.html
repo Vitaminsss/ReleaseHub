@@ -5,303 +5,225 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Release Hub</title>
 <style>
-  :root {
-    --bg: #0c0b09;
-    --bg1: #12100e;
-    --bg2: #1a1714;
-    --bg3: #221f1b;
-    --border: #2c2820;
-    --border2: #3d3529;
-    --accent: #e8a035;
-    --accent-dim: #c98728;
-    --accent-glow: rgba(232,160,53,0.18);
-    --accent-glow2: rgba(232,160,53,0.09);
-    --red: #e85d4c;
-    --red-dim: rgba(232,93,76,0.15);
-    --yellow: #e8c035;
-    --blue: #6eb5ff;
-    --green: #52d48a;
-    --purple: #a78bfa;
-    --text: #ebe6df;
-    --text2: #9a9288;
-    --text3: #6b6459;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-size: 15px;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(232,160,53,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(232,160,53,0.03) 1px, transparent 1px);
-    background-size: 24px 24px;
-    pointer-events: none;
-    z-index: 0;
-  }
-  #app { position: relative; z-index: 1; }
+:root {
+  --bg: #0c0b09; --bg1: #12100e; --bg2: #1a1714; --bg3: #221f1b;
+  --border: #2c2820; --border2: #3d3529;
+  --accent: #e8a035; --accent-dim: #c98728;
+  --accent-glow: rgba(232,160,53,0.18); --accent-glow2: rgba(232,160,53,0.09);
+  --red: #e85d4c; --red-dim: rgba(232,93,76,0.15);
+  --blue: #6eb5ff; --green: #52d48a; --purple: #a78bfa;
+  --text: #ebe6df; --text2: #9a9288; --text3: #6b6459;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.03) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
+#app{position:relative;z-index:1}
 
-  /* ── 登录 ── */
-  #login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
-  .login-box {
-    width: 100%; max-width: 400px;
-    border: 1px solid var(--border2);
-    background: linear-gradient(165deg, var(--bg1) 0%, var(--bg2) 100%);
-    padding: 44px 40px;
-    position: relative;
-    box-shadow: 0 24px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(232,160,53,0.06);
-  }
-  .login-box::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, transparent, var(--accent), #d4a574, transparent);
-  }
-  .login-logo { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 0.35em; text-transform: uppercase; margin-bottom: 10px; animation: loginIn 0.65s cubic-bezier(0.22,1,0.36,1) backwards; }
-  .login-title { font-size: 28px; font-weight: 800; color: var(--text); margin-bottom: 28px; line-height: 1.15; animation: loginIn 0.65s cubic-bezier(0.22,1,0.36,1) 0.08s backwards; }
-  .login-title span { color: var(--accent); }
-  .login-box .field { animation: loginIn 0.65s cubic-bezier(0.22,1,0.36,1) 0.16s backwards; }
-  .login-box .btn-primary { animation: loginIn 0.65s cubic-bezier(0.22,1,0.36,1) 0.24s backwards; }
-  @keyframes loginIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+/* LOGIN */
+#login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.login-box{width:100%;max-width:380px;border:1px solid var(--border2);background:linear-gradient(165deg,var(--bg1) 0%,var(--bg2) 100%);padding:44px 40px;position:relative;box-shadow:0 24px 48px rgba(0,0,0,.35)}
+.login-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),#d4a574,transparent)}
+.login-logo{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.35em;text-transform:uppercase;margin-bottom:10px}
+.login-title{font-size:26px;font-weight:800;color:var(--text);margin-bottom:28px;line-height:1.15}
+.login-title span{color:var(--accent)}
+@keyframes loginIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.login-box .field{animation:loginIn .6s cubic-bezier(.22,1,.36,1) .12s both}
+.login-box .btn-primary{animation:loginIn .6s cubic-bezier(.22,1,.36,1) .22s both}
 
-  /* ── 表单 ── */
-  .field { margin-bottom: 16px; }
-  .field label { display: block; font-size: 11px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; margin-bottom: 6px; }
-  input[type="text"], input[type="password"], input[type="url"], textarea, select {
-    width: 100%; background: var(--bg); border: 1px solid var(--border2); color: var(--text);
-    font-size: 15px; padding: 10px 12px; outline: none; transition: border-color 0.2s;
-  }
-  input:focus, textarea:focus, select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-glow2);
-  }
-  textarea { resize: vertical; min-height: 100px; }
-  select option { background: var(--bg2); }
+/* FORM */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
+input[type=text],input[type=password],input[type=url],textarea,select{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-size:14px;padding:9px 11px;outline:none;transition:border-color .2s}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow2)}
+textarea{resize:vertical;min-height:72px}
+select option{background:var(--bg2)}
 
-  /* ── 按钮 ── */
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; font-size: 14px; font-weight: 600; letter-spacing: 0.5px; border: none; cursor: pointer; transition: all 0.15s; text-transform: uppercase; }
-  .btn-primary { background: linear-gradient(180deg, #f0b24a 0%, var(--accent) 100%); color: #1a1208; }
-  .btn-primary:hover { filter: brightness(1.06); box-shadow: 0 0 28px var(--accent-glow); }
-  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(255,68,68,0.3); }
-  .btn-danger:hover { background: var(--red-dim); }
-  .btn-sm { padding: 6px 12px; font-size: 13px; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-full { width: 100%; justify-content: center; }
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;font-size:13px;font-weight:600;letter-spacing:.5px;border:none;cursor:pointer;transition:all .15s;text-transform:uppercase;white-space:nowrap}
+.btn-primary{background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208}
+.btn-primary:hover{filter:brightness(1.07);box-shadow:0 0 24px var(--accent-glow)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(232,93,76,.35)}
+.btn-danger:hover{background:var(--red-dim)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-full{width:100%;justify-content:center}
 
-  /* ── 布局 ── */
-  #main-page { display: none; min-height: 100vh; }
-  .topbar {
-    height: 54px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; padding: 0 22px; gap: 16px;
-    background: linear-gradient(180deg, var(--bg1) 0%, rgba(18,16,14,0.97) 100%);
-    position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-  }
-  .topbar-logo { font-size: 16px; font-weight: 800; color: var(--accent); letter-spacing: 0.06em; display: flex; align-items: center; gap: 10px; }
-  .topbar-logo::before { content: '◆'; font-size: 14px; opacity: 0.9; }
-  .topbar-sep { flex: 1; }
-  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 2.2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-  .topbar-info { font-size: 13px; color: var(--text3); }
-  .layout { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 54px); }
+/* LAYOUT */
+#main-page{display:none;min-height:100vh}
+.topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:14px;background:linear-gradient(180deg,var(--bg1) 0%,rgba(18,16,14,.97) 100%);position:sticky;top:0;z-index:100;box-shadow:0 6px 24px rgba(0,0,0,.2)}
+.topbar-logo{font-size:15px;font-weight:800;color:var(--accent);display:flex;align-items:center;gap:8px}
+.topbar-logo::before{content:'◆';font-size:12px;opacity:.9}
+.topbar-sep{flex:1}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.topbar-url{font-size:11px;color:var(--text3);font-family:monospace;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layout{display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 52px)}
 
-  /* ── 侧边栏 ── */
-  .sidebar { border-right: 1px solid var(--border); background: var(--bg1); padding: 16px 0; overflow-y: auto; }
-  .sidebar-section { padding: 0 12px; margin-bottom: 4px; }
-  .sidebar-label { font-size: 9px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; padding: 8px 8px 6px; }
-  .app-item {
-    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-    cursor: pointer; border: 1px solid transparent; border-radius: 2px; margin-bottom: 2px;
-    transition: all 0.15s;
-  }
-  .app-item:hover { background: var(--bg2); border-color: var(--border); transform: translateX(2px); }
-  .app-item.active { background: var(--accent-glow2); border-color: var(--accent); color: var(--accent); }
-  .app-item-icon {
-    width: 28px; height: 28px; background: var(--bg3); border: 1px solid var(--border2);
-    display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text2); flex-shrink: 0;
-  }
-  .active .app-item-icon { border-color: var(--accent); color: var(--accent); }
-  .app-item-info { flex: 1; min-width: 0; }
-  .app-item-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .app-item-meta { font-size: 10px; color: var(--text3); margin-top: 1px; display: flex; gap: 5px; align-items: center; }
-  .active .app-item-meta { color: var(--accent-dim); }
+/* SIDEBAR */
+.sidebar{border-right:1px solid var(--border);background:var(--bg1);padding:14px 0;overflow-y:auto}
+.sidebar-label{font-size:9px;letter-spacing:3px;color:var(--text3);text-transform:uppercase;padding:8px 14px 5px}
+.app-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border:1px solid transparent;margin:0 6px 2px;border-radius:2px;transition:all .15s}
+.app-item:hover{background:var(--bg2);border-color:var(--border)}
+.app-item.active{background:var(--accent-glow2);border-color:var(--accent)}
+.app-icon{width:26px;height:26px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text2);flex-shrink:0;font-weight:700}
+.active .app-icon{border-color:var(--accent);color:var(--accent)}
+.app-info{flex:1;min-width:0}
+.app-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-meta{font-size:10px;color:var(--text3);margin-top:1px;display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.active .app-meta{color:var(--accent-dim)}
+.type-pill{display:inline-flex;align-items:center;font-size:9px;letter-spacing:.6px;padding:1px 5px;border:1px solid;border-radius:2px;text-transform:uppercase;flex-shrink:0}
+.type-general{color:var(--green);border-color:rgba(82,212,138,.4);background:rgba(82,212,138,.07)}
+.type-tauri{color:var(--purple);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.07)}
 
-  /* 类型标签 */
-  .type-pill {
-    display: inline-flex; align-items: center;
-    font-size: 9px; letter-spacing: 0.8px; padding: 1px 5px;
-    border: 1px solid; border-radius: 2px; text-transform: uppercase; flex-shrink: 0;
-  }
-  .type-general { color: var(--green); border-color: rgba(82,212,138,0.4); background: rgba(82,212,138,0.07); }
-  .type-tauri   { color: var(--purple); border-color: rgba(167,139,250,0.4); background: rgba(167,139,250,0.07); }
+/* CONTENT */
+.content{padding:22px;overflow-y:auto}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center;color:var(--text3)}
+.empty-icon{font-size:42px;margin-bottom:14px;opacity:.25}
+.empty-text{font-size:13px;line-height:1.6}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.page-title{font-size:20px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:10px}
+.page-title span{color:var(--accent)}
+.page-sub{font-size:12px;color:var(--text3);margin-top:3px}
 
-  /* ── 内容区 ── */
-  .content { padding: 24px; overflow-y: auto; }
-  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; text-align: center; color: var(--text3); }
-  .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
-  .empty-state-text { font-size: 13px; margin-bottom: 20px; line-height: 1.6; }
+/* API CARD - left/right split */
+.api-card{border:1px solid var(--border2);background:var(--bg1);margin-bottom:20px;position:relative;overflow:hidden}
+.api-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--green),var(--purple))}
+.api-card-inner{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.api-left{padding:16px 18px;border-right:1px solid var(--border)}
+.api-right{padding:16px 18px;background:var(--bg)}
+.api-section-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:12px}
+.api-row{display:flex;align-items:stretch;border:1px solid var(--border2);overflow:hidden;margin-bottom:8px}
+.api-method{background:var(--bg3);padding:0 10px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;border-right:1px solid var(--border2);flex-shrink:0}
+.api-url{flex:1;padding:8px 10px;background:var(--bg);font-size:12px;color:var(--blue);font-family:monospace;word-break:break-all;line-height:1.4;display:flex;align-items:center}
+.api-copy{background:var(--bg3);border:none;border-left:1px solid var(--border2);color:var(--text3);cursor:pointer;padding:0 12px;font-size:11px;font-weight:600;letter-spacing:.5px;transition:all .15s;flex-shrink:0;text-transform:uppercase}
+.api-copy:hover{background:var(--accent-glow);color:var(--accent)}
+.api-hint{font-size:11px;color:var(--text3);line-height:1.6;margin-top:6px;padding:8px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
+.api-json-label{font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
+.api-json-box{background:var(--bg1);border:1px solid var(--border);padding:10px;font-size:11px;font-family:monospace;color:var(--accent-dim);overflow-x:auto;white-space:pre;max-height:200px;overflow-y:auto;line-height:1.55}
+.api-json-empty{font-size:12px;color:var(--text3);padding:20px;text-align:center;border:1px dashed var(--border);font-style:italic}
 
-  /* ── 页面头 ── */
-  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
-  .page-title { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
-  .page-title span { color: var(--accent); }
-  .page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; }
+/* TAURI API CARD */
+.tauri-api-card{border:1px solid var(--border2);background:var(--bg1);margin-bottom:20px;position:relative;overflow:hidden}
+.tauri-api-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),var(--accent))}
+.tauri-api-inner{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.tauri-left{padding:16px 18px;border-right:1px solid var(--border)}
+.tauri-right{padding:16px 18px;background:var(--bg)}
+.tauri-section-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--purple);margin-bottom:12px}
 
-  /* ── 接口卡片（醒目展示） ── */
-  .api-card {
-    border: 1px solid var(--border2);
-    background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
-    padding: 20px;
-    margin-bottom: 24px;
-    position: relative;
-    overflow: hidden;
-  }
-  .api-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, var(--blue), var(--green), var(--purple));
-  }
-  .api-card-title {
-    font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase;
-    color: var(--blue); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
-  }
-  .api-card-title::before { content: '⬡'; font-size: 14px; }
-  .api-endpoint {
-    display: flex; align-items: stretch; gap: 0; margin-bottom: 10px;
-    border: 1px solid var(--border2); overflow: hidden;
-  }
-  .api-endpoint-label {
-    background: var(--bg3); padding: 10px 12px;
-    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
-    color: var(--text3); white-space: nowrap; display: flex; align-items: center;
-    border-right: 1px solid var(--border2); min-width: 80px; justify-content: center;
-  }
-  .api-endpoint-url {
-    flex: 1; padding: 10px 14px; background: var(--bg);
-    font-size: 13px; color: var(--blue); font-family: monospace;
-    word-break: break-all; display: flex; align-items: center;
-  }
-  .api-copy-btn {
-    background: var(--bg3); border: none; border-left: 1px solid var(--border2);
-    color: var(--text3); cursor: pointer; padding: 10px 16px; font-size: 12px;
-    white-space: nowrap; transition: all 0.15s; font-weight: 600; letter-spacing: 0.5px;
-  }
-  .api-copy-btn:hover { background: var(--accent-glow); color: var(--accent); }
-  .api-desc { font-size: 12px; color: var(--text3); margin-bottom: 14px; line-height: 1.6; }
+/* VERSION GRID */
+.version-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:12px}
 
-  /* Tauri JSON 预览块 */
-  .code-block {
-    background: var(--bg); border: 1px solid var(--border);
-    padding: 14px; font-size: 12px; font-family: monospace;
-    color: var(--accent-dim); overflow-x: auto; white-space: pre;
-    max-height: 260px; overflow-y: auto; line-height: 1.6; margin-bottom: 8px;
-  }
+/* VERSION CARD - sketch layout: title bar / icon+name / desc */
+.vcard{border:1px solid var(--border);background:var(--bg1);transition:border-color .2s,box-shadow .2s,transform .2s;display:flex;flex-direction:column}
+.vcard:hover{border-color:var(--border2);box-shadow:0 8px 28px rgba(0,0,0,.22);transform:translateY(-1px)}
+.vcard.is-latest{border-color:var(--accent);box-shadow:0 0 0 1px rgba(232,160,53,.12)}
 
-  /* ── 版本卡片 ── */
-  .version-card { border: 1px solid var(--border); background: var(--bg1); margin-bottom: 12px; transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
-  .version-card:hover { border-color: var(--border2); box-shadow: 0 12px 40px rgba(0,0,0,0.22); transform: translateY(-1px); }
-  .version-card.is-latest { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(232,160,53,0.15); }
-  .version-header { display: flex; align-items: center; padding: 14px 16px; gap: 12px; cursor: pointer; user-select: none; }
-  .version-header:hover { background: var(--bg2); }
-  .version-tag { font-size: 16px; font-weight: 700; color: var(--text); }
-  .badge { font-size: 9px; letter-spacing: 1.5px; padding: 2px 7px; border: 1px solid; text-transform: uppercase; }
-  .badge-latest { color: var(--accent); border-color: var(--accent); background: var(--accent-glow2); }
-  .badge-draft  { color: var(--text3); border-color: var(--border2); }
-  .badge-win    { color: #7ecbff; border-color: rgba(126,203,255,0.45); background: rgba(126,203,255,0.08); }
-  .badge-linux  { color: #f7c948; border-color: rgba(247,201,72,0.45); background: rgba(247,201,72,0.08); }
-  .badge-mac    { color: #a78bfa; border-color: rgba(167,139,250,0.45); background: rgba(167,139,250,0.08); }
-  .badge-sig    { color: var(--green); border-color: rgba(82,212,138,0.4); }
-  .badge-file   { color: var(--text3); border-color: var(--border2); }
-  .version-sep  { flex: 1; }
-  .version-body { display: none; padding: 0 18px 18px; border-top: 1px solid var(--border); }
-  .version-body.open { display: block; }
-  .vc-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
-  .vc-section:first-of-type { margin-top: 0; padding-top: 12px; border-top: none; }
+/* Title bar */
+.vcard-titlebar{display:flex;align-items:center;padding:10px 14px;gap:8px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.vcard-ver{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em}
+.vcard-badges{display:flex;gap:5px;flex:1;flex-wrap:wrap}
+.badge{font-size:9px;letter-spacing:1px;padding:2px 6px;border:1px solid;text-transform:uppercase}
+.badge-latest{color:var(--accent);border-color:var(--accent);background:var(--accent-glow2)}
+.badge-draft{color:var(--text3);border-color:var(--border2)}
+.badge-win{color:#7ecbff;border-color:rgba(126,203,255,.45);background:rgba(126,203,255,.08)}
+.badge-linux{color:#f7c948;border-color:rgba(247,201,72,.45);background:rgba(247,201,72,.08)}
+.badge-mac{color:#a78bfa;border-color:rgba(167,139,250,.45);background:rgba(167,139,250,.08)}
+.badge-sig{color:var(--green);border-color:rgba(82,212,138,.4)}
+.badge-file{color:var(--text3);border-color:var(--border2)}
 
-  /* ── 文件表格 ── */
-  .file-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-  .file-table th { text-align: left; font-size: 11px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; padding: 10px 8px 6px; border-bottom: 1px solid var(--border); }
-  .file-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  .file-table tr:last-child td { border-bottom: none; }
-  .file-name { color: var(--text); font-weight: 500; }
-  .file-sig  { color: var(--green); font-size: 10px; }
-  .file-size { color: var(--text3); font-size: 13px; }
-  .file-url-mini { font-size: 11px; color: var(--text3); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
-  .file-actions { display: flex; gap: 6px; justify-content: flex-end; }
+/* Icon + file count row */
+.vcard-info{display:flex;align-items:center;padding:10px 14px;gap:10px;border-bottom:1px solid var(--border)}
+.vcard-filecount{display:flex;align-items:center;gap:6px}
+.vcard-fc-icon{font-size:16px;opacity:.6}
+.vcard-fc-num{font-size:13px;font-weight:700;color:var(--text)}
+.vcard-fc-label{font-size:11px;color:var(--text3)}
+.vcard-set-latest-btn{margin-left:auto}
 
-  /* ── 上传区 ── */
-  .upload-zone { border: 1px dashed var(--border2); padding: 14px 16px; text-align: center; cursor: pointer; transition: all 0.2s; }
-  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: var(--accent-glow2); }
-  .upload-zone-icon { font-size: 18px; margin-bottom: 4px; color: var(--text3); }
-  .upload-zone-text { font-size: 14px; color: var(--text2); line-height: 1.45; }
-  .upload-zone-text strong { color: var(--accent); }
+/* Notes / desc row */
+.vcard-notes{padding:8px 14px;font-size:12px;color:var(--text3);line-height:1.5;border-bottom:1px solid var(--border);min-height:36px}
+.vcard-notes.empty{font-style:italic;opacity:.5}
 
-  /* ── 发布面板 ── */
-  .publish-panel { background: transparent; border: none; padding: 0; margin-top: 0; }
-  .publish-title { font-size: 12px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; font-weight: 700; }
-  .publish-actions-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+/* Expand toggle */
+.vcard-toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;cursor:pointer;font-size:11px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;user-select:none;transition:background .15s}
+.vcard-toggle:hover{background:var(--bg2);color:var(--text2)}
+.vcard-toggle-arrow{transition:transform .2s}
+.vcard-body{display:none;border-top:1px solid var(--border)}
+.vcard-body.open{display:block}
+.vcard-body-inner{padding:12px 14px}
 
-  /* ── Toast ── */
-  .toast-container { position: fixed; top: 60px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
-  .toast { padding: 12px 16px; border: 1px solid; font-size: 12px; max-width: 320px; animation: slideIn 0.2s ease; display: flex; align-items: center; gap: 8px; background: var(--bg1); }
-  .toast-success { border-color: var(--accent); color: var(--accent); }
-  .toast-error   { border-color: var(--red);   color: var(--red); }
-  .toast-info    { border-color: var(--blue);  color: var(--blue); }
-  @keyframes slideIn { from { transform:translateX(20px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+/* File table compact */
+.file-table{width:100%;border-collapse:collapse;margin-bottom:10px}
+.file-table th{text-align:left;font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;padding:6px 6px 4px;border-bottom:1px solid var(--border)}
+.file-table td{padding:6px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:13px}
+.file-table tr:last-child td{border-bottom:none}
+.file-name{color:var(--text);font-weight:500;font-size:12px}
+.file-sig{color:var(--green);font-size:11px}
+.file-size{color:var(--text3);font-size:11px}
+.file-actions{display:flex;gap:4px;justify-content:flex-end}
 
-  /* ── 弹窗 ── */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: var(--bg1); border: 1px solid var(--border2); padding: 28px; width: 100%; max-width: 480px; position: relative; animation: fadeUp 0.2s ease; }
-  .modal::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
-  .modal-title { font-size: 14px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
-  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-  @keyframes fadeUp { from { transform:translateY(12px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+/* Upload zone */
+.upload-zone{border:1px dashed var(--border2);padding:12px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-glow2)}
+.upload-zone-text{font-size:13px;color:var(--text2)}
+.upload-zone-text strong{color:var(--accent)}
 
-  /* ── 进度条 ── */
-  .progress-bar { height: 2px; background: var(--border); margin: 8px 0; }
-  .progress-fill { height: 100%; background: var(--accent); transition: width 0.3s; box-shadow: 0 0 8px var(--accent); }
+/* Notes textarea in card */
+.notes-row{margin-bottom:10px}
+.notes-label{font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
 
-  /* ── JSON 预览 ── */
-  .json-preview { background: var(--bg); border: 1px solid var(--border); padding: 14px; font-size: 13px; color: var(--accent-dim); overflow-x: auto; white-space: pre; max-height: 300px; overflow-y: auto; line-height: 1.6; }
+/* Progress */
+.progress-bar{height:2px;background:var(--border);margin:6px 0}
+.progress-fill{height:100%;background:var(--accent);transition:width .3s;box-shadow:0 0 8px var(--accent)}
 
-  /* ── 设置 ── */
-  .settings-section { border: 1px solid var(--border); background: var(--bg1); padding: 20px; margin-bottom: 16px; }
-  .settings-title { font-size: 10px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; margin-bottom: 16px; }
+/* Tauri force-publish */
+.force-row{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:10px;line-height:1.5}
+.force-row input{width:auto;margin-top:2px;flex-shrink:0}
 
-  /* ── 分隔线 ── */
-  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+/* JSON preview in card */
+.vcard-json-label{font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
+.vcard-json-box{background:var(--bg);border:1px solid var(--border);padding:10px;font-size:11px;font-family:monospace;color:var(--accent-dim);overflow-x:auto;white-space:pre;max-height:220px;overflow-y:auto;line-height:1.55;margin-bottom:8px}
 
-  /* ── 类型选择器 ── */
-  .type-selector { display: flex; gap: 10px; margin-bottom: 16px; }
-  .type-option { flex: 1; border: 1px solid var(--border2); padding: 14px 12px; cursor: pointer; transition: all 0.15s; text-align: center; background: var(--bg); }
-  .type-option:hover { border-color: var(--accent-dim); background: var(--bg2); }
-  .type-option.selected { border-color: var(--accent); background: var(--accent-glow2); }
-  .type-option-icon { font-size: 22px; margin-bottom: 6px; }
-  .type-option-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
-  .type-option-desc { font-size: 11px; color: var(--text3); line-height: 1.4; }
-  .type-option.selected .type-option-name { color: var(--accent); }
+/* TOAST */
+.toast-wrap{position:fixed;top:58px;right:18px;z-index:1000;display:flex;flex-direction:column;gap:7px}
+.toast{padding:11px 14px;border:1px solid;font-size:12px;max-width:300px;animation:slideIn .2s ease;display:flex;align-items:center;gap:7px;background:var(--bg1)}
+.toast-success{border-color:var(--accent);color:var(--accent)}
+.toast-error{border-color:var(--red);color:var(--red)}
+.toast-info{border-color:var(--blue);color:var(--blue)}
+@keyframes slideIn{from{transform:translateX(16px);opacity:0}to{transform:translateX(0);opacity:1}}
 
-  /* ── 响应式 ── */
-  @media (max-width: 700px) {
-    .layout { grid-template-columns: 1fr; }
-    .sidebar { display: none; }
-    .type-selector { flex-direction: column; }
-  }
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg1);border:1px solid var(--border2);padding:26px;width:100%;max-width:460px;position:relative;animation:fadeUp .2s ease}
+.modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.modal-title{font-size:14px;font-weight:700;margin-bottom:18px;color:var(--text)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+@keyframes fadeUp{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-  .hidden { display: none !important; }
+/* TYPE SELECTOR */
+.type-selector{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.type-option{border:1px solid var(--border2);padding:14px 12px;cursor:pointer;transition:all .15s;text-align:center;background:var(--bg)}
+.type-option:hover{border-color:var(--accent-dim);background:var(--bg2)}
+.type-option.selected{border-color:var(--accent);background:var(--accent-glow2)}
+.type-icon{font-size:20px;margin-bottom:5px}
+.type-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.type-desc{font-size:11px;color:var(--text3);line-height:1.4}
+.type-option.selected .type-name{color:var(--accent)}
+
+/* SETTINGS */
+.settings-section{border:1px solid var(--border);background:var(--bg1);padding:18px;margin-bottom:14px}
+.settings-title{font-size:10px;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin-bottom:14px}
+
+.hidden{display:none!important}
+@media(max-width:700px){.layout{grid-template-columns:1fr}.sidebar{display:none}.api-card-inner,.tauri-api-inner,.version-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div id="app">
 
-<!-- 登录 -->
+<!-- LOGIN -->
 <div id="login-page">
   <div class="login-box">
     <div class="login-logo">Release Hub</div>
@@ -311,44 +233,42 @@
       <input type="password" id="login-pwd" placeholder="输入密码" autocomplete="current-password">
     </div>
     <button class="btn btn-primary btn-full" onclick="login()" id="login-btn">登录</button>
-    <div id="login-error" style="color:var(--red);font-size:11px;margin-top:12px;display:none"></div>
+    <div id="login-err" style="color:var(--red);font-size:11px;margin-top:10px;display:none"></div>
   </div>
 </div>
 
-<!-- 主界面 -->
+<!-- MAIN -->
 <div id="main-page">
   <div class="topbar">
     <div class="topbar-logo">Release Hub</div>
-    <div class="topbar-info" id="server-label"></div>
+    <span class="topbar-url" id="topbar-url"></span>
     <div class="topbar-sep"></div>
     <div class="status-dot"></div>
-    <div class="topbar-info">在线</div>
     <button class="btn btn-ghost btn-sm" onclick="showSettings()">设置</button>
     <button class="btn btn-ghost btn-sm" onclick="logout()">退出</button>
   </div>
   <div class="layout">
     <div class="sidebar">
-      <div class="sidebar-section">
-        <div class="sidebar-label">资源库</div>
-        <div id="app-list"></div>
-        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="showNewAppModal()">＋ 新建资源库</button>
+      <div class="sidebar-label">资源库</div>
+      <div id="app-list"></div>
+      <div style="padding:0 6px;margin-top:8px">
+        <button class="btn btn-ghost btn-sm btn-full" onclick="showNewAppModal()">＋ 新建资源库</button>
       </div>
     </div>
     <div class="content" id="content">
       <div class="empty-state">
-        <div class="empty-state-icon">◈</div>
-        <div class="empty-state-text">从左侧选择资源库<br>或新建一个开始管理</div>
+        <div class="empty-icon">◈</div>
+        <div class="empty-text">从左侧选择资源库<br>或新建一个开始管理</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Toast -->
-<div class="toast-container" id="toasts"></div>
+<div class="toast-wrap" id="toasts"></div>
 
-<!-- 新建 App 弹窗 -->
-<div class="modal-overlay" id="new-app-modal">
-  <div class="modal" style="max-width:520px">
+<!-- NEW APP -->
+<div class="modal-overlay" id="modal-new-app">
+  <div class="modal" style="max-width:500px">
     <div class="modal-title">新建资源库</div>
     <div class="field">
       <label>库标识符</label>
@@ -357,62 +277,61 @@
     <div class="field">
       <label>库类型</label>
       <div class="type-selector">
-        <div class="type-option selected" id="type-general" onclick="selectRepoType('general')">
-          <div class="type-option-icon">📦</div>
-          <div class="type-option-name">通用资源库</div>
-          <div class="type-option-desc">适用于任何需要版本管理的资源。客户端通过标准 JSON 接口检查更新，下载对应文件。</div>
+        <div class="type-option selected" id="type-opt-general" onclick="selectRepoType('general')">
+          <div class="type-icon">📦</div>
+          <div class="type-name">通用资源库</div>
+          <div class="type-desc">适用于任意资源版本管理，标准 JSON 接口检查更新</div>
         </div>
-        <div class="type-option" id="type-tauri" onclick="selectRepoType('tauri')">
-          <div class="type-option-icon">⚡</div>
-          <div class="type-option-name">Tauri 专用库</div>
-          <div class="type-option-desc">针对 Tauri 应用热更新。自动生成含 .sig 签名的 latest.json，直接填入 tauri.conf.json。</div>
+        <div class="type-option" id="type-opt-tauri" onclick="selectRepoType('tauri')">
+          <div class="type-icon">⚡</div>
+          <div class="type-name">Tauri 专用库</div>
+          <div class="type-desc">Tauri 热更新专用，自动生成含 .sig 签名的 latest.json</div>
         </div>
       </div>
       <input type="hidden" id="new-repo-type" value="general">
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('new-app-modal')">取消</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-new-app')">取消</button>
       <button class="btn btn-primary" onclick="createApp()">创建</button>
     </div>
   </div>
 </div>
 
-<!-- 新建版本弹窗 -->
-<div class="modal-overlay" id="new-version-modal">
+<!-- NEW VERSION -->
+<div class="modal-overlay" id="modal-new-ver">
   <div class="modal">
     <div class="modal-title">新建版本</div>
     <div class="field">
-      <label>版本号</label>
-      <input type="text" id="new-version-num" placeholder="v1.2.0">
+      <label>版本号（格式：v1.0.0）</label>
+      <input type="text" id="new-ver-num" placeholder=".....">
     </div>
+    <div id="ver-err" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('new-version-modal')">取消</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-new-ver')">取消</button>
       <button class="btn btn-primary" onclick="createVersion()">创建</button>
     </div>
   </div>
 </div>
 
-<!-- 确认删除弹窗 -->
-<div class="modal-overlay" id="confirm-modal">
+<!-- CONFIRM -->
+<div class="modal-overlay" id="modal-confirm">
   <div class="modal">
     <div class="modal-title" id="confirm-title">确认删除</div>
     <div style="color:var(--text2);font-size:13px;line-height:1.6" id="confirm-msg"></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">取消</button>
-      <button class="btn btn-danger" id="confirm-ok-btn">删除</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">取消</button>
+      <button class="btn btn-danger" id="confirm-ok">删除</button>
     </div>
   </div>
 </div>
 
-<!-- 设置弹窗 -->
-<div class="modal-overlay" id="settings-modal">
-  <div class="modal" style="max-width:500px">
+<!-- SETTINGS -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal" style="max-width:480px">
     <div class="modal-title">设置</div>
     <div class="settings-section">
       <div class="settings-title">对外访问地址 BASE_URL</div>
-      <p style="color:var(--text3);font-size:11px;margin-bottom:12px;line-height:1.6">
-        文件下载直链与 <code style="color:var(--accent)">latest.json</code> 内的 URL 均依赖此地址，需与浏览器访问的协议/域名一致。使用 HTTPS 请填 <code style="color:var(--accent)">https://</code> 开头。
-      </p>
+      <p style="color:var(--text3);font-size:11px;margin-bottom:12px;line-height:1.6">文件下载直链和 latest.json 内的 URL 均依赖此地址，需与实际访问的域名/协议一致。</p>
       <div class="field">
         <label>BASE_URL</label>
         <input type="url" id="base-url-input" placeholder="https://releases.example.com">
@@ -421,92 +340,77 @@
     </div>
     <div class="settings-section">
       <div class="settings-title">修改管理员密码</div>
-      <div class="field">
-        <label>当前密码</label>
-        <input type="password" id="old-pwd" placeholder="当前密码" autocomplete="current-password">
-      </div>
-      <div class="field">
-        <label>新密码（至少8位）</label>
-        <input type="password" id="new-pwd" placeholder="新密码" autocomplete="new-password">
-      </div>
-      <div class="field">
-        <label>确认新密码</label>
-        <input type="password" id="new-pwd2" placeholder="再次输入" autocomplete="new-password">
-      </div>
+      <div class="field"><label>当前密码</label><input type="password" id="old-pwd" placeholder="当前密码" autocomplete="current-password"></div>
+      <div class="field"><label>新密码（至少8位）</label><input type="password" id="new-pwd" placeholder="新密码" autocomplete="new-password"></div>
+      <div class="field"><label>确认新密码</label><input type="password" id="new-pwd2" placeholder="再次输入" autocomplete="new-password"></div>
       <button class="btn btn-primary" onclick="changePassword()">更新密码</button>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('settings-modal')">关闭</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-settings')">关闭</button>
     </div>
   </div>
 </div>
 
 <script>
-// ─── 状态 ───────────────────────────────────────────
-let STATE = {
+// ── STATE ───────────────────────────────────────────
+const S = {
   token: localStorage.getItem('rh_token'),
-  apps: [],
-  currentApp: null,
-  currentRepoType: 'general',
-  versions: [],
-  pendingConfirm: null,
-  notes: {},
+  apps: [], currentApp: null, currentRepoType: 'general',
+  versions: [], pendingConfirm: null, notes: {},
 };
 
-// ─── 工具 ───────────────────────────────────────────
-function $(id) { return document.getElementById(id); }
-function escapeHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ── UTILS ───────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function basePath() {
+  let p = (location.pathname || '/').replace(/\/index\.html$/i, '');
+  return (!p || p === '/') ? '' : p.replace(/\/$/, '');
 }
-function apiOrigin() { return window.location.origin || ''; }
-function publicBasePath() {
-  let p = (window.location.pathname || '/').replace(/\/index\.html$/i,'');
-  if (!p || p === '/') return '';
-  return p.replace(/\/$/,'');
-}
-function apiUrl(p) {
-  if (!p.startsWith('/')) return p;
-  return publicBasePath() + p;
-}
-function publicOriginWithBase() {
-  const base = publicBasePath();
-  return base ? apiOrigin() + base : apiOrigin();
-}
-function formatBytes(b) {
-  if (b < 1024) return b + ' B';
-  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-  return (b/1048576).toFixed(1) + ' MB';
-}
+function apiUrl(p) { return p.startsWith('/') ? basePath() + p : p; }
+function originWithBase() { const b = basePath(); return b ? location.origin + b : location.origin; }
+function fmtBytes(b) { return b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
+
 function toast(msg, type='success') {
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
   el.innerHTML = `<span>${type==='success'?'✓':type==='error'?'✗':'ℹ'}</span> ${msg}`;
   $('toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  setTimeout(() => el.remove(), 3200);
 }
 function openModal(id)  { $(id).classList.add('open'); }
 function closeModal(id) { $(id).classList.remove('open'); }
 
-function copyText(text, label) {
+function copyText(text) {
   navigator.clipboard.writeText(text)
-    .then(() => toast(`已复制${label||''}`, 'success'))
-    .catch(() => toast('复制失败', 'error'));
+    .then(() => toast('已复制'))
+    .catch(() => {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('已复制'); } catch { toast('复制失败', 'error'); }
+      document.body.removeChild(ta);
+    });
 }
 
-function filePlatformBadge(filename) {
-  if (filename.endsWith('.sig')) return { label:'SIG', cls:'badge-sig' };
-  const f = filename.toLowerCase();
+function fileBadge(name) {
+  if (name.endsWith('.sig')) return { label:'SIG', cls:'badge-sig' };
+  const f = name.toLowerCase();
   if (f.endsWith('.msi') || f.endsWith('.exe')) return { label:'WIN', cls:'badge-win' };
   if (f.endsWith('.appimage.tar.gz') || f.endsWith('.appimage')) return { label:'LINUX', cls:'badge-linux' };
   if (f.endsWith('.app.tar.gz') || f.endsWith('.dmg')) return { label:'MAC', cls:'badge-mac' };
   return { label:'FILE', cls:'badge-file' };
 }
 
-// ─── API ────────────────────────────────────────────
+// Semver validation
+function isValidVer(v) { return /^v\d+\.\d+(\.\d+)?(-[\w.]+)?$/.test(v); }
+
+// ── API ─────────────────────────────────────────────
 async function api(method, path, body, isUpload=false) {
-  const opts = { method, headers: { 'Authorization': `Bearer ${STATE.token}` } };
+  const opts = { method, headers: { Authorization: `Bearer ${S.token}` } };
   if (body && !isUpload) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  else if (body && isUpload) { opts.body = body; }
+  else if (body && isUpload) opts.body = body;
   const res = await fetch(apiUrl(path), opts);
   if (res.status === 401) { logout(); throw new Error('未授权'); }
   const data = await res.json();
@@ -514,552 +418,511 @@ async function api(method, path, body, isUpload=false) {
   return data;
 }
 
-// ─── 认证 ───────────────────────────────────────────
+// ── AUTH ────────────────────────────────────────────
 async function login() {
   const pwd = $('login-pwd').value;
-  if (!pwd) { showLoginError('请输入密码'); return; }
-  $('login-btn').disabled = true;
-  $('login-btn').textContent = '验证中…';
+  if (!pwd) { showLoginErr('请输入密码'); return; }
+  $('login-btn').disabled = true; $('login-btn').textContent = '验证中…';
   try {
-    const res = await fetch(apiUrl('/api/login'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pwd}) });
+    const res = await fetch(apiUrl('/api/login'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pwd}) });
     const data = await res.json().catch(()=>({}));
     if (!res.ok) throw new Error(data.error || '登录失败');
-    STATE.token = data.token;
-    localStorage.setItem('rh_token', data.token);
+    S.token = data.token; localStorage.setItem('rh_token', data.token);
     enterMain();
-  } catch(e) { showLoginError(e.message || '登录失败，请检查密码'); }
-  $('login-btn').disabled = false;
-  $('login-btn').textContent = '登录';
+  } catch(e) { showLoginErr(e.message); }
+  $('login-btn').disabled = false; $('login-btn').textContent = '登录';
 }
-function showLoginError(msg) { const el = $('login-error'); el.textContent = msg; el.style.display = 'block'; }
-function logout() { STATE.token = null; localStorage.removeItem('rh_token'); $('login-page').style.display='flex'; $('main-page').style.display='none'; }
+function showLoginErr(m) { $('login-err').textContent = m; $('login-err').style.display = 'block'; }
+function logout() { S.token = null; localStorage.removeItem('rh_token'); $('login-page').style.display='flex'; $('main-page').style.display='none'; }
 async function enterMain() {
-  $('login-page').style.display = 'none';
-  $('main-page').style.display = 'block';
-  $('server-label').textContent = publicOriginWithBase();
-  $('login-error').style.display = 'none';
-  await migrateLegacyNotes();
+  $('login-page').style.display='none'; $('main-page').style.display='block';
+  $('topbar-url').textContent = originWithBase();
+  $('login-err').style.display='none';
+  await migrateLegacy();
   await loadApps();
 }
-window.onload = () => {
-  try { localStorage.removeItem('rh_server'); } catch(_) {}
-  if (STATE.token) enterMain().catch(() => logout());
-};
+window.onload = () => { if (S.token) enterMain().catch(()=>logout()); };
 
-// ─── 草稿迁移（兼容旧版）────────────────────────────
-let legacyMigrated = false;
-async function migrateLegacyNotes() {
-  if (legacyMigrated) return;
-  legacyMigrated = true;
+// ── LEGACY MIGRATION ────────────────────────────────
+let legacyDone = false;
+async function migrateLegacy() {
+  if (legacyDone) return; legacyDone = true;
   try {
     const raw = localStorage.getItem('rh_notes_draft_v1');
     if (!raw) return;
     localStorage.removeItem('rh_notes_draft_v1');
     const obj = JSON.parse(raw);
-    if (!obj || typeof obj !== 'object') return;
-    for (const [k, text] of Object.entries(obj)) {
-      if (typeof text !== 'string' || !text) continue;
-      const idx = k.indexOf('::');
-      if (idx <= 0) continue;
-      const appName = k.slice(0, idx);
-      const version = k.slice(idx+2);
-      try { await api('PUT', `/api/apps/${appName}/versions/${encodeURIComponent(version)}/notes`, {text}); } catch(_) {}
+    for (const [k, text] of Object.entries(obj||{})) {
+      if (!text) continue;
+      const idx = k.indexOf('::'); if (idx<=0) continue;
+      try { await api('PUT', `/api/apps/${k.slice(0,idx)}/versions/${encodeURIComponent(k.slice(idx+2))}/notes`, {text}); } catch {}
     }
-  } catch(_) {}
+  } catch {}
 }
 
+// ── NOTES ───────────────────────────────────────────
 const noteTimers = {};
-function scheduleNoteSave(appName, version, text) {
-  const k = `${appName}::${version}`;
+function scheduleNote(app, ver, text) {
+  const k = `${app}::${ver}`; S.notes[k] = text;
   clearTimeout(noteTimers[k]);
   noteTimers[k] = setTimeout(async () => {
-    STATE.notes[k] = text;
-    try { await api('PUT', `/api/apps/${appName}/versions/${encodeURIComponent(version)}/notes`, {text}); } catch(_) {}
+    try { await api('PUT', `/api/apps/${app}/versions/${encodeURIComponent(ver)}/notes`, {text}); } catch {}
   }, 500);
 }
-async function flushNote(appName, version) {
-  const k = `${appName}::${version}`;
-  const ta = document.getElementById('notes-'+version);
-  const text = ta ? ta.value : (STATE.notes[k] ?? '');
-  STATE.notes[k] = text;
-  await api('PUT', `/api/apps/${appName}/versions/${encodeURIComponent(version)}/notes`, {text});
+async function flushNote(app, ver) {
+  const k = `${app}::${ver}`;
+  const ta = $('notes-'+ver);
+  const text = ta ? ta.value : (S.notes[k] ?? '');
+  S.notes[k] = text;
+  try { await api('PUT', `/api/apps/${app}/versions/${encodeURIComponent(ver)}/notes`, {text}); } catch {}
 }
 
-// ─── 类型选择 ─────────────────────────────────────
-function selectRepoType(type) {
-  $('new-repo-type').value = type;
-  $('type-general').classList.toggle('selected', type === 'general');
-  $('type-tauri').classList.toggle('selected', type === 'tauri');
+// ── REPO TYPE SELECTOR ──────────────────────────────
+function selectRepoType(t) {
+  $('new-repo-type').value = t;
+  $('type-opt-general').classList.toggle('selected', t==='general');
+  $('type-opt-tauri').classList.toggle('selected', t==='tauri');
 }
 
-// ─── App 列表 ────────────────────────────────────────
+// ── LOAD APPS ───────────────────────────────────────
 async function loadApps() {
   try {
-    STATE.apps = await api('GET', '/api/apps');
-    renderAppList();
-    if (STATE.currentApp) {
-      const app = STATE.apps.find(a => a.name === STATE.currentApp);
-      if (app) {
-        STATE.currentRepoType = app.repoType || 'general';
-        renderAppPage(STATE.currentApp);
-      }
+    S.apps = await api('GET', '/api/apps');
+    renderSidebar();
+    if (S.currentApp) {
+      const a = S.apps.find(x=>x.name===S.currentApp);
+      if (a) { S.currentRepoType = a.repoType||'general'; renderApp(S.currentApp); }
     }
-  } catch(e) { toast(e.message, 'error'); }
+  } catch(e) { toast(e.message,'error'); }
 }
 
-function renderAppList() {
+function renderSidebar() {
   const list = $('app-list');
   list.innerHTML = '';
-  STATE.apps.forEach(app => {
+  S.apps.forEach(app => {
     const el = document.createElement('div');
-    el.className = 'app-item' + (STATE.currentApp === app.name ? ' active' : '');
-    const typePill = `<span class="type-pill ${app.repoType === 'tauri' ? 'type-tauri' : 'type-general'}">${app.repoType === 'tauri' ? 'Tauri' : '通用'}</span>`;
+    el.className = 'app-item' + (S.currentApp===app.name?' active':'');
     el.innerHTML = `
-      <div class="app-item-icon">${app.name[0].toUpperCase()}</div>
-      <div class="app-item-info">
-        <div class="app-item-name">${escapeHtml(app.name)}</div>
-        <div class="app-item-meta">
-          ${typePill}
-          <span>${app.latestVersion ? 'v'+app.latestVersion : '未发布'}</span>
+      <div class="app-icon">${app.name[0].toUpperCase()}</div>
+      <div class="app-info">
+        <div class="app-name">${esc(app.name)}</div>
+        <div class="app-meta">
+          <span class="type-pill ${app.repoType==='tauri'?'type-tauri':'type-general'}">${app.repoType==='tauri'?'Tauri':'通用'}</span>
+          <span>${app.latestVersion?'v'+app.latestVersion:'未发布'}</span>
         </div>
-      </div>
-    `;
-    el.onclick = () => selectApp(app.name, app.repoType || 'general');
+      </div>`;
+    el.onclick = () => selectApp(app.name, app.repoType||'general');
     list.appendChild(el);
   });
 }
 
 function selectApp(name, repoType) {
-  STATE.currentApp = name;
-  STATE.currentRepoType = repoType || 'general';
-  renderAppList();
-  renderAppPage(name);
+  S.currentApp = name; S.currentRepoType = repoType||'general';
+  renderSidebar(); renderApp(name);
 }
 
-// ─── API 卡片渲染 ─────────────────────────────────────
-function renderApiCard(appName, repoType) {
-  const origin = publicOriginWithBase();
-  const latestUrl   = `${origin}/releases/${appName}/latest.json`;
-  const publicUrl   = `${origin}/api/public/${appName}/latest`;
-  const filePattern = `${origin}/releases/${appName}/{version}/{filename}`;
-
-  if (repoType === 'tauri') {
-    const tauriJson = JSON.stringify({
-      plugins: { updater: { pubkey: '你的公钥内容', endpoints: [latestUrl] } }
-    }, null, 2);
-    return `
-      <div class="api-card">
-        <div class="api-card-title">Tauri Updater 接口</div>
-        <p class="api-desc">将下方 <strong>latest.json</strong> 地址填入 <code style="color:var(--accent)">tauri.conf.json</code> → <code style="color:var(--accent)">plugins.updater.endpoints</code>，即可接入 Tauri 热更新。</p>
-        <div class="api-endpoint">
-          <span class="api-endpoint-label">热更新 JSON</span>
-          <span class="api-endpoint-url">${escapeHtml(latestUrl)}</span>
-          <button class="api-copy-btn" onclick="copyText('${escapeHtml(latestUrl)}','')">复制</button>
-        </div>
-        <div class="api-endpoint">
-          <span class="api-endpoint-label">文件直链</span>
-          <span class="api-endpoint-url">${escapeHtml(filePattern)}</span>
-          <button class="api-copy-btn" onclick="copyText('${escapeHtml(filePattern)}','')">复制</button>
-        </div>
-        <div style="margin-top:14px">
-          <div style="font-size:11px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">tauri.conf.json 配置示例</div>
-          <div class="code-block">${escapeHtml(tauriJson)}</div>
-          <button class="btn btn-ghost btn-sm" onclick="copyText(${JSON.stringify(tauriJson)}, ' JSON')">复制配置</button>
-        </div>
-      </div>`;
-  } else {
-    // 通用库接口说明
-    const exampleResponse = JSON.stringify({
-      version: "1.2.0",
-      notes: "本次更新修复若干问题",
-      pub_date: "2025-01-01T00:00:00.000Z",
-      files: [
-        { name: "myapp-1.2.0.zip", url: `${origin}/releases/${appName}/v1.2.0/myapp-1.2.0.zip`, size: 10485760 }
-      ]
-    }, null, 2);
-
-    return `
-      <div class="api-card">
-        <div class="api-card-title">通用更新接口</div>
-        <p class="api-desc">客户端向以下接口发起 <code style="color:var(--green)">GET</code> 请求，获取最新版本信息。比较本地版本号后，按需下载文件列表中的资源。</p>
-        <div class="api-endpoint">
-          <span class="api-endpoint-label">检查更新</span>
-          <span class="api-endpoint-url">${escapeHtml(publicUrl)}</span>
-          <button class="api-copy-btn" onclick="copyText('${escapeHtml(publicUrl)}','')">复制</button>
-        </div>
-        <div class="api-endpoint" style="margin-top:0">
-          <span class="api-endpoint-label">文件直链</span>
-          <span class="api-endpoint-url">${escapeHtml(filePattern)}</span>
-          <button class="api-copy-btn" onclick="copyText('${escapeHtml(filePattern)}','')">复制</button>
-        </div>
-        <div style="margin-top:14px">
-          <div style="font-size:11px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">响应示例 JSON</div>
-          <div class="code-block">${escapeHtml(exampleResponse)}</div>
-        </div>
-        <div style="font-size:12px;color:var(--text3);margin-top:10px;line-height:1.7;padding:10px;background:var(--bg);border:1px solid var(--border)">
-          <strong style="color:var(--text2)">集成说明：</strong>
-          客户端请求接口，获得 <code style="color:var(--accent)">version</code> 字段后与本地版本比较。若有新版本，按 <code style="color:var(--accent)">files</code> 数组下载所需文件。
-        </div>
-      </div>`;
-  }
-}
-
-// ─── 应用页面 ─────────────────────────────────────────
-async function renderAppPage(appName) {
-  const app = STATE.apps.find(a => a.name === appName);
-  const repoType = app?.repoType || 'general';
+// ── RENDER APP PAGE ─────────────────────────────────
+async function renderApp(appName) {
+  const appData = S.apps.find(a=>a.name===appName);
+  const repoType = appData?.repoType || 'general';
   let versions = [];
-  try { versions = await api('GET', `/api/apps/${appName}/versions`); STATE.versions = versions; } catch(e) {}
+  try { versions = await api('GET', `/api/apps/${appName}/versions`); S.versions = versions; } catch {}
   try {
     const nd = await api('GET', `/api/apps/${appName}/notes-drafts`);
-    Object.entries(nd.drafts || {}).forEach(([ver, text]) => {
-      STATE.notes[`${appName}::${ver}`] = text;
-    });
-  } catch(e) {}
+    Object.entries(nd.drafts||{}).forEach(([ver,text]) => { S.notes[`${appName}::${ver}`] = text; });
+  } catch {}
 
-  const latestVer = app?.latestVersion ? 'v' + app.latestVersion : '未发布';
-  const typePill = `<span class="type-pill ${repoType === 'tauri' ? 'type-tauri' : 'type-general'}" style="font-size:10px;padding:2px 8px">${repoType === 'tauri' ? '⚡ Tauri' : '📦 通用'}</span>`;
+  const typePill = `<span class="type-pill ${repoType==='tauri'?'type-tauri':'type-general'}" style="font-size:10px;padding:2px 8px">${repoType==='tauri'?'⚡ Tauri':'📦 通用'}</span>`;
+  const latVer = appData?.latestVersion ? 'v'+appData.latestVersion : '未发布';
 
   $('content').innerHTML = `
     <div class="page-header">
       <div>
-        <div class="page-title" style="display:flex;align-items:center;gap:10px">
-          <span>/<span>${escapeHtml(appName)}</span></span>
-          ${typePill}
-        </div>
-        <div class="page-subtitle">${versions.length} 个版本 · 当前发布 ${latestVer}</div>
+        <div class="page-title">/<span>${esc(appName)}</span> ${typePill}</div>
+        <div class="page-sub">${versions.length} 个版本 · 当前发布 ${latVer}</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px">
         <button class="btn btn-danger btn-sm" onclick="confirmDeleteApp('${appName}')">删除库</button>
-        <button class="btn btn-primary btn-sm" onclick="showNewVersionModal()">＋ 新建版本</button>
+        <button class="btn btn-primary btn-sm" onclick="showNewVerModal()">＋ 新建版本</button>
       </div>
     </div>
 
-    ${renderApiCard(appName, repoType)}
+    ${repoType === 'tauri' ? renderTauriApiCard(appName, versions) : renderGeneralApiCard(appName, versions)}
 
-    ${versions.length === 0 ? `
-      <div class="empty-state">
-        <div class="empty-state-icon">↑</div>
-        <div class="empty-state-text">还没有版本<br>点击右上角「新建版本」开始</div>
-      </div>
-    ` : versions.map(v => renderVersionCard(appName, v, repoType)).join('')}
+    ${versions.length === 0
+      ? `<div class="empty-state"><div class="empty-icon">↑</div><div class="empty-text">还没有版本，点击「新建版本」开始</div></div>`
+      : `<div class="version-grid">${versions.map(v => renderVersionCard(appName, v, repoType)).join('')}</div>`
+    }
   `;
 
   bindNotes(appName, versions);
+
+  // Load live latest JSON for general api card
+  if (repoType === 'general') loadLiveJson(appName);
 }
 
-// ─── 版本卡片 ─────────────────────────────────────────
+// ── API CARDS ───────────────────────────────────────
+function renderGeneralApiCard(appName, versions) {
+  const origin = originWithBase();
+  const checkUrl = `${origin}/api/public/${appName}/latest`;
+  return `
+    <div class="api-card">
+      <div class="api-card-inner">
+        <div class="api-left">
+          <div class="api-section-title">检查更新接口</div>
+          <div class="api-row">
+            <span class="api-method">GET</span>
+            <span class="api-url" id="check-url-${appName}">${esc(checkUrl)}</span>
+            <button class="api-copy" onclick="copyText('${esc(checkUrl)}')">复制</button>
+          </div>
+          <div class="api-hint">
+            客户端请求此接口，获取 <code style="color:var(--accent)">version</code> 字段与本地版本比较；有更新时从 <code style="color:var(--accent)">files</code> 数组下载资源。
+            <br>返回 <code style="color:var(--text2)">204</code> 表示尚未发布任何版本。
+          </div>
+        </div>
+        <div class="api-right">
+          <div class="api-json-label">当前发布的 latest.json</div>
+          <div id="live-json-${appName}" class="api-json-empty">（加载中…）</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderTauriApiCard(appName, versions) {
+  const origin = originWithBase();
+  const latestUrl = `${origin}/releases/${appName}/latest.json`;
+  const tauriJson = JSON.stringify({
+    plugins: { updater: { pubkey: '你的公钥内容', endpoints: [latestUrl] } }
+  }, null, 2);
+  return `
+    <div class="tauri-api-card">
+      <div class="tauri-api-inner">
+        <div class="tauri-left">
+          <div class="tauri-section-title">Tauri Updater 接口</div>
+          <div class="api-row">
+            <span class="api-method" style="color:var(--purple)">JSON</span>
+            <span class="api-url">${esc(latestUrl)}</span>
+            <button class="api-copy" onclick="copyText('${esc(latestUrl)}')">复制</button>
+          </div>
+          <div class="api-hint" style="margin-top:10px">
+            将上方地址填入 <code style="color:var(--accent)">tauri.conf.json</code>：
+          </div>
+          <div class="vcard-json-box" style="margin-top:8px;font-size:11px">${esc(tauriJson)}</div>
+          <button class="btn btn-ghost btn-sm" onclick="copyText(${JSON.stringify(tauriJson)})">复制配置</button>
+        </div>
+        <div class="tauri-right">
+          <div class="api-json-label">当前发布的 latest.json</div>
+          <div id="live-json-${appName}" class="api-json-empty">（加载中…）</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function loadLiveJson(appName) {
+  const el = $(`live-json-${appName}`);
+  if (!el) return;
+  try {
+    const data = await api('GET', `/api/apps/${appName}/latest`);
+    el.className = 'api-json-box';
+    el.textContent = JSON.stringify(data, null, 2);
+  } catch {
+    el.className = 'api-json-empty';
+    el.textContent = '尚未发布任何版本';
+  }
+}
+
+// ── VERSION CARD ─────────────────────────────────────
 function renderVersionCard(appName, v, repoType) {
-  const files = (v.files || []).filter(f => f.name !== '.gitkeep');
-  const mainFiles = files.filter(f => !f.name.endsWith('.sig'));
+  const files = (v.files||[]).filter(f=>f.name!=='.gitkeep');
+  const mainFiles = files.filter(f=>!f.name.endsWith('.sig'));
+  const notesKey = `${appName}::${v.version}`;
+  const notes = S.notes[notesKey] || '';
 
   return `
-    <div class="version-card ${v.isLatest ? 'is-latest' : ''}" id="vcard-${v.version}">
-      <div class="version-header" onclick="toggleVersion('${v.version}')">
-        <span class="version-tag">${v.version}</span>
-        ${v.isLatest ? '<span class="badge badge-latest">LATEST</span>' : '<span class="badge badge-draft">草稿</span>'}
-        <span class="badge badge-file">${mainFiles.length} 文件</span>
-        <div class="version-sep"></div>
-        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();confirmDeleteVersion('${appName}','${v.version}')">删除</button>
-        <span style="color:var(--text3);font-size:14px">▾</span>
+    <div class="vcard ${v.isLatest?'is-latest':''}" id="vcard-${v.version}">
+      <!-- Title bar -->
+      <div class="vcard-titlebar">
+        <span class="vcard-ver">${v.version}</span>
+        <div class="vcard-badges">
+          ${v.isLatest ? '<span class="badge badge-latest">LATEST</span>' : '<span class="badge badge-draft">草稿</span>'}
+          ${mainFiles.map(f=>{ const b=fileBadge(f.name); return `<span class="badge ${b.cls}">${b.label}</span>`; }).join('')}
+        </div>
       </div>
-
-      <div class="version-body open" id="vbody-${v.version}">
-        ${files.length > 0 ? renderFileTable(appName, v, files) : ''}
-
-        <div class="vc-section">
+      <!-- File count + Set Latest button -->
+      <div class="vcard-info">
+        <div class="vcard-filecount">
+          <span class="vcard-fc-icon">📄</span>
+          <span class="vcard-fc-num">${mainFiles.length}</span>
+          <span class="vcard-fc-label">文件</span>
+          ${files.some(f=>f.name.endsWith('.sig')) ? '<span class="badge badge-sig" style="margin-left:4px">SIG</span>' : ''}
+        </div>
+        ${!v.isLatest
+          ? `<button class="btn btn-primary btn-sm vcard-set-latest-btn" onclick="quickPublish('${appName}','${v.version}','${repoType}')">▶ 设为最新发布</button>`
+          : `<span class="vcard-set-latest-btn" style="font-size:11px;color:var(--accent);font-weight:700">✓ 当前发布版本</span>`
+        }
+      </div>
+      <!-- Notes row -->
+      <div class="vcard-notes ${!notes?'empty':''}">${notes ? esc(notes) : '暂无版本说明'}</div>
+      <!-- Expand toggle -->
+      <div class="vcard-toggle" onclick="toggleCard('${v.version}')">
+        <span>文件 &amp; 发布设置</span>
+        <span class="vcard-toggle-arrow" id="arrow-${v.version}">▾</span>
+      </div>
+      <!-- Body -->
+      <div class="vcard-body" id="vbody-${v.version}">
+        <div class="vcard-body-inner">
+          ${files.length > 0 ? renderFileTable(appName, v, files) : ''}
+          <!-- Upload -->
           <div class="upload-zone" id="upload-${v.version}"
-            onclick="event.stopPropagation();document.getElementById('file-input-${v.version}').click()"
-            ondragover="event.preventDefault();event.stopPropagation();this.classList.add('drag-over')"
-            ondragleave="event.stopPropagation();this.classList.remove('drag-over')"
-            ondrop="event.preventDefault();event.stopPropagation();handleDrop(event,'${appName}','${v.version}')">
-            <div class="upload-zone-icon">↑</div>
-            <div class="upload-zone-text">拖拽文件到此处，或 <strong>点击选择文件</strong>${repoType === 'tauri' ? ' · 支持安装包与 .sig' : ''}</div>
+            onclick="event.stopPropagation();$('fi-${v.version}').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="event.preventDefault();this.classList.remove('drag-over');handleDrop(event,'${appName}','${v.version}')">
+            <div class="upload-zone-text">↑ 拖拽文件或 <strong>点击上传</strong>${repoType==='tauri'?' · 含 .sig':''}</div>
           </div>
-          <input type="file" id="file-input-${v.version}" style="display:none" multiple
-            onclick="event.stopPropagation()"
-            onchange="uploadFiles('${appName}','${v.version}',this.files)">
-          <div id="upload-progress-${v.version}" class="hidden">
-            <div style="font-size:13px;color:var(--text3);margin-top:8px">上传中...</div>
-            <div class="progress-bar"><div class="progress-fill" id="progress-fill-${v.version}" style="width:0%"></div></div>
+          <input type="file" id="fi-${v.version}" style="display:none" multiple onchange="uploadFiles('${appName}','${v.version}',this.files)">
+          <div id="uprog-${v.version}" class="hidden">
+            <div style="font-size:12px;color:var(--text3);margin-top:6px">上传中...</div>
+            <div class="progress-bar"><div class="progress-fill" id="pfill-${v.version}" style="width:0%"></div></div>
           </div>
-        </div>
-
-        <div class="vc-section publish-panel" id="publish-panel-${v.version}">
-          <div class="publish-title">发布设置</div>
-          <div class="field" style="margin-bottom:12px">
-            <label>更新日志 / 版本说明</label>
-            <textarea id="notes-${v.version}" rows="3" placeholder="描述本版本的更新内容…"></textarea>
+          <!-- Notes textarea -->
+          <div class="notes-row" style="margin-top:10px">
+            <div class="notes-label">版本说明</div>
+            <textarea id="notes-${v.version}" rows="2" placeholder="描述本版本更新内容…"></textarea>
           </div>
-          ${repoType === 'tauri' ? `
-          <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text2);cursor:pointer;margin:0 0 12px;line-height:1.5">
-            <input type="checkbox" id="force-publish-${v.version}" style="width:auto;margin-top:3px;flex-shrink:0">
-            <span>强制发布（无 .sig 时仍发布；Tauri 热更新仍需有效签名才能生效）</span>
+          ${repoType==='tauri' ? `
+          <label class="force-row">
+            <input type="checkbox" id="force-${v.version}">
+            <span>强制发布（无 .sig 时仍可发布；Tauri 热更新需有效签名）</span>
           </label>` : ''}
-          <div class="publish-actions-row">
-            <button type="button" class="btn btn-ghost btn-sm" onclick="previewRelease('${appName}','${v.version}')">预览 latest.json</button>
-            <button type="button" class="btn btn-primary" onclick="publishVersion('${appName}','${v.version}','${repoType}')">
-              ${v.isLatest ? '✓ 重新发布此版本' : '发布为最新版本'}
+          <!-- Publish actions -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+            <button class="btn btn-ghost btn-sm" onclick="previewCard('${appName}','${v.version}','${repoType}')">预览 JSON</button>
+            <button class="btn btn-primary btn-sm" onclick="publishVersion('${appName}','${v.version}','${repoType}')">
+              ${v.isLatest ? '✓ 重新发布' : '发布为最新版本'}
             </button>
+            <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="confirmDeleteVersion('${appName}','${v.version}')">删除版本</button>
           </div>
-          <div id="json-preview-${v.version}" class="hidden" style="margin-top:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <span style="font-size:11px;color:var(--text3)">latest.json 预览</span>
-              <button class="btn btn-ghost btn-sm" onclick="copyJsonPreview('${v.version}')">复制 JSON</button>
+          <!-- JSON preview -->
+          <div id="json-preview-${v.version}" class="hidden">
+            <div class="vcard-json-label">
+              <span>latest.json 预览</span>
+              <button class="btn btn-ghost btn-sm" onclick="copyJsonPrev('${v.version}')">复制</button>
             </div>
-            <div class="json-preview" id="json-content-${v.version}"></div>
+            <div class="vcard-json-box" id="json-content-${v.version}"></div>
           </div>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 function renderFileTable(appName, v, files) {
   return `
-    <div class="vc-section">
-      <table class="file-table">
-        <thead>
-          <tr>
-            <th>文件名</th><th>大小</th><th>类型</th><th style="min-width:160px">直链</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${files.map(f => {
-            const b = filePlatformBadge(f.name);
-            const escName = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-            const safeUrl = escapeHtml(f.url || '');
-            return `
-              <tr>
-                <td><span class="${f.name.endsWith('.sig')?'file-sig':'file-name'}">${escapeHtml(f.name)}</span></td>
-                <td><span class="file-size">${formatBytes(f.size)}</span></td>
-                <td><span class="badge ${b.cls}">${b.label}</span></td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:6px">
-                    <span class="file-url-mini" title="${safeUrl}">${safeUrl}</span>
-                    <button type="button" class="btn btn-ghost btn-sm" style="flex-shrink:0;padding:4px 8px;font-size:11px" onclick="copyText('${safeUrl}','链接')">复制</button>
-                  </div>
-                </td>
-                <td>
-                  <div class="file-actions">
-                    <a href="${safeUrl}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">↓</a>
-                    <button class="btn btn-danger btn-sm" onclick="deleteFile('${appName}','${v.version}','${escName}')">✕</button>
-                  </div>
-                </td>
-              </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>`;
+    <table class="file-table">
+      <thead><tr><th>文件名</th><th>大小</th><th>类型</th><th></th></tr></thead>
+      <tbody>
+        ${files.map(f => {
+          const b = fileBadge(f.name);
+          const en = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          return `<tr>
+            <td><span class="${f.name.endsWith('.sig')?'file-sig':'file-name'}">${esc(f.name)}</span></td>
+            <td><span class="file-size">${fmtBytes(f.size)}</span></td>
+            <td><span class="badge ${b.cls}">${b.label}</span></td>
+            <td><div class="file-actions">
+              <button class="btn btn-ghost btn-sm" onclick="copyText('${esc(f.url)}')">⎘</button>
+              <a href="${esc(f.url)}" target="_blank" class="btn btn-ghost btn-sm">↓</a>
+              <button class="btn btn-danger btn-sm" onclick="deleteFile('${appName}','${v.version}','${en}')">✕</button>
+            </div></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 }
 
-function toggleVersion(version) {
-  $(`vbody-${version}`)?.classList.toggle('open');
+function toggleCard(ver) {
+  const body = $(`vbody-${ver}`);
+  const arrow = $(`arrow-${ver}`);
+  const open = body.classList.toggle('open');
+  if (arrow) arrow.style.transform = open ? 'rotate(180deg)' : '';
 }
 
-// ─── 草稿绑定 ─────────────────────────────────────────
+// ── NOTES BINDING ────────────────────────────────────
 function bindNotes(appName, versions) {
   const content = $('content');
   content.oninput = function(e) {
-    if (e.target.tagName !== 'TEXTAREA' || !e.target.id.startsWith('notes-')) return;
-    const version = e.target.id.slice(6);
-    const text = e.target.value;
-    STATE.notes[`${appName}::${version}`] = text;
-    scheduleNoteSave(appName, version, text);
+    if (e.target.tagName!=='TEXTAREA' || !e.target.id.startsWith('notes-')) return;
+    const ver = e.target.id.slice(6);
+    scheduleNote(appName, ver, e.target.value);
+    // update the notes preview in card header
+    const notesDiv = document.querySelector(`#vcard-${ver} .vcard-notes`);
+    if (notesDiv) {
+      notesDiv.textContent = e.target.value || '暂无版本说明';
+      notesDiv.className = 'vcard-notes' + (e.target.value ? '' : ' empty');
+    }
   };
   versions.forEach(v => {
-    const ta = document.getElementById('notes-' + v.version);
+    const ta = $('notes-'+v.version);
     if (!ta) return;
     const k = `${appName}::${v.version}`;
-    if (STATE.notes[k] !== undefined) ta.value = STATE.notes[k];
+    if (S.notes[k] !== undefined) ta.value = S.notes[k];
   });
 }
 
-// ─── 上传 ─────────────────────────────────────────────
-async function handleDrop(event, appName, version) {
-  event.preventDefault();
-  const zone = document.getElementById('upload-'+version);
-  if (zone) zone.classList.remove('drag-over');
-  await uploadFiles(appName, version, event.dataTransfer.files);
+// ── UPLOAD ───────────────────────────────────────────
+async function handleDrop(e, app, ver) {
+  await uploadFiles(app, ver, e.dataTransfer.files);
 }
-
-async function uploadFiles(appName, version, files) {
-  if (!files || files.length === 0) return;
-  const progressEl = $(`upload-progress-${version}`);
-  const fillEl     = $(`progress-fill-${version}`);
-  progressEl.classList.remove('hidden');
-  fillEl.style.width = '0%';
-  const formData = new FormData();
-  for (let f of files) formData.append('files', f);
-  let prog = 0;
-  const interval = setInterval(() => { prog = Math.min(prog+5, 85); fillEl.style.width = prog+'%'; }, 100);
+async function uploadFiles(app, ver, files) {
+  if (!files || !files.length) return;
+  const prog = $(`uprog-${ver}`), fill = $(`pfill-${ver}`);
+  prog.classList.remove('hidden'); fill.style.width='0%';
+  const fd = new FormData();
+  for (const f of files) fd.append('files', f);
+  let p = 0;
+  const iv = setInterval(() => { p = Math.min(p+5, 85); fill.style.width=p+'%'; }, 100);
   try {
-    await api('POST', `/api/apps/${appName}/versions/${version}/upload`, formData, true);
-    clearInterval(interval);
-    fillEl.style.width = '100%';
+    await api('POST', `/api/apps/${app}/versions/${ver}/upload`, fd, true);
+    clearInterval(iv); fill.style.width='100%';
     toast(`${files.length} 个文件上传成功`);
-    setTimeout(() => progressEl.classList.add('hidden'), 1000);
-    await renderAppPage(appName);
-  } catch(e) {
-    clearInterval(interval);
-    progressEl.classList.add('hidden');
-    toast(e.message, 'error');
-  }
+    setTimeout(() => prog.classList.add('hidden'), 900);
+    await renderApp(app);
+  } catch(e) { clearInterval(iv); prog.classList.add('hidden'); toast(e.message,'error'); }
 }
 
-// ─── 发布 ─────────────────────────────────────────────
-async function previewRelease(appName, version) {
+// ── PUBLISH ──────────────────────────────────────────
+async function previewCard(app, ver, repoType) {
   try {
-    const data = await api('GET', `/api/apps/${appName}/versions/${version}/preview-release`);
-    const ta = document.getElementById('notes-'+version);
+    const data = await api('GET', `/api/apps/${app}/versions/${ver}/preview-release`);
+    const ta = $('notes-'+ver);
     if (ta) data.notes = ta.value;
-    else if (STATE.notes[`${appName}::${version}`] !== undefined) data.notes = STATE.notes[`${appName}::${version}`];
-    $(`json-content-${version}`).textContent = JSON.stringify(data, null, 2);
-    $(`json-preview-${version}`).classList.remove('hidden');
-  } catch(e) { toast(e.message, 'error'); }
+    const box = $(`json-content-${ver}`);
+    const prev = $(`json-preview-${ver}`);
+    if (box && prev) { box.textContent = JSON.stringify(data,null,2); prev.classList.remove('hidden'); }
+  } catch(e) { toast(e.message,'error'); }
+}
+function copyJsonPrev(ver) {
+  const t = $(`json-content-${ver}`)?.textContent;
+  if (t) copyText(t);
 }
 
-function copyJsonPreview(version) {
-  const text = $(`json-content-${version}`)?.textContent;
-  if (text) copyText(text, ' JSON');
-}
-
-async function publishVersion(appName, version, repoType) {
+async function quickPublish(app, ver, repoType) {
+  // Publish using current state with no prompt - just set as latest
   try {
-    await flushNote(appName, version);
-    const preview = await api('GET', `/api/apps/${appName}/versions/${version}/preview-release`);
-    const k = `${appName}::${version}`;
-    preview.notes = STATE.notes[k] ?? '';
-
+    await flushNote(app, ver);
+    const preview = await api('GET', `/api/apps/${app}/versions/${ver}/preview-release`);
+    const k = `${app}::${ver}`; preview.notes = S.notes[k] ?? '';
     if (repoType === 'tauri') {
-      const force = $(`force-publish-${version}`)?.checked;
-      const missingSig = Object.entries(preview.platforms || {}).filter(([,pv]) => pv.signature?.includes('未找到'));
-      if (!force && missingSig.length > 0) {
-        toast(`以下平台缺少 .sig 文件: ${missingSig.map(([k])=>k).join(', ')}`, 'error');
-        return;
-      }
+      const miss = Object.entries(preview.platforms||{}).filter(([,p])=>p.signature?.includes('未找到'));
+      if (miss.length > 0) { toast(`缺少 .sig: ${miss.map(([k])=>k).join(', ')}，请在版本内勾选强制发布`, 'error'); return; }
     }
-
-    await api('POST', `/api/apps/${appName}/publish`, preview);
-    toast(`✓ ${version} 已发布为最新版本`);
+    await api('POST', `/api/apps/${app}/publish`, preview);
+    toast(`✓ ${ver} 已设为最新发布版本`);
     await loadApps();
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-// ─── 删除 ─────────────────────────────────────────────
-async function deleteFile(appName, version, filename) {
-  try {
-    await api('DELETE', `/api/apps/${appName}/versions/${version}/files/${encodeURIComponent(filename)}`);
-    toast(`已删除 ${filename}`);
-    await renderAppPage(appName);
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-function confirmDeleteVersion(appName, version) {
-  $('confirm-title').textContent = `删除版本 ${version}`;
-  $('confirm-msg').textContent = `将删除版本 ${version} 下的所有文件，此操作不可恢复。`;
-  STATE.pendingConfirm = async () => {
-    delete STATE.notes[`${appName}::${version}`];
-    await api('DELETE', `/api/apps/${appName}/versions/${version}`);
-    toast(`版本 ${version} 已删除`);
-    await loadApps();
-    await renderAppPage(appName);
-    closeModal('confirm-modal');
-  };
-  $('confirm-ok-btn').onclick = () => STATE.pendingConfirm().catch(e => toast(e.message,'error'));
-  openModal('confirm-modal');
-}
-
-function confirmDeleteApp(appName) {
-  $('confirm-title').textContent = `删除资源库 ${appName}`;
-  $('confirm-msg').textContent = `将删除资源库 ${appName} 及其所有版本文件，此操作不可恢复。`;
-  STATE.pendingConfirm = async () => {
-    Object.keys(STATE.notes).forEach(k => { if (k.startsWith(appName+'::')) delete STATE.notes[k]; });
-    await api('DELETE', `/api/apps/${appName}`);
-    STATE.currentApp = null;
-    toast(`资源库 ${appName} 已删除`);
-    await loadApps();
-    $('content').innerHTML = '<div class="empty-state"><div class="empty-state-icon">◈</div><div class="empty-state-text">从左侧选择资源库</div></div>';
-    closeModal('confirm-modal');
-  };
-  $('confirm-ok-btn').onclick = () => STATE.pendingConfirm().catch(e => toast(e.message,'error'));
-  openModal('confirm-modal');
-}
-
-// ─── 新建版本 ─────────────────────────────────────────
-function showNewVersionModal() { $('new-version-num').value = ''; openModal('new-version-modal'); }
-async function createVersion() {
-  let ver = $('new-version-num').value.trim();
-  if (!ver) return;
-  if (!ver.startsWith('v')) ver = 'v' + ver;
-  try {
-    closeModal('new-version-modal');
-    const fd = new FormData();
-    fd.append('files', new File([''], '.gitkeep'));
-    await api('POST', `/api/apps/${STATE.currentApp}/versions/${ver}/upload`, fd, true);
-    toast(`版本 ${ver} 已创建`);
-    await renderAppPage(STATE.currentApp);
-    await loadApps();
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-// ─── 新建 App ─────────────────────────────────────────
-function showNewAppModal() {
-  $('new-app-name').value = '';
-  selectRepoType('general');
-  openModal('new-app-modal');
-}
-async function createApp() {
-  const name = $('new-app-name').value.trim();
-  const repoType = $('new-repo-type').value || 'general';
-  if (!name) return;
-  try {
-    await api('POST', '/api/apps', { name, repoType });
-    closeModal('new-app-modal');
-    toast(`资源库 ${name} 已创建`);
-    await loadApps();
-    selectApp(name, repoType);
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-// ─── 设置 ─────────────────────────────────────────────
-async function showSettings() {
-  openModal('settings-modal');
-  try {
-    const s = await api('GET', '/api/settings');
-    $('base-url-input').value = s.baseUrl || '';
-  } catch(e) { toast(e.message, 'error'); }
-}
-async function saveBaseUrl() {
-  const baseUrl = $('base-url-input').value.trim();
-  if (!baseUrl) { toast('请输入 BASE_URL', 'error'); return; }
-  try {
-    await api('POST', '/api/base-url', { baseUrl });
-    toast('BASE_URL 已保存');
-    if (STATE.currentApp) await renderAppPage(STATE.currentApp);
-  } catch(e) { toast(e.message, 'error'); }
-}
-async function changePassword() {
-  const oldP = $('old-pwd').value;
-  const p1   = $('new-pwd').value;
-  const p2   = $('new-pwd2').value;
-  if (!oldP) { toast('请输入当前密码','error'); return; }
-  if (p1 !== p2) { toast('两次新密码不一致','error'); return; }
-  if (p1.length < 8) { toast('新密码至少8位','error'); return; }
-  try {
-    await api('POST', '/api/change-password', { oldPassword:oldP, newPassword:p1 });
-    toast('密码已更新');
-    $('old-pwd').value = '';
-    $('new-pwd').value = '';
-    $('new-pwd2').value = '';
-    closeModal('settings-modal');
   } catch(e) { toast(e.message,'error'); }
 }
 
-// Enter 提交
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && $('login-page').style.display !== 'none') login();
-});
+async function publishVersion(app, ver, repoType) {
+  try {
+    await flushNote(app, ver);
+    const preview = await api('GET', `/api/apps/${app}/versions/${ver}/preview-release`);
+    const k = `${app}::${ver}`; preview.notes = S.notes[k] ?? '';
+    if (repoType === 'tauri') {
+      const force = $(`force-${ver}`)?.checked;
+      const miss = Object.entries(preview.platforms||{}).filter(([,p])=>p.signature?.includes('未找到'));
+      if (!force && miss.length > 0) { toast(`缺少 .sig: ${miss.map(([k])=>k).join(', ')}`, 'error'); return; }
+    }
+    await api('POST', `/api/apps/${app}/publish`, preview);
+    toast(`✓ ${ver} 已发布`);
+    await loadApps();
+    // Refresh live JSON
+    if (S.currentRepoType !== 'tauri' || true) loadLiveJson(app);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── DELETE ───────────────────────────────────────────
+async function deleteFile(app, ver, name) {
+  try { await api('DELETE', `/api/apps/${app}/versions/${ver}/files/${encodeURIComponent(name)}`); toast(`已删除 ${name}`); await renderApp(app); }
+  catch(e) { toast(e.message,'error'); }
+}
+function confirmDeleteVersion(app, ver) {
+  $('confirm-title').textContent = `删除版本 ${ver}`;
+  $('confirm-msg').textContent = `将删除版本 ${ver} 的所有文件，不可恢复。`;
+  S.pendingConfirm = async () => {
+    delete S.notes[`${app}::${ver}`];
+    await api('DELETE', `/api/apps/${app}/versions/${ver}`);
+    toast(`版本 ${ver} 已删除`); closeModal('modal-confirm');
+    await loadApps(); await renderApp(app);
+  };
+  $('confirm-ok').onclick = () => S.pendingConfirm().catch(e=>toast(e.message,'error'));
+  openModal('modal-confirm');
+}
+function confirmDeleteApp(app) {
+  $('confirm-title').textContent = `删除资源库 ${app}`;
+  $('confirm-msg').textContent = `将删除资源库 ${app} 及全部版本文件，不可恢复。`;
+  S.pendingConfirm = async () => {
+    Object.keys(S.notes).forEach(k=>{ if(k.startsWith(app+'::')) delete S.notes[k]; });
+    await api('DELETE', `/api/apps/${app}`);
+    S.currentApp = null; toast(`资源库 ${app} 已删除`); closeModal('modal-confirm');
+    await loadApps();
+    $('content').innerHTML = '<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-text">从左侧选择资源库</div></div>';
+  };
+  $('confirm-ok').onclick = () => S.pendingConfirm().catch(e=>toast(e.message,'error'));
+  openModal('modal-confirm');
+}
+
+// ── NEW VERSION ──────────────────────────────────────
+function showNewVerModal() { $('new-ver-num').value=''; $('ver-err').style.display='none'; openModal('modal-new-ver'); }
+async function createVersion() {
+  let ver = $('new-ver-num').value.trim();
+  if (!ver) return;
+  if (!ver.startsWith('v')) ver = 'v' + ver;
+  if (!isValidVer(ver)) { $('ver-err').textContent='格式不正确，请使用 v1.0.0 格式'; $('ver-err').style.display='block'; return; }
+  try {
+    closeModal('modal-new-ver');
+    const fd = new FormData(); fd.append('files', new File([''], '.gitkeep'));
+    await api('POST', `/api/apps/${S.currentApp}/versions/${ver}/upload`, fd, true);
+    toast(`版本 ${ver} 已创建`);
+    await renderApp(S.currentApp); await loadApps();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── NEW APP ──────────────────────────────────────────
+function showNewAppModal() { $('new-app-name').value=''; selectRepoType('general'); openModal('modal-new-app'); }
+async function createApp() {
+  const name = $('new-app-name').value.trim();
+  const repoType = $('new-repo-type').value||'general';
+  if (!name) return;
+  try {
+    await api('POST', '/api/apps', {name, repoType});
+    closeModal('modal-new-app'); toast(`资源库 ${name} 已创建`);
+    await loadApps(); selectApp(name, repoType);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── SETTINGS ─────────────────────────────────────────
+async function showSettings() {
+  openModal('modal-settings');
+  try { const s = await api('GET','/api/settings'); $('base-url-input').value = s.baseUrl||''; } catch {}
+}
+async function saveBaseUrl() {
+  const u = $('base-url-input').value.trim();
+  if (!u) { toast('请输入 BASE_URL','error'); return; }
+  try { await api('POST','/api/base-url',{baseUrl:u}); toast('BASE_URL 已保存'); if(S.currentApp) await renderApp(S.currentApp); }
+  catch(e) { toast(e.message,'error'); }
+}
+async function changePassword() {
+  const o=$('old-pwd').value, p1=$('new-pwd').value, p2=$('new-pwd2').value;
+  if (!o) { toast('请输入当前密码','error'); return; }
+  if (p1!==p2) { toast('两次新密码不一致','error'); return; }
+  if (p1.length<8) { toast('新密码至少8位','error'); return; }
+  try {
+    await api('POST','/api/change-password',{oldPassword:o,newPassword:p1});
+    toast('密码已更新'); $('old-pwd').value=$('new-pwd').value=$('new-pwd2').value='';
+    closeModal('modal-settings');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+document.addEventListener('keydown', e => { if (e.key==='Enter' && $('login-page').style.display!=='none') login(); });
 </script>
 </body>
 </html>
