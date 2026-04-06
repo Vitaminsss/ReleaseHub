@@ -12,9 +12,9 @@
 #   NGINX_PREFIX   非交互时：HTTP 路径前缀（如 release-hub），留空=整站根路径 /
 #
 # HTTPS（Let's Encrypt + Certbot，仅在已启用 Nginx 时可用）：
-#   USE_HTTPS=1              非交互：启用 HTTPS
-#   USE_HTTPS=0 或未设置     非交互：不启用 HTTPS
-#   DOMAIN=releases.example.com        域名（必须解析到本机）
+#   USE_HTTPS=0              不尝试自动申请证书（仅 HTTP；仍可用 DOMAIN 生成 http://域名 的 BASE_URL）
+#   USE_HTTPS=1 或未设置     尝试自动 HTTPS：DNS 预检 → certbot --dry-run → 成功后再正式签发；失败则回退 HTTP
+#   DOMAIN=releases.example.com      非交互时优先使用的域名（须解析到本机公网 IP）
 #   CERTBOT_EMAIL=you@example.com    Certbot 注册邮箱（可选，缺省为 admin@域名）
 # ============================================
 
@@ -88,6 +88,26 @@ NGX
     sudo rm -f /etc/nginx/sites-enabled/default
   fi
   sudo ln -sf "$NGINX_SITE" /etc/nginx/sites-enabled/release-hub
+}
+
+# DNS 预检：域名 A/AAAA 是否包含本机公网 IP。返回 0=可继续试签发；1=已知不匹配应跳过 certbot
+dns_resolves_to_public_ip() {
+  local dom="$1"
+  local pub="$2"
+  local line
+  [ -z "$dom" ] || [ -z "$pub" ] && return 1
+  [ "$pub" = "YOUR_SERVER_IP" ] && return 1
+  if ! command -v dig &>/dev/null; then
+    echo "⚠ 未找到 dig 命令，跳过 DNS 预检，将直接尝试 certbot dry-run"
+    return 0
+  fi
+  while read -r line; do
+    [ -n "$line" ] && [ "$line" = "$pub" ] && return 0
+  done < <(dig +short "$dom" A 2>/dev/null)
+  while read -r line; do
+    [ -n "$line" ] && [ "$line" = "$pub" ] && return 0
+  done < <(dig +short "$dom" AAAA 2>/dev/null)
+  return 1
 }
 
 echo ""
@@ -186,86 +206,106 @@ if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   fi
 fi
 
-# ── HTTPS（Certbot，需域名已解析到本机）────────────────
-USE_HTTPS_RESOLVED=0
+# ── HTTPS（Certbot：DNS 预检 → dry-run → 正式签发；失败回退 HTTP，保留域名供 BASE_URL）──
 CERTBOT_EMAIL_VAL=""
 if [ "$NGINX_ENABLED" = "1" ]; then
-  if [ -t 0 ]; then
+  if [ "${USE_HTTPS:-}" = "0" ]; then
     echo ""
-    echo "▸ HTTPS：需域名 DNS（A/AAAA）已指向本机，且公网可访问 80（验证）与 443（HTTPS）。"
-    read -r -p "是否使用 Let's Encrypt（certbot）自动配置 HTTPS？[Y/n] " HTTPS_REPLY
-    case "${HTTPS_REPLY:-Y}" in
-      [yY][eE][sS]|[yY]|'') USE_HTTPS_RESOLVED=1 ;;
-      *) USE_HTTPS_RESOLVED=0 ;;
-    esac
-  else
-    if [ "${USE_HTTPS:-}" = "1" ]; then
-      USE_HTTPS_RESOLVED=1
-    else
-      USE_HTTPS_RESOLVED=0
+    echo "▸ USE_HTTPS=0，跳过自动申请证书（仅 HTTP）"
+    DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    if [ -n "$DOMAIN_RESOLVED" ]; then
+      echo "  将使用 DOMAIN=$DOMAIN_RESOLVED 生成 BASE_URL（http）"
     fi
-    echo "▸ 非交互模式：USE_HTTPS=${USE_HTTPS:-未设置} → $([ "$USE_HTTPS_RESOLVED" = "1" ] && echo 启用 Certbot || echo 跳过 HTTPS)"
-  fi
-
-  if [ "$USE_HTTPS_RESOLVED" = "1" ]; then
+    else
+    echo ""
+    echo "▸ HTTPS：将自动尝试 Let's Encrypt（DNS 预检 → certbot --dry-run → 正式签发），失败则使用 HTTP。"
+    echo "  需域名 DNS（A/AAAA）指向本机公网 IP（当前检测: $PUBLIC_IP），且公网可访问 80。"
     if [ -t 0 ]; then
       echo ""
-      read -r -p "域名（例如 releases.example.com，须已解析到本机）: " DOMAIN_INPUT
+      read -r -p "域名（留空则跳过 HTTPS 申请）: " DOMAIN_INPUT
       DOMAIN_RESOLVED="$(echo "${DOMAIN_INPUT:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-      read -r -p "Certbot 注册邮箱（Let's Encrypt 通知用）: " EMAIL_INPUT
+      read -r -p "Certbot 注册邮箱（可选，回车默认 admin@域名）: " EMAIL_INPUT
       CERTBOT_EMAIL_VAL="$(echo "${EMAIL_INPUT:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     else
       DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      if [ -z "$DOMAIN_RESOLVED" ]; then
+        HFN="$(hostname -f 2>/dev/null || true)"
+        if [ -n "$HFN" ] && [ "$HFN" != "localhost" ] && [[ "$HFN" == *.* ]]; then
+          DOMAIN_RESOLVED="$HFN"
+          echo "▸ 非交互：未设置 DOMAIN，使用 hostname -f: $DOMAIN_RESOLVED"
+        fi
+      else
+        echo "▸ 非交互：使用 DOMAIN=$DOMAIN_RESOLVED"
+      fi
       CERTBOT_EMAIL_VAL="$(echo "${CERTBOT_EMAIL:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    fi
+    if [ ! -t 0 ]; then
+      echo "▸ 非交互模式：USE_HTTPS=${USE_HTTPS:-未设置} → 尝试自动 HTTPS（USE_HTTPS=0 可关闭）"
     fi
 
     if [ -z "$DOMAIN_RESOLVED" ]; then
-      echo "⚠ 未填写域名，跳过 HTTPS。可稍后执行: sudo certbot --nginx -d 你的域名"
-      USE_HTTPS_RESOLVED=0
+      echo "⚠ 未配置域名，跳过 HTTPS。可稍后执行: sudo certbot --nginx -d 你的域名"
     else
       if [ -z "$CERTBOT_EMAIL_VAL" ]; then
         CERTBOT_EMAIL_VAL="admin@${DOMAIN_RESOLVED}"
         echo "▸ 使用默认 Certbot 邮箱: $CERTBOT_EMAIL_VAL"
       fi
 
-      echo "▸ 将 Nginx server_name 设为 $DOMAIN_RESOLVED 并申请证书..."
-      write_nginx_release_hub_config "$DOMAIN_RESOLVED"
-      if ! sudo nginx -t; then
-        echo "⚠ nginx -t 失败，恢复默认 server_name _"
-        write_nginx_release_hub_config "_"
-        sudo nginx -t && sudo systemctl reload nginx
-        USE_HTTPS_RESOLVED=0
+      if ! dns_resolves_to_public_ip "$DOMAIN_RESOLVED" "$PUBLIC_IP"; then
+        echo "⚠ DNS 记录未指向本机公网 IP（$PUBLIC_IP），跳过 certbot。请修正 DNS 后重新运行本脚本或手动: sudo certbot --nginx -d $DOMAIN_RESOLVED"
       else
-        sudo systemctl reload nginx
-        echo "▸ 安装 certbot 与 nginx 插件..."
-        if sudo apt-get install -y certbot python3-certbot-nginx; then
-          set +e
-          sudo certbot --nginx \
-            --non-interactive \
-            --agree-tos \
-            --email "$CERTBOT_EMAIL_VAL" \
-            -d "$DOMAIN_RESOLVED" \
-            --redirect
-          CERTBOT_EXIT=$?
-          set -e
-          if [ "$CERTBOT_EXIT" -eq 0 ]; then
-            HTTPS_ENABLED=1
-            echo "✓ HTTPS 已启用（Let's Encrypt）"
-          else
-            echo "⚠ certbot 失败（退出码 $CERTBOT_EXIT）。请检查 DNS、防火墙 80/443，或稍后手动:"
-            echo "    sudo certbot --nginx -d $DOMAIN_RESOLVED"
-            echo "▸ 恢复为 HTTP（server_name _）..."
-            write_nginx_release_hub_config "_"
-            sudo nginx -t && sudo systemctl reload nginx
-            DOMAIN_RESOLVED=""
-            USE_HTTPS_RESOLVED=0
-          fi
-        else
-          echo "⚠ certbot 安装失败，保持 HTTP"
+        echo "▸ DNS 预检通过（$DOMAIN_RESOLVED → $PUBLIC_IP）"
+        echo "▸ 将 Nginx server_name 设为 $DOMAIN_RESOLVED 并试签发..."
+        write_nginx_release_hub_config "$DOMAIN_RESOLVED"
+        if ! sudo nginx -t; then
+          echo "⚠ nginx -t 失败，恢复默认 server_name _"
           write_nginx_release_hub_config "_"
           sudo nginx -t && sudo systemctl reload nginx
-          DOMAIN_RESOLVED=""
-          USE_HTTPS_RESOLVED=0
+        else
+          sudo systemctl reload nginx
+          echo "▸ 安装 certbot 与 nginx 插件..."
+          if sudo apt-get install -y certbot python3-certbot-nginx; then
+            echo "▸ certbot --dry-run（staging，不占正式额度）..."
+            set +e
+            sudo certbot certonly --nginx \
+              --dry-run \
+              --non-interactive \
+              --agree-tos \
+              --email "$CERTBOT_EMAIL_VAL" \
+              -d "$DOMAIN_RESOLVED"
+            DRY_EXIT=$?
+            set -e
+            if [ "$DRY_EXIT" -ne 0 ]; then
+              echo "⚠ certbot dry-run 失败（退出码 $DRY_EXIT），不执行正式签发，恢复 HTTP（server_name _）"
+              write_nginx_release_hub_config "_"
+              sudo nginx -t && sudo systemctl reload nginx
+              echo "  保留域名 $DOMAIN_RESOLVED 用于 BASE_URL（http）。修复 DNS/防火墙后可重新运行 deploy.sh 或: sudo certbot --nginx -d $DOMAIN_RESOLVED"
+            else
+              echo "▸ dry-run 成功，正式申请证书并配置 HTTPS..."
+              set +e
+              sudo certbot --nginx \
+                --non-interactive \
+                --agree-tos \
+                --email "$CERTBOT_EMAIL_VAL" \
+                -d "$DOMAIN_RESOLVED" \
+                --redirect
+              CERTBOT_EXIT=$?
+              set -e
+              if [ "$CERTBOT_EXIT" -eq 0 ]; then
+                HTTPS_ENABLED=1
+                echo "✓ HTTPS 已启用（Let's Encrypt）"
+              else
+                echo "⚠ certbot 正式申请失败（退出码 $CERTBOT_EXIT），恢复 HTTP（server_name _）"
+                write_nginx_release_hub_config "_"
+                sudo nginx -t && sudo systemctl reload nginx
+                echo "  保留域名 $DOMAIN_RESOLVED 用于 BASE_URL（http）。可稍后: sudo certbot --nginx -d $DOMAIN_RESOLVED"
+              fi
+            fi
+          else
+            echo "⚠ certbot 安装失败，保持 HTTP（server_name _）"
+            write_nginx_release_hub_config "_"
+            sudo nginx -t && sudo systemctl reload nginx
+          fi
         fi
       fi
     fi
@@ -285,6 +325,12 @@ if [ ! -f "$ENV_FILE" ]; then
       BASE_URL_VAL="https://${DOMAIN_RESOLVED}/${NGINX_PREFIX_SLUG}"
     else
       BASE_URL_VAL="https://${DOMAIN_RESOLVED}"
+    fi
+  elif [ "$USE_NGINX_RESOLVED" = "1" ] && [ -n "$DOMAIN_RESOLVED" ]; then
+    if [ -n "$NGINX_PREFIX_SLUG" ]; then
+      BASE_URL_VAL="http://${DOMAIN_RESOLVED}/${NGINX_PREFIX_SLUG}"
+    else
+      BASE_URL_VAL="http://${DOMAIN_RESOLVED}"
     fi
   elif [ "$USE_NGINX_RESOLVED" = "1" ]; then
     if [ -n "$NGINX_PREFIX_SLUG" ]; then
@@ -311,6 +357,8 @@ else
   fi
   if [ "$HTTPS_ENABLED" = "1" ] && [ -n "$DOMAIN_RESOLVED" ]; then
     echo "  提示：本次已配置 HTTPS。请确认 BASE_URL 为 https://$DOMAIN_RESOLVED${NGINX_PREFIX_SLUG:+/$NGINX_PREFIX_SLUG}，必要时在后台「设置」中更新。"
+  elif [ "$NGINX_ENABLED" = "1" ] && [ -n "$DOMAIN_RESOLVED" ] && [ "$HTTPS_ENABLED" != "1" ]; then
+    echo "  提示：当前为 HTTP。若 BASE_URL 非 http://$DOMAIN_RESOLVED${NGINX_PREFIX_SLUG:+/$NGINX_PREFIX_SLUG}，请在「设置」中修改或编辑 $ENV_FILE 后: pm2 restart $SERVICE_NAME"
   fi
 fi
 
@@ -391,14 +439,26 @@ if [ "$HTTPS_ENABLED" = "1" ] && [ -n "$DOMAIN_RESOLVED" ]; then
   fi
   echo "  直连 Node（排障用）: http://$SERVER_IP:$PORT"
 elif [ "$NGINX_ENABLED" = "1" ]; then
-  if [ -n "$NGINX_PREFIX_SLUG" ]; then
-    echo "  管理后台（经 Nginx HTTP）: http://$SERVER_IP/${NGINX_PREFIX_SLUG}/"
+  if [ -n "$DOMAIN_RESOLVED" ]; then
+    if [ -n "$NGINX_PREFIX_SLUG" ]; then
+      echo "  管理后台（经 Nginx HTTP）: http://${DOMAIN_RESOLVED}/${NGINX_PREFIX_SLUG}/"
+      echo "  Tauri updater（公开）: http://${DOMAIN_RESOLVED}/${NGINX_PREFIX_SLUG}/releases/<appName>/latest.json"
+    else
+      echo "  管理后台（经 Nginx HTTP）: http://${DOMAIN_RESOLVED}/"
+      echo "  Tauri updater（公开）: http://${DOMAIN_RESOLVED}/releases/<appName>/latest.json"
+    fi
+    echo "  直连 Node（排障用）: http://$SERVER_IP:$PORT"
+    echo "  启用 HTTPS：修正 DNS/防火墙后重新运行 deploy.sh，或: sudo certbot --nginx -d $DOMAIN_RESOLVED"
+    echo "            成功后请在后台将 BASE_URL 改为 https://$DOMAIN_RESOLVED${NGINX_PREFIX_SLUG:+/$NGINX_PREFIX_SLUG}"
   else
-    echo "  管理后台（经 Nginx HTTP）: http://$SERVER_IP/"
+    if [ -n "$NGINX_PREFIX_SLUG" ]; then
+      echo "  管理后台（经 Nginx HTTP）: http://$SERVER_IP/${NGINX_PREFIX_SLUG}/"
+    else
+      echo "  管理后台（经 Nginx HTTP）: http://$SERVER_IP/"
+    fi
+    echo "  直连 Node（排障用）: http://$SERVER_IP:$PORT"
+    echo "  启用 HTTPS：设置 DOMAIN 后重新运行 deploy.sh，或: sudo certbot --nginx -d 你的域名"
   fi
-  echo "  直连 Node（排障用）: http://$SERVER_IP:$PORT"
-  echo "  启用 HTTPS：重新运行本脚本并选择 Certbot，或: sudo certbot --nginx -d 你的域名"
-  echo "            然后在后台将 BASE_URL 改为 https://你的域名"
 else
   echo "  管理后台：http://$SERVER_IP:$PORT"
 fi
