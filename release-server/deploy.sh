@@ -9,6 +9,7 @@
 #   USE_NGINX=0    不安装 Nginx
 #   SKIP_NGINX=1   等同于 USE_NGINX=0（兼容旧用法）
 #   NGINX_PREFIX   未设置时默认路径前缀 releasehub；显式 NGINX_PREFIX= 空字符串=整站根路径 /
+#   NGINX_SERVER_NAME / DOMAIN  Nginx 的 server_name（多站同机必填其一，勿与其它站点冲突；不写则回退为 _）
 #
 # HTTPS（Let's Encrypt + Certbot，仅在已启用 Nginx 时可用）：
 #   USE_HTTPS=0              不尝试证书（仅 HTTP）
@@ -26,18 +27,20 @@ PORT=3721
 NGINX_ENABLED=0
 HTTPS_ENABLED=0
 DOMAIN_RESOLVED=""
+# 多站并存：Nginx 不写 default_server；server_name 由 NGINX_SERVER_NAME / DOMAIN 或交互输入解析
+NGINX_SRV_NAME=""
 
 # 写入 /etc/nginx/sites-available/release-hub
-# $1 = server_name（域名或 _ 表示默认占位）
+# $1 = server_name（域名、多个空格分隔、或 _）
 write_nginx_release_hub_config() {
   local srv="${1:-_}"
   local NGINX_SITE="/etc/nginx/sites-available/release-hub"
   if [ -n "$NGINX_PREFIX_SLUG" ]; then
     sudo tee "$NGINX_SITE" > /dev/null <<NGX
-# Release Hub — 由 deploy.sh 生成；访问 http://本机/${NGINX_PREFIX_SLUG}/
+# Release Hub — 由 deploy.sh 生成；无 default_server 以便多站并存；访问 http://<server_name>/${NGINX_PREFIX_SLUG}/
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
+    listen 80;
+    listen [::]:80;
     server_name ${srv};
 
     client_max_body_size 500M;
@@ -59,10 +62,10 @@ server {
 NGX
   else
     sudo tee "$NGINX_SITE" > /dev/null <<NGX
-# Release Hub — 由 deploy.sh 生成，请勿手动改端口除非同步修改 Node PORT
+# Release Hub — 由 deploy.sh 生成；无 default_server 以便多站并存；请勿手动改端口除非同步修改 Node PORT
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
+    listen 80;
+    listen [::]:80;
     server_name ${srv};
 
     client_max_body_size 500M;
@@ -83,8 +86,6 @@ server {
 }
 NGX
   fi
-  # Ubuntu 默认站点也使用 default_server；必须关掉，否则与下方 release-hub 冲突（nginx: duplicate default server）
-  sudo rm -f /etc/nginx/sites-enabled/default
   sudo ln -sf "$NGINX_SITE" /etc/nginx/sites-enabled/release-hub
 }
 
@@ -186,11 +187,28 @@ if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   fi
 fi
 
+# ── Nginx server_name（多站同机：与其它 vhost 区分，不占用 default_server）──
+if [ "$USE_NGINX_RESOLVED" = "1" ]; then
+  NGINX_SRV_NAME="$(echo "${NGINX_SERVER_NAME:-${DOMAIN:-}}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  if [ -z "$NGINX_SRV_NAME" ] && [ -t 0 ]; then
+    echo ""
+    echo "  Nginx：多站并存时每个站点须有独立的 server_name（本配置不使用 default_server）。"
+    read -r -p "请输入 Release Hub 的 server_name（域名，可多个空格分隔；仅内网测试可填 _ 回车）: " _rh_sn_in
+    NGINX_SRV_NAME="$(echo "${_rh_sn_in:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  fi
+  if [ -z "$NGINX_SRV_NAME" ]; then
+    NGINX_SRV_NAME="_"
+    echo "⚠ 未设置 NGINX_SERVER_NAME 或 DOMAIN，Nginx server_name 为 _（多站同机请设置环境变量：NGINX_SERVER_NAME=你的域名）"
+  else
+    echo "▸ Nginx server_name: $NGINX_SRV_NAME"
+  fi
+fi
+
 # ── Nginx 反向代理 ─────────────────────────
 if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   echo "▸ 安装并配置 Nginx 反向代理..."
   if sudo apt-get update -qq && sudo apt-get install -y nginx; then
-    write_nginx_release_hub_config "_"
+    write_nginx_release_hub_config "$NGINX_SRV_NAME"
     if sudo nginx -t; then
       sudo systemctl enable nginx
       sudo systemctl reload nginx
@@ -295,8 +313,8 @@ if [ "$NGINX_ENABLED" = "1" ]; then
         echo "▸ 将 Nginx server_name 设为 $DOMAIN_RESOLVED 并试签发..."
         write_nginx_release_hub_config "$DOMAIN_RESOLVED"
         if ! sudo nginx -t; then
-          echo "⚠ nginx -t 失败，恢复默认 server_name _"
-          write_nginx_release_hub_config "_"
+          echo "⚠ nginx -t 失败，恢复 HTTP（server_name ${NGINX_SRV_NAME}）"
+          write_nginx_release_hub_config "$NGINX_SRV_NAME"
           sudo nginx -t && sudo systemctl reload nginx
         else
           sudo systemctl reload nginx
@@ -313,8 +331,8 @@ if [ "$NGINX_ENABLED" = "1" ]; then
             DRY_EXIT=$?
             set -e
             if [ "$DRY_EXIT" -ne 0 ]; then
-              echo "⚠ certbot dry-run 失败（退出码 $DRY_EXIT），不执行正式签发，恢复 HTTP（server_name _）"
-              write_nginx_release_hub_config "_"
+              echo "⚠ certbot dry-run 失败（退出码 $DRY_EXIT），不执行正式签发，恢复 HTTP（server_name ${NGINX_SRV_NAME}）"
+              write_nginx_release_hub_config "$NGINX_SRV_NAME"
               sudo nginx -t && sudo systemctl reload nginx
               echo "  保留域名 $DOMAIN_RESOLVED 用于 BASE_URL（http）。修复 DNS/防火墙后可重新运行 deploy.sh 或: sudo certbot --nginx -d $DOMAIN_RESOLVED"
             else
@@ -332,15 +350,15 @@ if [ "$NGINX_ENABLED" = "1" ]; then
                 HTTPS_ENABLED=1
                 echo "✓ HTTPS 已启用（Let's Encrypt）"
               else
-                echo "⚠ certbot 正式申请失败（退出码 $CERTBOT_EXIT），恢复 HTTP（server_name _）"
-                write_nginx_release_hub_config "_"
+                echo "⚠ certbot 正式申请失败（退出码 $CERTBOT_EXIT），恢复 HTTP（server_name ${NGINX_SRV_NAME}）"
+                write_nginx_release_hub_config "$NGINX_SRV_NAME"
                 sudo nginx -t && sudo systemctl reload nginx
                 echo "  保留域名 $DOMAIN_RESOLVED 用于 BASE_URL（http）。可稍后: sudo certbot --nginx -d $DOMAIN_RESOLVED"
               fi
             fi
           else
-            echo "⚠ certbot 安装失败，保持 HTTP（server_name _）"
-            write_nginx_release_hub_config "_"
+            echo "⚠ certbot 安装失败，保持 HTTP（server_name ${NGINX_SRV_NAME}）"
+            write_nginx_release_hub_config "$NGINX_SRV_NAME"
             sudo nginx -t && sudo systemctl reload nginx
           fi
         fi
