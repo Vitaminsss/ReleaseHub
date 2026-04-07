@@ -83,9 +83,8 @@ server {
 }
 NGX
   fi
-  if [ -L /etc/nginx/sites-enabled/default ]; then
-    sudo rm -f /etc/nginx/sites-enabled/default
-  fi
+  # Ubuntu 默认站点也使用 default_server；必须关掉，否则与下方 release-hub 冲突（nginx: duplicate default server）
+  sudo rm -f /etc/nginx/sites-enabled/default
   sudo ln -sf "$NGINX_SITE" /etc/nginx/sites-enabled/release-hub
 }
 
