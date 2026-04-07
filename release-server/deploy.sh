@@ -97,7 +97,9 @@ nginx_remove_stale_default_conf_for_domain() {
   fi
 }
 
-# 主 server 块：HTTP-only（幂等覆盖）。HTTPS 成功后会由 write_main_server_block_https 整体替换本文件
+# 主 server 块：HTTP-only。仅在文件不存在时创建（共存关键：不覆盖已有配置）
+# 若 HomePortal 已先运行并创建了该文件，此函数直接跳过，Release Hub 只添加自己的 location 片段
+# HTTPS 成功后会由 write_main_server_block_https 整体替换本文件
 ensure_main_server_block() {
   local sn
   local listen_directive
@@ -111,9 +113,16 @@ ensure_main_server_block() {
     listen_directive='    listen 80 default_server;
     listen [::]:80 default_server;'
   fi
+
+  if sudo test -f "$MAIN_NGINX_CONF"; then
+    echo "▸ 主 Nginx 配置已存在（可能由 HomePortal 创建），跳过以保持共存: $MAIN_NGINX_CONF"
+    echo "  （如需重建，请手动删除后重新运行: sudo rm -f $MAIN_NGINX_CONF && bash deploy.sh）"
+    return 0
+  fi
+
   echo "▸ 写入主 Nginx 配置（HTTP）: $MAIN_NGINX_CONF（server_name $sn）"
   sudo tee "$MAIN_NGINX_CONF" > /dev/null <<NGX
-# Release Hub — 主 server 块（由 deploy.sh 管理）；各服务 location 见 conf.d/locations/
+# HomePortal/ReleaseHub — 主 server 块（由 deploy.sh 管理）；各服务 location 见 conf.d/locations/
 server {
 ${listen_directive}
     server_name ${sn};
@@ -164,14 +173,16 @@ NGX
   fi
 }
 
-# certbot certonly 成功后写入：HTTP 仅跳转 HTTPS + 443 含 include locations（不让 certbot --nginx 改写配置导致丢反代）
+# certbot certonly 成功后写入：HTTP 仅跳转 HTTPS + 443 含 include locations
+# 不让 certbot --nginx 改写配置，避免丢失反代 location；80/443 server 块完全由本脚本自管
+# 写入后 conf.d/locations/ 下所有片段（HomePortal 的 / 与 Release Hub 的 /releasehub/）均自动生效
 write_main_server_block_https() {
   local dom="$1"
   local conf="${2:-$MAIN_NGINX_CONF}"
   [ -z "$dom" ] && return 1
   echo "▸ 写入 HTTPS 主配置: $conf（server_name $dom，由脚本自管 80/443）"
   sudo tee "$conf" > /dev/null <<NGX
-# Release Hub — HTTPS（certonly 后由 deploy.sh 写入）；各服务 location 见 conf.d/locations/
+# HomePortal/ReleaseHub — HTTPS（certonly 后由 deploy.sh 写入）；各服务 location 见 conf.d/locations/
 server {
     listen 80;
     listen [::]:80;

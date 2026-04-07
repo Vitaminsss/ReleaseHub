@@ -137,10 +137,9 @@ a.btn-icon{text-decoration:none}
 .tauri-section-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--purple);margin-bottom:12px}
 .tauri-config-json{background:var(--bg);border:1px solid var(--border-hairline);padding:10px;font-size:11px;font-family:monospace;color:var(--json-mono);overflow-x:auto;white-space:pre;line-height:1.55;margin-top:8px;border-radius:var(--radius-sm)}
 
-/* VERSION GRID — 宽屏每行最多 3 列，中屏 2 列 */
-.version-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:16px;align-items:start}
-@media(max-width:1320px){.version-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}}
-@media(max-width:700px){.version-grid{grid-template-columns:1fr}}
+/* VERSION GRID — 每行 2 列，窄屏 1 列 */
+.version-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px;align-items:start}
+@media(max-width:860px){.version-grid{grid-template-columns:1fr}}
 
 /* VERSION CARD - sketch layout: title bar / icon+name / desc */
 .vcard{border:1px solid var(--border-hairline);background:var(--bg1);transition:border-color .2s,box-shadow .2s,transform .2s;display:flex;flex-direction:column;border-radius:var(--radius);min-width:0;overflow:visible;position:relative;isolation:isolate}
@@ -177,17 +176,12 @@ a.btn-icon{text-decoration:none}
 .vcard-set-latest-btn{margin-left:auto;flex-shrink:0;white-space:nowrap;padding:3px 8px!important;font-size:10px!important;font-weight:600;letter-spacing:.02em;text-transform:none;gap:4px!important;line-height:1.2}
 .vcard-set-latest-btn .ico{width:12px!important;height:12px!important;min-width:12px}
 
-/* Notes / desc row */
-.vcard-notes{padding:8px 14px;font-size:13px;color:var(--text3);line-height:1.5;border-bottom:1px solid var(--border-hairline);min-height:36px}
-.vcard-notes.empty{font-style:italic;opacity:.5}
+/* Notes display inside card body */
+.vcard-notes{padding:8px 0 10px;font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.vcard-notes.empty{font-style:italic;color:var(--text3);opacity:.6}
 
-/* Expand toggle */
-.vcard-toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;cursor:pointer;font-size:11px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;user-select:none;transition:background .15s}
-.vcard-toggle:hover{background:var(--bg2);color:var(--text2)}
-.vcard-toggle-arrow{display:flex;align-items:center;transition:transform .2s}
-.vcard-toggle-arrow .ico{width:16px;height:16px;color:var(--text3)}
-.vcard-body{display:none;border-top:1px solid var(--border-hairline);background:var(--bg1);border-radius:0 0 var(--radius) var(--radius)}
-.vcard-body.open{display:block}
+/* Card body — always visible */
+.vcard-body{border-top:1px solid var(--border-hairline);background:var(--bg1);border-radius:0 0 var(--radius) var(--radius)}
 .vcard-body-inner{padding:12px 14px;min-width:0}
 
 /* File table — 固定操作列宽度，避免删除等按钮被挤没 */
@@ -730,6 +724,15 @@ async function renderApp(appName) {
     const nd = await api('GET', `/api/apps/${appName}/notes-drafts`);
     Object.entries(nd.drafts||{}).forEach(([ver,text]) => { S.notes[`${appName}::${ver}`] = text; });
   } catch {}
+  // Fallback: load notes from published latest.json for the released version
+  try {
+    const latest = await api('GET', `/api/apps/${appName}/latest`);
+    if (latest && latest.notes && latest.version) {
+      const pubVer = latest.version.startsWith('v') ? latest.version : 'v' + latest.version;
+      const k = `${appName}::${pubVer}`;
+      if (!S.notes[k]) S.notes[k] = latest.notes;
+    }
+  } catch {}
 
   const typePill = `<span class="type-pill ${repoType==='tauri'?'type-tauri':'type-general'}" style="font-size:10px;padding:2px 8px">${repoType==='tauri'?'Tauri':'通用'}</span>`;
   const latVer = appData?.latestVersion ? 'v'+appData.latestVersion : '未发布';
@@ -861,16 +864,11 @@ function renderVersionCard(appName, v, repoType) {
           : `<button type="button" class="btn btn-ghost btn-sm vcard-set-latest-btn" onclick="publishVersion('${appName}','${v.version}','${repoType}')">${Ico.refresh}<span>重新发布</span></button>`
         }
       </div>
-      <!-- Notes row -->
-      <div class="vcard-notes ${!notes?'empty':''}">${notes ? esc(notes) : '暂无版本说明'}</div>
-      <!-- Expand toggle -->
-      <div class="vcard-toggle" onclick="toggleCard('${v.version}')">
-        <span>文件 &amp; 发布设置</span>
-        <span class="vcard-toggle-arrow" id="arrow-${v.version}" style="transform:rotate(180deg)">${Ico.chevronDown}</span>
-      </div>
       <!-- Body -->
-      <div class="vcard-body open" id="vbody-${v.version}">
+      <div class="vcard-body" id="vbody-${v.version}">
         <div class="vcard-body-inner">
+          <!-- Notes display -->
+          <div class="vcard-notes ${!notes?'empty':''}" id="vnotes-${v.version}">${notes ? esc(notes) : '暂无版本说明'}</div>
           ${files.length > 0 ? renderFileTable(appName, v, files) : ''}
           <!-- Upload -->
           <div class="upload-zone" id="upload-${v.version}"
@@ -928,12 +926,6 @@ function renderFileTable(appName, v, files) {
     </div>`;
 }
 
-function toggleCard(ver) {
-  const body = $(`vbody-${ver}`);
-  const arrow = $(`arrow-${ver}`);
-  const open = body.classList.toggle('open');
-  if (arrow) arrow.style.transform = open ? 'rotate(180deg)' : '';
-}
 
 // ── NOTES BINDING ────────────────────────────────────
 function bindNotes(appName, versions) {
@@ -942,8 +934,7 @@ function bindNotes(appName, versions) {
     if (e.target.tagName!=='TEXTAREA' || !e.target.id.startsWith('notes-')) return;
     const ver = e.target.id.slice(6);
     scheduleNote(appName, ver, e.target.value);
-    // update the notes preview in card header
-    const notesDiv = document.querySelector(`#vcard-${ver} .vcard-notes`);
+    const notesDiv = $('vnotes-' + ver);
     if (notesDiv) {
       notesDiv.textContent = e.target.value || '暂无版本说明';
       notesDiv.className = 'vcard-notes' + (e.target.value ? '' : ' empty');
@@ -953,7 +944,15 @@ function bindNotes(appName, versions) {
     const ta = $('notes-'+v.version);
     if (!ta) return;
     const k = `${appName}::${v.version}`;
-    if (S.notes[k] !== undefined) ta.value = S.notes[k];
+    const text = S.notes[k];
+    if (text !== undefined) {
+      ta.value = text;
+      const notesDiv = $('vnotes-' + v.version);
+      if (notesDiv) {
+        notesDiv.textContent = text || '暂无版本说明';
+        notesDiv.className = 'vcard-notes' + (text ? '' : ' empty');
+      }
+    }
   });
 }
 

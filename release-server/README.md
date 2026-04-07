@@ -34,7 +34,7 @@ Tauri 应用发布管理后台：多应用、多版本、文件上传、`latest.
   ```
    勿依赖 `hostname -f`（云主机常为内网名，与证书域名无关）。
 
-脚本顺序为：**DNS 预检** → `certbot certonly --nginx --dry-run` → 通过后正式 **`certbot certonly --nginx`（只签发证书，不改 Nginx）**，再由脚本写入 **80 跳转 + 443 含 `include .../locations/`**。任一步失败则保持 **HTTP**，部署不中断；修好 DNS 后可再次运行 `deploy.sh`。勿使用会改写整站配置的 `certbot --nginx --redirect`，否则易丢失反代导致域名 **502**。
+脚本顺序为：**DNS 预检** → `certbot certonly --nginx --dry-run` → 通过后正式 `**certbot certonly --nginx`（只签发证书，不改 Nginx）**，再由脚本写入 **80 跳转 + 443 含 `include .../locations/`**。任一步失败则保持 **HTTP**，部署不中断；修好 DNS 后可再次运行 `deploy.sh`。勿使用会改写整站配置的 `certbot --nginx --redirect`，否则易丢失反代导致域名 **502**。
 
 跳过自动申请证书（仅 HTTP，仍可用 `DOMAIN` 生成 `BASE_URL`）：
 
@@ -55,7 +55,7 @@ bash deploy.sh
 
 ### Nginx 与环境变量
 
-默认**不询问**；安装 **Nginx**（HTTP 80 反代到本机 `:3721`）；路径前缀默认为 `**releasehub`**（访问 `http://<公网IP>/releasehub/`）。**HTTPS** 在未设置 `USE_HTTPS=0` 且已安装 Nginx 时**自动尝试** Let's Encrypt（需 `DOMAIN` 与 DNS，见上文「启用 HTTPS」）。
+默认**不询问**；安装 **Nginx**（HTTP 80 反代到本机 `:3721`）；路径前缀默认为 `**releasehub`**（访问 `http://<公网IP>/releasehub/`）。HTTPS 在未设置 `USE_HTTPS=0` 且已安装 Nginx 时**自动尝试** Let's Encrypt（需 `DOMAIN` 与 DNS，见上文「启用 HTTPS」）。
 
 
 | 变量              | 含义                                                                                                                           |
@@ -244,7 +244,7 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 
 - 由 `deploy.sh` 生成：**主配置** `/etc/nginx/conf.d/<根域标签>.conf`，**Release Hub 片段** `/etc/nginx/conf.d/locations/release-hub.conf`（详见上文「部署结果摘要」）。
 - 若日志出现 `conflicting server name "_"` 或 **502**（且 `pm2 status` 正常）：多为旧配置与发行版 `sites-enabled/default` 冲突。执行 `sudo rm -f /etc/nginx/sites-enabled/default`，再删除有问题的 `/etc/nginx/conf.d/_default.conf`（或对应主配置）后重新运行 `deploy.sh`，或手动为无域名站点加上 `listen 80 default_server` 并 `nginx -t`。
-- **HTTP 正常、HTTPS 502**（`curl http://localhost:3721/` 为 200）：多为曾用 **`certbot --nginx` 改写配置**，导致 80/443 的 `server` 里丢了 `include /etc/nginx/conf.d/locations/*.conf;`。当前脚本已改为 **`certbot certonly` + 自管 80/443**；若仍为旧配置，请重新运行 `bash deploy.sh`，或手动在 443 的 `server { }` 内补上上述 `include` 后 `sudo nginx -t && sudo systemctl reload nginx`。
+- **HTTP 正常、HTTPS 502**（`curl http://localhost:3721/` 为 200）：多为曾用 `**certbot --nginx` 改写配置**，导致 80/443 的 `server` 里丢了 `include /etc/nginx/conf.d/locations/*.conf;`。当前脚本已改为 `**certbot certonly` + 自管 80/443**；若仍为旧配置，请重新运行 `bash deploy.sh`，或手动在 443 的 `server { }` 内补上上述 `include` 后 `sudo nginx -t && sudo systemctl reload nginx`。
 - 重载：`sudo nginx -t && sudo systemctl reload nginx`
 - 仓库内 [nginx.conf](nginx.conf) 可供对照与手工覆盖（域名等）
 - 一键部署已包含 **DNS 预检 → certbot certonly dry-run → 正式 certonly → 脚本写入 80/443**，失败则保持 HTTP；详见上文「启用 HTTPS」与「HTTPS 自动试签发」。
