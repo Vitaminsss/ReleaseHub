@@ -125,7 +125,7 @@ write_release_hub_location() {
     sudo tee "$loc_path" > /dev/null <<NGX
 # Release Hub — 由 deploy.sh 管理
 location /${NGINX_PREFIX_SLUG}/ {
-    proxy_pass http://127.0.0.1:${PORT}/;
+    proxy_pass http://localhost:${PORT}/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
     proxy_set_header Connection "upgrade";
@@ -141,7 +141,7 @@ NGX
     sudo tee "$loc_path" > /dev/null <<NGX
 # Release Hub — 由 deploy.sh 管理（整站根路径）
 location / {
-    proxy_pass http://127.0.0.1:${PORT};
+    proxy_pass http://localhost:${PORT};
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
     proxy_set_header Connection "upgrade";
@@ -154,6 +154,105 @@ location / {
 }
 NGX
   fi
+}
+
+# certbot --nginx 常单独生成 443 server 块，但不带 include locations → HTTPS 访问 502；在含 listen 443 的 server 块内补全
+# 返回 0=已修补或无需修补；1=失败
+nginx_fix_certbot_443_missing_locations_all() {
+  if ! command -v python3 &>/dev/null; then
+    echo "⚠ 未找到 python3，无法自动修补 HTTPS 配置。请在 443 的 server { } 内手动加入:"
+    echo "    include /etc/nginx/conf.d/locations/*.conf;"
+    return 1
+  fi
+  local f patched=0
+  local st
+  while IFS= read -r -d '' f; do
+    sudo grep -qE 'listen.*443' "$f" 2>/dev/null || continue
+    sudo grep -q 'ssl_certificate' "$f" 2>/dev/null || continue
+    sudo cp -a "$f" "${f}.bak.releasehub" 2>/dev/null || true
+    set +e
+    sudo python3 - "$f" <<'PY'
+import re
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        text = fh.read()
+except OSError as e:
+    print(e, file=sys.stderr)
+    sys.exit(2)
+
+if "443" not in text:
+    sys.exit(0)
+
+def patch_servers(s: str) -> str:
+    pos = 0
+    out = []
+    while pos < len(s):
+        idx = s.find("server {", pos)
+        if idx == -1:
+            out.append(s[pos:])
+            break
+        out.append(s[pos:idx])
+        brace_open = s.find("{", idx)
+        depth = 0
+        j = brace_open
+        while j < len(s):
+            if s[j] == "{":
+                depth += 1
+            elif s[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    block = s[idx : j + 1]
+                    if re.search(r"listen\s+(?:\[::\]:)?443\b", block) and "ssl" in block:
+                        if "include /etc/nginx/conf.d/locations" not in block:
+                            inner = block[:-1].rstrip()
+                            ins = "\n    client_max_body_size 500M;\n    client_body_timeout 300s;\n    include /etc/nginx/conf.d/locations/*.conf;\n"
+                            block = inner + ins + "}"
+                    out.append(block)
+                    pos = j + 1
+                    break
+            j += 1
+        else:
+            out.append(s[pos:])
+            break
+    return "".join(out)
+
+new_text = patch_servers(text)
+if new_text != text:
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(new_text)
+    sys.exit(3)
+sys.exit(0)
+PY
+    st=$?
+    set -e
+    if [ "$st" -eq 3 ]; then
+      patched=1
+    elif [ "$st" -eq 2 ]; then
+      echo "⚠ 无法读取/写入: $f"
+      return 1
+    elif [ "$st" -ne 0 ]; then
+      echo "⚠ python 异常退出: $st ($f)"
+      return 1
+    fi
+  done < <(sudo find /etc/nginx/conf.d -maxdepth 1 -name '*.conf' -type f -print0 2>/dev/null)
+
+  if [ "$patched" != "1" ]; then
+    return 0
+  fi
+  if sudo nginx -t 2>/dev/null; then
+    echo "▸ 已补全 443 server 中的 include locations（修复 Certbot 漏掉的反代）"
+    sudo systemctl reload nginx
+    return 0
+  fi
+  echo "⚠ 修补后 nginx -t 失败，正在从 *.bak.releasehub 还原 conf.d 下刚备份的文件"
+  while IFS= read -r -d '' f; do
+    sudo test -f "${f}.bak.releasehub" && sudo cp -a "${f}.bak.releasehub" "$f"
+  done < <(sudo find /etc/nginx/conf.d -maxdepth 1 -name '*.conf' -type f -print0 2>/dev/null)
+  sudo nginx -t || true
+  return 1
 }
 
 # DNS 预检：域名 A/AAAA 是否包含本机公网 IP。返回 0=可继续试签发；1=已知不匹配应跳过 certbot
@@ -260,15 +359,15 @@ if [ "$USE_NGINX_RESOLVED" = "1" ]; then
       NGINX_ENABLED=1
       if [ -n "$NGINX_PREFIX_SLUG" ]; then
         if [ -n "$DOMAIN_RESOLVED" ] && ! domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
-          echo "✓ Nginx 已启用（http://${DOMAIN_RESOLVED}/${NGINX_PREFIX_SLUG}/ → 127.0.0.1:${PORT}）"
+          echo "✓ Nginx 已启用（http://${DOMAIN_RESOLVED}/${NGINX_PREFIX_SLUG}/ → localhost:${PORT}）"
         else
-          echo "✓ Nginx 已启用（http://${PUBLIC_IP}/${NGINX_PREFIX_SLUG}/ → 127.0.0.1:${PORT}）"
+          echo "✓ Nginx 已启用（http://${PUBLIC_IP}/${NGINX_PREFIX_SLUG}/ → localhost:${PORT}）"
         fi
       else
         if [ -n "$DOMAIN_RESOLVED" ] && ! domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
-          echo "✓ Nginx 已启用（http://${DOMAIN_RESOLVED}/ → 127.0.0.1:${PORT}）"
+          echo "✓ Nginx 已启用（http://${DOMAIN_RESOLVED}/ → localhost:${PORT}）"
         else
-          echo "✓ Nginx 已启用（http://${PUBLIC_IP}/ → 127.0.0.1:${PORT}）"
+          echo "✓ Nginx 已启用（http://${PUBLIC_IP}/ → localhost:${PORT}）"
         fi
       fi
     else
@@ -353,6 +452,11 @@ else
       fi
     fi
   fi
+fi
+
+# Certbot 的 443 server 常不含 include locations → HTTPS 502；幂等修补（含历史错误部署）
+if [ "$NGINX_ENABLED" = "1" ]; then
+  nginx_fix_certbot_443_missing_locations_all || echo "⚠ 若 HTTPS 仍 502，请检查 443 块是否含: include /etc/nginx/conf.d/locations/*.conf;"
 fi
 
 # ── 配置环境变量 ─────────────────────────
