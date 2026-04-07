@@ -9,7 +9,10 @@
 #   USE_NGINX=0    不安装 Nginx
 #   SKIP_NGINX=1   等同于 USE_NGINX=0（兼容旧用法）
 #   NGINX_PREFIX   未设置时默认路径前缀 releasehub；显式 NGINX_PREFIX= 空字符串=整站根路径 /
-#   NGINX_SERVER_NAME / DOMAIN  Nginx 的 server_name（多站同机必填其一，勿与其它站点冲突；不写则回退为 _）
+#   NGINX_SERVER_NAME / DOMAIN  可覆盖 Nginx 的 server_name（默认 releaseshub.local；与 UNIFIED 二选一逻辑见下）
+#   UNIFIED_NGINX=1  与 HomePortal 等同域名不同路径时：只写片段到 snippets/unified.d/，共用一个 server（须 UNIFIED_SERVER_NAME）
+#   UNIFIED_SERVER_NAME  统一站点对外域名（如 www.example.com），与证书/Certbot 域名一致
+#   UNIFIED_SNIPPET_DIR / UNIFIED_SITE_FILE  可选，见脚本内默认值
 #
 # HTTPS（Let's Encrypt + Certbot，仅在已启用 Nginx 时可用）：
 #   USE_HTTPS=0              不尝试证书（仅 HTTP）
@@ -27,13 +30,18 @@ PORT=3721
 NGINX_ENABLED=0
 HTTPS_ENABLED=0
 DOMAIN_RESOLVED=""
-# 多站并存：Nginx 不写 default_server；server_name 由 NGINX_SERVER_NAME / DOMAIN 或交互输入解析
+# 多站并存：Nginx 不写 default_server；server_name 默认 releaseshub.local，可用 NGINX_SERVER_NAME / DOMAIN 覆盖
 NGINX_SRV_NAME=""
+RELEASE_HUB_DEFAULT_SERVER_NAME="releaseshub.local"
+UNIFIED_NGINX="${UNIFIED_NGINX:-0}"
+UNIFIED_SNIPPET_DIR="${UNIFIED_SNIPPET_DIR:-/etc/nginx/snippets/unified.d}"
+UNIFIED_SITE_AVAILABLE="${UNIFIED_SITE_FILE:-/etc/nginx/sites-available/unified-apps.conf}"
+UNIFIED_SITE_LINK="${UNIFIED_SITE_ENABLED_NAME:-unified-apps}"
 
 # 写入 /etc/nginx/sites-available/release-hub
-# $1 = server_name（域名、多个空格分隔、或 _）
+# $1 = server_name（域名、多个空格分隔；默认 releaseshub.local）
 write_nginx_release_hub_config() {
-  local srv="${1:-_}"
+  local srv="${1:-$RELEASE_HUB_DEFAULT_SERVER_NAME}"
   local NGINX_SITE="/etc/nginx/sites-available/release-hub"
   if [ -n "$NGINX_PREFIX_SLUG" ]; then
     sudo tee "$NGINX_SITE" > /dev/null <<NGX
@@ -87,6 +95,47 @@ server {
 NGX
   fi
   sudo ln -sf "$NGINX_SITE" /etc/nginx/sites-enabled/release-hub
+}
+
+# 统一 Nginx：共用一个 server，仅 HTTP；HTTPS 由 certbot 对 unified-apps 处理
+ensure_unified_nginx_umbrella_http() {
+  local sn="$1"
+  sudo mkdir -p "$UNIFIED_SNIPPET_DIR"
+  if [ ! -f "$UNIFIED_SITE_AVAILABLE" ]; then
+    sudo tee "$UNIFIED_SITE_AVAILABLE" > /dev/null <<UMB
+# 统一多应用 — 首次生成；子应用仅在 ${UNIFIED_SNIPPET_DIR} 下维护片段；勿删 include
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${sn};
+
+    client_max_body_size 500M;
+    client_body_timeout 300s;
+
+    include ${UNIFIED_SNIPPET_DIR}/*.conf;
+}
+UMB
+  fi
+  sudo ln -sf "$UNIFIED_SITE_AVAILABLE" "/etc/nginx/sites-enabled/${UNIFIED_SITE_LINK}.conf"
+}
+
+write_nginx_release_hub_unified_snippet() {
+  sudo mkdir -p "$UNIFIED_SNIPPET_DIR"
+  sudo tee "${UNIFIED_SNIPPET_DIR}/10-release-hub.conf" > /dev/null <<SNIP
+# Release Hub — 片段（deploy.sh）
+location /${NGINX_PREFIX_SLUG}/ {
+    proxy_pass http://127.0.0.1:${PORT}/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+}
+SNIP
 }
 
 # DNS 预检：域名 A/AAAA 是否包含本机公网 IP。返回 0=可继续试签发；1=已知不匹配应跳过 certbot
@@ -187,20 +236,25 @@ if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   fi
 fi
 
-# ── Nginx server_name（多站同机：与其它 vhost 区分，不占用 default_server）──
+# ── Nginx server_name ──
 if [ "$USE_NGINX_RESOLVED" = "1" ]; then
-  NGINX_SRV_NAME="$(echo "${NGINX_SERVER_NAME:-${DOMAIN:-}}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-  if [ -z "$NGINX_SRV_NAME" ] && [ -t 0 ]; then
-    echo ""
-    echo "  Nginx：多站并存时每个站点须有独立的 server_name（本配置不使用 default_server）。"
-    read -r -p "请输入 Release Hub 的 server_name（域名，可多个空格分隔；仅内网测试可填 _ 回车）: " _rh_sn_in
-    NGINX_SRV_NAME="$(echo "${_rh_sn_in:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-  fi
-  if [ -z "$NGINX_SRV_NAME" ]; then
-    NGINX_SRV_NAME="_"
-    echo "⚠ 未设置 NGINX_SERVER_NAME 或 DOMAIN，Nginx server_name 为 _（多站同机请设置环境变量：NGINX_SERVER_NAME=你的域名）"
+  if [ "$UNIFIED_NGINX" = "1" ]; then
+    NGINX_SRV_NAME="$(echo "${UNIFIED_SERVER_NAME:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    if [ -z "$NGINX_SRV_NAME" ]; then
+      echo "错误: UNIFIED_NGINX=1 时必须设置 UNIFIED_SERVER_NAME（与浏览器访问域名一致，如 www.example.com）" >&2
+      exit 1
+    fi
+    if [ -z "$NGINX_PREFIX_SLUG" ]; then
+      echo "错误: 统一 Nginx 模式下请保留路径前缀（默认 releasehub），勿将 NGINX_PREFIX 置空，以免与其它应用的 location / 冲突" >&2
+      exit 1
+    fi
+    echo "▸ 统一 Nginx：server_name=$NGINX_SRV_NAME · 片段 ${UNIFIED_SNIPPET_DIR}/10-release-hub.conf · 主配置 $UNIFIED_SITE_AVAILABLE"
   else
-    echo "▸ Nginx server_name: $NGINX_SRV_NAME"
+    NGINX_SRV_NAME="$(echo "${NGINX_SERVER_NAME:-${DOMAIN:-}}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    if [ -z "$NGINX_SRV_NAME" ]; then
+      NGINX_SRV_NAME="$RELEASE_HUB_DEFAULT_SERVER_NAME"
+    fi
+    echo "▸ Nginx server_name: $NGINX_SRV_NAME（覆盖：NGINX_SERVER_NAME 或 DOMAIN）"
   fi
 fi
 
@@ -208,15 +262,24 @@ fi
 if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   echo "▸ 安装并配置 Nginx 反向代理..."
   if sudo apt-get update -qq && sudo apt-get install -y nginx; then
-    write_nginx_release_hub_config "$NGINX_SRV_NAME"
+    if [ "$UNIFIED_NGINX" = "1" ]; then
+      ensure_unified_nginx_umbrella_http "$NGINX_SRV_NAME"
+      write_nginx_release_hub_unified_snippet
+      sudo rm -f /etc/nginx/sites-enabled/release-hub
+    else
+      write_nginx_release_hub_config "$NGINX_SRV_NAME"
+    fi
     if sudo nginx -t; then
       sudo systemctl enable nginx
       sudo systemctl reload nginx
       NGINX_ENABLED=1
       if [ -n "$NGINX_PREFIX_SLUG" ]; then
-        echo "✓ Nginx 已启用（http://<IP>/${NGINX_PREFIX_SLUG}/ → 127.0.0.1:${PORT}）"
+        echo "✓ Nginx 已启用（http://${NGINX_SRV_NAME}/${NGINX_PREFIX_SLUG}/ → 127.0.0.1:${PORT}）"
       else
-        echo "✓ Nginx 已启用（HTTP 80 → 127.0.0.1:${PORT}）"
+        echo "✓ Nginx 已启用（http://${NGINX_SRV_NAME}/ → 127.0.0.1:${PORT}）"
+      fi
+      if [ "$UNIFIED_NGINX" = "1" ]; then
+        echo "  （统一站点：与 HomePortal 共用 $UNIFIED_SITE_AVAILABLE；Certbot 请对同一域名执行）"
       fi
     else
       echo "⚠ nginx -t 失败，请检查配置后手动执行: sudo nginx -t && sudo systemctl reload nginx"
@@ -311,10 +374,26 @@ if [ "$NGINX_ENABLED" = "1" ]; then
       else
         echo "▸ DNS 预检通过（$DOMAIN_RESOLVED → $PUBLIC_IP）"
         echo "▸ 将 Nginx server_name 设为 $DOMAIN_RESOLVED 并试签发..."
-        write_nginx_release_hub_config "$DOMAIN_RESOLVED"
+        if [ "$UNIFIED_NGINX" = "1" ]; then
+          write_nginx_release_hub_unified_snippet
+          if [ -f "$UNIFIED_SITE_AVAILABLE" ]; then
+            sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${DOMAIN_RESOLVED};/" "$UNIFIED_SITE_AVAILABLE"
+          else
+            ensure_unified_nginx_umbrella_http "$DOMAIN_RESOLVED"
+          fi
+        else
+          write_nginx_release_hub_config "$DOMAIN_RESOLVED"
+        fi
         if ! sudo nginx -t; then
           echo "⚠ nginx -t 失败，恢复 HTTP（server_name ${NGINX_SRV_NAME}）"
-          write_nginx_release_hub_config "$NGINX_SRV_NAME"
+          if [ "$UNIFIED_NGINX" = "1" ]; then
+            write_nginx_release_hub_unified_snippet
+            if [ -f "$UNIFIED_SITE_AVAILABLE" ]; then
+              sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${NGINX_SRV_NAME};/" "$UNIFIED_SITE_AVAILABLE"
+            fi
+          else
+            write_nginx_release_hub_config "$NGINX_SRV_NAME"
+          fi
           sudo nginx -t && sudo systemctl reload nginx
         else
           sudo systemctl reload nginx
@@ -332,7 +411,12 @@ if [ "$NGINX_ENABLED" = "1" ]; then
             set -e
             if [ "$DRY_EXIT" -ne 0 ]; then
               echo "⚠ certbot dry-run 失败（退出码 $DRY_EXIT），不执行正式签发，恢复 HTTP（server_name ${NGINX_SRV_NAME}）"
-              write_nginx_release_hub_config "$NGINX_SRV_NAME"
+              if [ "$UNIFIED_NGINX" = "1" ]; then
+                write_nginx_release_hub_unified_snippet
+                [ -f "$UNIFIED_SITE_AVAILABLE" ] && sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${NGINX_SRV_NAME};/" "$UNIFIED_SITE_AVAILABLE"
+              else
+                write_nginx_release_hub_config "$NGINX_SRV_NAME"
+              fi
               sudo nginx -t && sudo systemctl reload nginx
               echo "  保留域名 $DOMAIN_RESOLVED 用于 BASE_URL（http）。修复 DNS/防火墙后可重新运行 deploy.sh 或: sudo certbot --nginx -d $DOMAIN_RESOLVED"
             else
@@ -351,14 +435,24 @@ if [ "$NGINX_ENABLED" = "1" ]; then
                 echo "✓ HTTPS 已启用（Let's Encrypt）"
               else
                 echo "⚠ certbot 正式申请失败（退出码 $CERTBOT_EXIT），恢复 HTTP（server_name ${NGINX_SRV_NAME}）"
-                write_nginx_release_hub_config "$NGINX_SRV_NAME"
+                if [ "$UNIFIED_NGINX" = "1" ]; then
+                  write_nginx_release_hub_unified_snippet
+                  [ -f "$UNIFIED_SITE_AVAILABLE" ] && sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${NGINX_SRV_NAME};/" "$UNIFIED_SITE_AVAILABLE"
+                else
+                  write_nginx_release_hub_config "$NGINX_SRV_NAME"
+                fi
                 sudo nginx -t && sudo systemctl reload nginx
                 echo "  保留域名 $DOMAIN_RESOLVED 用于 BASE_URL（http）。可稍后: sudo certbot --nginx -d $DOMAIN_RESOLVED"
               fi
             fi
           else
             echo "⚠ certbot 安装失败，保持 HTTP（server_name ${NGINX_SRV_NAME}）"
-            write_nginx_release_hub_config "$NGINX_SRV_NAME"
+            if [ "$UNIFIED_NGINX" = "1" ]; then
+              write_nginx_release_hub_unified_snippet
+              [ -f "$UNIFIED_SITE_AVAILABLE" ] && sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${NGINX_SRV_NAME};/" "$UNIFIED_SITE_AVAILABLE"
+            else
+              write_nginx_release_hub_config "$NGINX_SRV_NAME"
+            fi
             sudo nginx -t && sudo systemctl reload nginx
           fi
         fi
