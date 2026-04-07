@@ -19,6 +19,29 @@ Tauri 应用发布管理后台：多应用、多版本、文件上传、`latest.
 - 具有 `sudo` 权限
 - 在**仓库根目录**执行（`deploy.sh` 与 `server.js` 同级）；程序与 `**releases/`**、`**.env`** 均放在该目录下，**不再使用** `/opt/release-hub`。
 
+### 启用 HTTPS（Let's Encrypt）— 部署前必读
+
+`deploy.sh` 会在满足条件时**自动**申请证书，**无交互提问**。若要 HTTPS 一次成功，请先完成：
+
+1. **DNS**：将域名的 **A 记录**（或 AAAA）指向本服务器的公网 IP，并等待生效（通常数分钟至半小时）。可用下面命令检查（将 `your-domain.com` 换成你的域名）：
+   ```bash
+   dig +short your-domain.com A
+   ```
+2. **端口**：确保本机 **80** 端口对公网开放（Let's Encrypt HTTP-01 验证需要；443 在证书签发成功后由脚本提示放行防火墙，若你自行管理防火墙请一并放行）。
+3. **传入域名**：部署时通过环境变量指定公网域名，例如：
+   ```bash
+   DOMAIN=www.example.com bash deploy.sh
+   ```
+   勿依赖 `hostname -f`（云主机常为内网名，与证书域名无关）。
+
+脚本顺序为：**DNS 预检** → `certbot certonly --nginx --dry-run` → 通过后正式 `certbot --nginx --redirect`。任一步失败则保持 **HTTP**，部署不中断；修好 DNS 后可再次运行 `deploy.sh`，或手动执行 `sudo certbot --nginx -d 你的域名`。
+
+跳过自动申请证书（仅 HTTP，仍可用 `DOMAIN` 生成 `BASE_URL`）：
+
+```bash
+USE_HTTPS=0 DOMAIN=www.example.com bash deploy.sh
+```
+
 ### 步骤
 
 ```bash
@@ -32,45 +55,41 @@ bash deploy.sh
 
 ### Nginx 与环境变量
 
-默认**不询问**是否安装 Nginx、路径前缀（见下表）；**HTTPS** 在**交互式终端**且**未设置** `USE_HTTPS` 时，会询问是否使用 HTTPS，选「是」则**只提示输入一次域名**（若已 `export DOMAIN=...`，可作为默认值回车使用）。非交互（CI / 管道）或已设置 `USE_HTTPS=0` / `USE_HTTPS=1` 时不提问。
-
-**默认行为**：安装 **Nginx**（HTTP 80 反代到本机 `:3721`）；HTTP 路径前缀默认为 **`releasehub`**（访问 `http://<公网IP>/releasehub/`）。不需要 Nginx 时显式关闭。
+默认**不询问**；安装 **Nginx**（HTTP 80 反代到本机 `:3721`）；路径前缀默认为 **`releasehub`**（访问 `http://<公网IP>/releasehub/`）。**HTTPS** 在未设置 `USE_HTTPS=0` 且已安装 Nginx 时**自动尝试** Let's Encrypt（需 `DOMAIN` 与 DNS，见上文「启用 HTTPS」）。
 
 | 变量             | 含义                                                                  |
 | -------------- | ------------------------------------------------------------------- |
 | `USE_NGINX=0`  | **不**安装 Nginx（直连 `http://<公网IP>:3721`） |
 | `SKIP_NGINX=1` | 与 `USE_NGINX=0` 相同（兼容旧用法） |
-| 未设置 `USE_NGINX` | **默认安装 Nginx**（交互与非交互一致） |
+| 未设置 `USE_NGINX` | **默认安装 Nginx** |
 | `NGINX_PREFIX` | **HTTP 路径前缀**（仅字母数字 `_` `-`）。**未设置**时默认为 `releasehub`；**显式设为空** `NGINX_PREFIX=` 表示整站根路径 `/`；其他值如 `NGINX_PREFIX=my-app` 会覆盖默认 |
 | `USE_HTTPS=0` | 不尝试证书（仅 HTTP）；可配合 `DOMAIN` 生成 **BASE_URL** |
-| `USE_HTTPS=1` | **不提问**：按环境变量 `DOMAIN` / `hostname` 自动试签发（见「HTTPS 自动试签发」） |
-| `USE_HTTPS` **未设置** | **交互终端**：询问是否 HTTPS，选是则输入一次域名；**非交互**：与 `USE_HTTPS=1` 相同，自动试签发 |
-| `DOMAIN` | **公网域名**（如 `www.example.com`），须与 DNS 一致；**务必设置**，勿依赖 `hostname -f`。`*.local` / `*.lan` 等内网保留名会被忽略，此时 **BASE_URL** 用公网 IP |
+| 未设置 `USE_HTTPS` | 在已装 Nginx 时自动尝试签发（见「HTTPS 自动试签发」） |
+| `DOMAIN` | **公网域名**（如 `www.example.com`），须与 DNS 一致；**建议显式设置**。未设置时脚本会尝试 `hostname -f`（非内网保留名时采用）。`*.local` / `*.lan` 等内网保留名会被忽略 |
 | `CERTBOT_EMAIL` | Let's Encrypt 注册邮箱（可选；缺省为 `admin@域名`） |
 
 ```bash
-bash deploy.sh   # 交互：可选 HTTPS 并输入域名；非交互：Nginx + releasehub + 自动 HTTPS 试签发（见 DOMAIN）
-USE_HTTPS=1 DOMAIN=www.example.com bash deploy.sh   # 无提问，直接按域名试签发
+bash deploy.sh
+DOMAIN=www.example.com bash deploy.sh          # 指定域名，自动试签发 HTTPS（DNS 须已指向本机）
+USE_HTTPS=0 DOMAIN=www.example.com bash deploy.sh   # 仅用 HTTP，BASE_URL 仍可用域名
 USE_NGINX=0 bash deploy.sh   # 不装 Nginx
 NGINX_PREFIX= bash deploy.sh   # 整站根路径 /（无前缀）
 NGINX_PREFIX=custom bash deploy.sh   # 自定义前缀 /custom/
-DOMAIN=releases.example.com bash deploy.sh   # 指定域名，自动试签发 HTTPS
-USE_HTTPS=0 DOMAIN=releases.example.com bash deploy.sh   # 仅用 HTTP，BASE_URL 仍可用域名
 ```
 
 ### HTTPS 自动试签发（Let's Encrypt）
 
 在**已安装 Nginx** 的前提下：
 
-1. **域名**：**交互且未设置 `USE_HTTPS`**：选 HTTPS 后只输入一次公网域名。**非交互或 `USE_HTTPS=1`**：使用环境变量 **`DOMAIN`**；若未设置且 `hostname -f` 为**非**内网保留名（非 `*.local` 等）才自动采用。云主机常见 `hostname` 为 `.local`，与 DNS 中的域名无关，**请设置 `DOMAIN` 或在交互时输入域名**。
-2. **DNS 预检**：脚本的公网 IP（`curl` 检测）须与域名 `A`/`AAAA` 记录之一一致（需安装 `dig`，通常来自 `dnsutils` / `bind9-dnsutils`）。不一致则**不调用 certbot**，Nginx 保持 HTTP，**BASE_URL** 仍为 `http://域名/...`（便于稍后修好 DNS 再部署）。
-3. **试签发**：`certbot certonly --nginx --dry-run`（staging，不占正式额度）。仅当 dry-run **成功** 后才执行正式 `certbot --nginx` 并配置 HTTPS 与跳转。
-4. **失败回退**：任一步失败（dry-run、正式申请、certbot 安装失败等）会恢复 `server_name _` 的 HTTP 反代，**保留域名**写入 **BASE_URL**（`http://`），可在修正 DNS/防火墙后再次运行 `deploy.sh` 或手动 `sudo certbot --nginx -d 你的域名`。
+1. **域名**：优先环境变量 **`DOMAIN`**；若未设置且 `hostname -f` 为**非**内网保留名则自动采用。云主机常见 `hostname` 与证书域名无关，**请设置 `DOMAIN`**。
+2. **DNS 预检**：脚本的公网 IP（`curl` 检测）须与域名 `A`/`AAAA` 记录之一一致（需安装 `dig`，通常来自 `dnsutils` / `bind9-dnsutils`）。不一致则**不调用 certbot**，Nginx 保持 HTTP。
+3. **试签发**：`certbot certonly --nginx --dry-run`（staging）。仅当 dry-run **成功** 后才执行正式 `certbot --nginx --redirect`。
+4. **失败**：任一步失败则保持 HTTP，不中断部署；可修正 DNS 后再次运行 `deploy.sh` 或手动 `sudo certbot --nginx -d 你的域名`。
 
 ### 部署结果摘要
 
 - 安装 Node.js 20（若未安装）、PM2。
-- 若启用 Nginx：写入 `/etc/nginx/sites-available/release-hub`，HTTP 80 → `127.0.0.1:3721`；默认路径前缀为 `releasehub`（`/releasehub/` → 应用），除非 `NGINX_PREFIX=` 空或自定义。
+- 若启用 Nginx：主 server 块写入 `/etc/nginx/conf.d/<根域标签>.conf`（由域名倒数第二段命名，如 `www.example.com` → `example.conf`；无可用域名时为 `_default.conf`）；Release Hub 的反向代理写在 `/etc/nginx/conf.d/locations/release-hub.conf`（`include` 进主 server 块）。HTTP 80 → `127.0.0.1:3721`；默认路径前缀为 `releasehub`，除非 `NGINX_PREFIX=` 空或自定义。可与其它服务共用同一主 server 块，各自只维护 `locations/` 下自己的片段。
 - **程序与数据目录**：`deploy.sh` 所在目录（与 `server.js` 同级），其中 `**releases/`** 存放安装包与 `latest.json`，`**.env`** 在同目录。
 - 首次生成 `.env`（含 `JWT_SECRET`、`ADMIN_PASSWORD_HASH`、`RELEASES_DIR`（指向本目录下 `releases/`）、`BASE_URL`、`PORT`）。启用 Nginx 且使用默认前缀时首次 `BASE_URL` 多为 `http://<公网IP>/releasehub`；无前缀（整站根）时为 `http://<公网IP>`；若配置了域名且 HTTPS 未成功，则可能为 `http://<域名>/...`；HTTPS 成功时为 `https://<域名>/...`；未启用 Nginx 时为 `http://<公网IP>:3721`。
 - PM2 进程名：`release-hub`；防火墙在启用 Nginx 时通常放行 **80** 与 **3721**；仅在 HTTPS 成功时额外放行 **443**。
@@ -126,7 +145,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 
 文件直链与 `latest.json` 内 `platforms.*.url` 依赖 `.env` 中的 **BASE_URL**。若与浏览器实际访问的协议/域名不一致，请在「设置」中修改，或编辑 `.env` 后执行 `pm2 restart release-hub`。
 
-使用 HTTPS 时请将 `BASE_URL` 设为 `https://你的域名`。
+使用 HTTPS 且默认路径前缀时请将 `BASE_URL` 设为 `https://你的域名/releasehub`（无末尾 `/`，与后台「设置」一致）。
 
 ---
 
@@ -165,7 +184,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
     "updater": {
       "pubkey": "你的公钥内容",
       "endpoints": [
-        "https://your-domain.com/releases/my-tauri-app/latest.json"
+        "https://your-domain.com/releasehub/releases/my-tauri-app/latest.json"
       ]
     }
   }
@@ -220,10 +239,10 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 
 ## Nginx 与 HTTPS
 
-- 由 `deploy.sh` 生成的配置：`/etc/nginx/sites-available/release-hub`
+- 由 `deploy.sh` 生成：**主配置** `/etc/nginx/conf.d/<根域标签>.conf`，**Release Hub 片段** `/etc/nginx/conf.d/locations/release-hub.conf`（详见上文「部署结果摘要」）。
 - 重载：`sudo nginx -t && sudo systemctl reload nginx`
 - 仓库内 [nginx.conf](nginx.conf) 可供对照与手工覆盖（域名等）
-- 一键部署已包含 **DNS 预检 → certbot dry-run → 正式签发**，失败自动回退 HTTP；详见上文「HTTPS 自动试签发」。
+- 一键部署已包含 **DNS 预检 → certbot dry-run → 正式签发**，失败则保持 HTTP；详见上文「启用 HTTPS」与「HTTPS 自动试签发」。
 
 手动补证书（例如首次仅用 HTTP 部署后再开 HTTPS）：
 

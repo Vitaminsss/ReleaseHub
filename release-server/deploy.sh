@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# Release Hub 一键部署脚本（交互终端下可询问 HTTPS；否则依赖环境变量）
+# Release Hub 一键部署脚本
 # 使用方法：在仓库根目录执行 bash deploy.sh
 #
 # 安装目录 = 本脚本所在目录（与 server.js、releases/、.env 同级），不再使用 /opt
@@ -9,16 +9,15 @@
 #   USE_NGINX=0    不安装 Nginx
 #   SKIP_NGINX=1   等同于 USE_NGINX=0（兼容旧用法）
 #   NGINX_PREFIX   未设置时默认路径前缀 releasehub；显式 NGINX_PREFIX= 空字符串=整站根路径 /
-#   NGINX_SERVER_NAME / DOMAIN  可覆盖 Nginx 的 server_name（默认 releaseshub.local；与 UNIFIED 二选一逻辑见下）
-#   UNIFIED_NGINX=1  与 HomePortal 等同域名不同路径时：只写片段到 snippets/unified.d/，共用一个 server（须 UNIFIED_SERVER_NAME）
-#   UNIFIED_SERVER_NAME  统一站点对外域名（如 www.example.com），与证书/Certbot 域名一致
-#   UNIFIED_SNIPPET_DIR / UNIFIED_SITE_FILE  可选，见脚本内默认值
+#   DOMAIN         公网域名（如 www.example.com），用于主 server 块与 Let's Encrypt
 #
-# HTTPS（Let's Encrypt + Certbot，仅在已启用 Nginx 时可用）：
-#   USE_HTTPS=0              不尝试证书（仅 HTTP）
-#   USE_HTTPS=1              非交互：自动试签发（DOMAIN / hostname -f，*.local 忽略）
-#   USE_HTTPS 未设置         交互终端：询问是否 HTTPS，选「是」则只提示输入一次域名；非交互：同 USE_HTTPS=1
-#   DOMAIN / CERTBOT_EMAIL   非交互或已设 USE_HTTPS=1 时使用；邮箱默认 admin@域名
+# HTTPS（Let's Encrypt + Certbot，仅在已启用 Nginx 时）：
+#   USE_HTTPS=0    不尝试证书（仅 HTTP）
+#   未设置 USE_HTTPS  自动尝试签发（需 DOMAIN 与 DNS 已指向本机）
+#   CERTBOT_EMAIL    可选；默认 admin@域名
+#
+# 主 Nginx：/etc/nginx/conf.d/<根域标签>.conf（由域名倒数第二段命名，无域名为 _default.conf）
+# Location 片段：/etc/nginx/conf.d/locations/release-hub.conf
 # ============================================
 
 set -e
@@ -30,80 +29,69 @@ PORT=3721
 NGINX_ENABLED=0
 HTTPS_ENABLED=0
 DOMAIN_RESOLVED=""
-# 多站并存：Nginx 不写 default_server；server_name 默认 releaseshub.local，可用 NGINX_SERVER_NAME / DOMAIN 覆盖
-NGINX_SRV_NAME=""
-RELEASE_HUB_DEFAULT_SERVER_NAME="releaseshub.local"
-UNIFIED_NGINX="${UNIFIED_NGINX:-0}"
-UNIFIED_SNIPPET_DIR="${UNIFIED_SNIPPET_DIR:-/etc/nginx/snippets/unified.d}"
-UNIFIED_SITE_AVAILABLE="${UNIFIED_SITE_FILE:-/etc/nginx/sites-available/unified-apps.conf}"
-UNIFIED_SITE_LINK="${UNIFIED_SITE_ENABLED_NAME:-unified-apps}"
+MAIN_NGINX_CONF=""
 
-# 写入 /etc/nginx/sites-available/release-hub
-# $1 = server_name（域名、多个空格分隔；默认 releaseshub.local）
-write_nginx_release_hub_config() {
-  local srv="${1:-$RELEASE_HUB_DEFAULT_SERVER_NAME}"
-  local NGINX_SITE="/etc/nginx/sites-available/release-hub"
-  if [ -n "$NGINX_PREFIX_SLUG" ]; then
-    sudo tee "$NGINX_SITE" > /dev/null <<NGX
-# Release Hub — 由 deploy.sh 生成；无 default_server 以便多站并存；访问 http://<server_name>/${NGINX_PREFIX_SLUG}/
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${srv};
-
-    client_max_body_size 500M;
-    client_body_timeout 300s;
-
-    location /${NGINX_PREFIX_SLUG}/ {
-        proxy_pass http://127.0.0.1:${PORT}/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-    }
+# 是否为不适合公网访问 / Let's Encrypt 的主机名（如 mDNS 的 *.local）。返回 0=是保留名应忽略
+domain_is_nonpublic_hostname() {
+  local d="$1"
+  [ -z "$d" ] && return 0
+  case "$d" in
+    localhost|localhost.*) return 0 ;;
+  esac
+  [[ "$d" == *.local ]] && return 0
+  [[ "$d" == *.localdomain ]] && return 0
+  [[ "$d" == *.lan ]] && return 0
+  [[ "$d" == *.internal ]] && return 0
+  return 1
 }
-NGX
-  else
-    sudo tee "$NGINX_SITE" > /dev/null <<NGX
-# Release Hub — 由 deploy.sh 生成；无 default_server 以便多站并存；请勿手动改端口除非同步修改 Node PORT
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${srv};
 
-    client_max_body_size 500M;
-    client_body_timeout 300s;
-
-    location / {
-        proxy_pass http://127.0.0.1:${PORT};
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-    }
-}
-NGX
+# 主配置文件路径：无域名或内网保留名 → _default.conf；否则取 FQDN 倒数第二段为文件名（如 www.ooooxo.com → ooooxo.conf）
+nginx_main_conf_path() {
+  local d="$1"
+  if [ -z "$d" ] || domain_is_nonpublic_hostname "$d"; then
+    echo "/etc/nginx/conf.d/_default.conf"
+    return 0
   fi
-  sudo ln -sf "$NGINX_SITE" /etc/nginx/sites-enabled/release-hub
+  local label
+  label="$(echo "$d" | awk -F. '{print $(NF-1)}')"
+  [ -z "$label" ] && label="_default"
+  echo "/etc/nginx/conf.d/${label}.conf"
 }
 
-# 统一 Nginx：共用一个 server，仅 HTTP；HTTPS 由 certbot 对 unified-apps 处理
-ensure_unified_nginx_umbrella_http() {
-  local sn="$1"
-  sudo mkdir -p "$UNIFIED_SNIPPET_DIR"
-  if [ ! -f "$UNIFIED_SITE_AVAILABLE" ]; then
-    sudo tee "$UNIFIED_SITE_AVAILABLE" > /dev/null <<UMB
-# 统一多应用 — 首次生成；子应用仅在 ${UNIFIED_SNIPPET_DIR} 下维护片段；勿删 include
+# 解析域名：DOMAIN → hostname -f（非保留名）→ 空
+release_hub_resolve_domain() {
+  DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  if [ -z "$DOMAIN_RESOLVED" ]; then
+    local HFN
+    HFN="$(hostname -f 2>/dev/null || true)"
+    if [ -n "$HFN" ] && [ "$HFN" != "localhost" ] && [[ "$HFN" == *.* ]]; then
+      if ! domain_is_nonpublic_hostname "$HFN"; then
+        DOMAIN_RESOLVED="$HFN"
+        echo "▸ 使用 hostname -f 作为域名: $DOMAIN_RESOLVED"
+      else
+        echo "⚠ hostname -f「$HFN」为内网保留名，已忽略；请设置 DOMAIN="
+      fi
+    fi
+  else
+    echo "▸ 使用 DOMAIN=$DOMAIN_RESOLVED"
+  fi
+}
+
+# 主 server 块：已存在则不覆盖（多服务共用同一域名时由首次部署创建）
+ensure_main_server_block() {
+  local sn
+  if [ -n "$DOMAIN_RESOLVED" ] && ! domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
+    sn="$DOMAIN_RESOLVED"
+  else
+    sn="_"
+  fi
+  if sudo test -f "$MAIN_NGINX_CONF"; then
+    echo "▸ 主 Nginx 配置已存在，跳过创建: $MAIN_NGINX_CONF"
+    return 0
+  fi
+  echo "▸ 创建主 Nginx 配置: $MAIN_NGINX_CONF（server_name $sn）"
+  sudo tee "$MAIN_NGINX_CONF" > /dev/null <<NGX
+# Release Hub — 主 server 块（首次生成）；各服务 location 见 conf.d/locations/
 server {
     listen 80;
     listen [::]:80;
@@ -112,17 +100,17 @@ server {
     client_max_body_size 500M;
     client_body_timeout 300s;
 
-    include ${UNIFIED_SNIPPET_DIR}/*.conf;
+    include /etc/nginx/conf.d/locations/*.conf;
 }
-UMB
-  fi
-  sudo ln -sf "$UNIFIED_SITE_AVAILABLE" "/etc/nginx/sites-enabled/${UNIFIED_SITE_LINK}.conf"
+NGX
 }
 
-write_nginx_release_hub_unified_snippet() {
-  sudo mkdir -p "$UNIFIED_SNIPPET_DIR"
-  sudo tee "${UNIFIED_SNIPPET_DIR}/10-release-hub.conf" > /dev/null <<SNIP
-# Release Hub — 片段（deploy.sh）
+write_release_hub_location() {
+  sudo mkdir -p /etc/nginx/conf.d/locations
+  local loc_path="/etc/nginx/conf.d/locations/release-hub.conf"
+  if [ -n "$NGINX_PREFIX_SLUG" ]; then
+    sudo tee "$loc_path" > /dev/null <<NGX
+# Release Hub — 由 deploy.sh 管理
 location /${NGINX_PREFIX_SLUG}/ {
     proxy_pass http://127.0.0.1:${PORT}/;
     proxy_http_version 1.1;
@@ -135,7 +123,24 @@ location /${NGINX_PREFIX_SLUG}/ {
     proxy_read_timeout 300s;
     proxy_send_timeout 300s;
 }
-SNIP
+NGX
+  else
+    sudo tee "$loc_path" > /dev/null <<NGX
+# Release Hub — 由 deploy.sh 管理（整站根路径）
+location / {
+    proxy_pass http://127.0.0.1:${PORT};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+}
+NGX
+  fi
 }
 
 # DNS 预检：域名 A/AAAA 是否包含本机公网 IP。返回 0=可继续试签发；1=已知不匹配应跳过 certbot
@@ -155,20 +160,6 @@ dns_resolves_to_public_ip() {
   while read -r line; do
     [ -n "$line" ] && [ "$line" = "$pub" ] && return 0
   done < <(dig +short "$dom" AAAA 2>/dev/null)
-  return 1
-}
-
-# 是否为不适合公网访问 / Let's Encrypt 的主机名（如 mDNS 的 *.local）。返回 0=是保留名应忽略
-domain_is_nonpublic_hostname() {
-  local d="$1"
-  [ -z "$d" ] && return 0
-  case "$d" in
-    localhost|localhost.*) return 0 ;;
-  esac
-  [[ "$d" == *.local ]] && return 0
-  [[ "$d" == *.localdomain ]] && return 0
-  [[ "$d" == *.lan ]] && return 0
-  [[ "$d" == *.internal ]] && return 0
   return 1
 }
 
@@ -236,50 +227,35 @@ if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   fi
 fi
 
-# ── Nginx server_name ──
-if [ "$USE_NGINX_RESOLVED" = "1" ]; then
-  if [ "$UNIFIED_NGINX" = "1" ]; then
-    NGINX_SRV_NAME="$(echo "${UNIFIED_SERVER_NAME:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    if [ -z "$NGINX_SRV_NAME" ]; then
-      echo "错误: UNIFIED_NGINX=1 时必须设置 UNIFIED_SERVER_NAME（与浏览器访问域名一致，如 www.example.com）" >&2
-      exit 1
-    fi
-    if [ -z "$NGINX_PREFIX_SLUG" ]; then
-      echo "错误: 统一 Nginx 模式下请保留路径前缀（默认 releasehub），勿将 NGINX_PREFIX 置空，以免与其它应用的 location / 冲突" >&2
-      exit 1
-    fi
-    echo "▸ 统一 Nginx：server_name=$NGINX_SRV_NAME · 片段 ${UNIFIED_SNIPPET_DIR}/10-release-hub.conf · 主配置 $UNIFIED_SITE_AVAILABLE"
-  else
-    NGINX_SRV_NAME="$(echo "${NGINX_SERVER_NAME:-${DOMAIN:-}}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    if [ -z "$NGINX_SRV_NAME" ]; then
-      NGINX_SRV_NAME="$RELEASE_HUB_DEFAULT_SERVER_NAME"
-    fi
-    echo "▸ Nginx server_name: $NGINX_SRV_NAME（覆盖：NGINX_SERVER_NAME 或 DOMAIN）"
-  fi
-fi
+# ── 域名解析（Nginx / BASE_URL / HTTPS 共用）──
+release_hub_resolve_domain
+MAIN_NGINX_CONF="$(nginx_main_conf_path "$DOMAIN_RESOLVED")"
+echo "▸ 主 Nginx 配置文件: $MAIN_NGINX_CONF"
 
 # ── Nginx 反向代理 ─────────────────────────
 if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   echo "▸ 安装并配置 Nginx 反向代理..."
   if sudo apt-get update -qq && sudo apt-get install -y nginx; then
-    if [ "$UNIFIED_NGINX" = "1" ]; then
-      ensure_unified_nginx_umbrella_http "$NGINX_SRV_NAME"
-      write_nginx_release_hub_unified_snippet
-      sudo rm -f /etc/nginx/sites-enabled/release-hub
-    else
-      write_nginx_release_hub_config "$NGINX_SRV_NAME"
-    fi
+    sudo rm -f /etc/nginx/sites-enabled/release-hub /etc/nginx/sites-available/release-hub 2>/dev/null || true
+    sudo mkdir -p /etc/nginx/conf.d/locations
+    ensure_main_server_block
+    write_release_hub_location
     if sudo nginx -t; then
       sudo systemctl enable nginx
       sudo systemctl reload nginx
       NGINX_ENABLED=1
       if [ -n "$NGINX_PREFIX_SLUG" ]; then
-        echo "✓ Nginx 已启用（http://${NGINX_SRV_NAME}/${NGINX_PREFIX_SLUG}/ → 127.0.0.1:${PORT}）"
+        if [ -n "$DOMAIN_RESOLVED" ] && ! domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
+          echo "✓ Nginx 已启用（http://${DOMAIN_RESOLVED}/${NGINX_PREFIX_SLUG}/ → 127.0.0.1:${PORT}）"
+        else
+          echo "✓ Nginx 已启用（http://${PUBLIC_IP}/${NGINX_PREFIX_SLUG}/ → 127.0.0.1:${PORT}）"
+        fi
       else
-        echo "✓ Nginx 已启用（http://${NGINX_SRV_NAME}/ → 127.0.0.1:${PORT}）"
-      fi
-      if [ "$UNIFIED_NGINX" = "1" ]; then
-        echo "  （统一站点：与 HomePortal 共用 $UNIFIED_SITE_AVAILABLE；Certbot 请对同一域名执行）"
+        if [ -n "$DOMAIN_RESOLVED" ] && ! domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
+          echo "✓ Nginx 已启用（http://${DOMAIN_RESOLVED}/ → 127.0.0.1:${PORT}）"
+        else
+          echo "✓ Nginx 已启用（http://${PUBLIC_IP}/ → 127.0.0.1:${PORT}）"
+        fi
       fi
     else
       echo "⚠ nginx -t 失败，请检查配置后手动执行: sudo nginx -t && sudo systemctl reload nginx"
@@ -289,173 +265,77 @@ if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   fi
 fi
 
-# ── HTTPS（Certbot：DNS 预检 → dry-run → 正式签发；失败回退 HTTP，保留域名供 BASE_URL）──
-CERTBOT_EMAIL_VAL=""
-if [ "$NGINX_ENABLED" = "1" ]; then
-  if [ "${USE_HTTPS:-}" = "0" ]; then
-    echo ""
-    echo "▸ USE_HTTPS=0，跳过自动申请证书（仅 HTTP）"
-    DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    if [ -n "$DOMAIN_RESOLVED" ] && domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
-      echo "  ⚠ DOMAIN=$DOMAIN_RESOLVED 为内网保留名，已忽略；BASE_URL 将用公网 IP"
-      DOMAIN_RESOLVED=""
-    fi
-    if [ -n "$DOMAIN_RESOLVED" ]; then
-      echo "  将使用 DOMAIN=$DOMAIN_RESOLVED 生成 BASE_URL（http）"
-    fi
-    else
-    echo ""
-    echo "▸ HTTPS：Let's Encrypt（DNS 预检 → certbot --dry-run → 正式签发），失败则使用 HTTP。"
-    echo "  需域名 DNS（A/AAAA）指向本机公网 IP（当前检测: $PUBLIC_IP），且公网可访问 80。"
+# ── HTTPS（Let's Encrypt）────────────────────────────────────────────
+CERTBOT_EMAIL_VAL="$(echo "${CERTBOT_EMAIL:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+if [ "$NGINX_ENABLED" != "1" ]; then
+  :
+
+elif [ "${USE_HTTPS:-}" = "0" ]; then
+  echo ""
+  echo "▸ USE_HTTPS=0，跳过 Let's Encrypt（仅 HTTP）"
+  if [ -n "$DOMAIN_RESOLVED" ] && domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
+    echo "  ⚠ DOMAIN 为内网保留名，已忽略；BASE_URL 将用公网 IP"
     DOMAIN_RESOLVED=""
-    CERTBOT_EMAIL_VAL="$(echo "${CERTBOT_EMAIL:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    HTTPS_DECLINED_INTERACTIVE=0
+  fi
+  if [ -n "$DOMAIN_RESOLVED" ]; then
+    echo "  将使用 DOMAIN=$DOMAIN_RESOLVED 生成 BASE_URL（http）"
+  fi
 
-    if [ -t 0 ] && [ -z "${USE_HTTPS+x}" ]; then
-      read -r -p "是否使用 HTTPS（Let's Encrypt）？[y/N] " HTTPS_INTERACTIVE
-      case "${HTTPS_INTERACTIVE}" in
-        [yY][eE][sS]|[yY])
-          echo "  （域名只需输入一次；须已在 DNS 解析到本机 $PUBLIC_IP）"
-          if [ -n "${DOMAIN:-}" ]; then
-            read -r -p "请输入域名 [默认: ${DOMAIN}]: " DOMAIN_INPUT
-            DOMAIN_RESOLVED="$(echo "${DOMAIN_INPUT:-$DOMAIN}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          else
-            read -r -p "请输入域名（如 www.example.com）: " DOMAIN_INPUT
-            DOMAIN_RESOLVED="$(echo "${DOMAIN_INPUT:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          fi
-          if [ -z "$DOMAIN_RESOLVED" ]; then
-            echo "⚠ 未输入域名，跳过 HTTPS，将仅使用 HTTP。"
-          fi
-          ;;
-        *)
-          HTTPS_DECLINED_INTERACTIVE=1
-          echo "▸ 已选择仅使用 HTTP，跳过证书申请。"
-          ;;
-      esac
+else
+  echo ""
+  echo "▸ HTTPS：Let's Encrypt（DNS 预检 → dry-run → 正式签发，无交互）"
+  echo "  公网 IP: $PUBLIC_IP；主配置: $MAIN_NGINX_CONF"
+
+  if [ -n "$DOMAIN_RESOLVED" ] && domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
+    echo "⚠ 域名「$DOMAIN_RESOLVED」不适合 Let's Encrypt，已忽略。"
+    DOMAIN_RESOLVED=""
+  fi
+
+  if [ -z "$DOMAIN_RESOLVED" ]; then
+    echo "⚠ 未配置可用域名，跳过 HTTPS。请设置 DOMAIN=你的域名 并确保 DNS 指向本机后重试。"
+  else
+    [ -z "$CERTBOT_EMAIL_VAL" ] && CERTBOT_EMAIL_VAL="admin@${DOMAIN_RESOLVED}"
+    echo "▸ Certbot 邮箱: $CERTBOT_EMAIL_VAL"
+
+    if ! dns_resolves_to_public_ip "$DOMAIN_RESOLVED" "$PUBLIC_IP"; then
+      echo "⚠ DNS 未指向本机 $PUBLIC_IP，跳过 certbot"
     else
-      if [ -n "${USE_HTTPS+x}" ]; then
-        echo "▸ USE_HTTPS=${USE_HTTPS} → 自动尝试 HTTPS（非交互/已显式设置）"
-      else
-        echo "▸ 非交互：自动尝试 HTTPS（设置 DOMAIN=… 或依赖 hostname；USE_HTTPS=0 可关闭）"
-      fi
-      DOMAIN_RESOLVED="$(echo "${DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-      if [ -z "$DOMAIN_RESOLVED" ]; then
-        HFN="$(hostname -f 2>/dev/null || true)"
-        if [ -n "$HFN" ] && [ "$HFN" != "localhost" ] && [[ "$HFN" == *.* ]]; then
-          if domain_is_nonpublic_hostname "$HFN"; then
-            echo "⚠ hostname -f 为「$HFN」（多为内网 .local，与公网域名无关），已忽略。"
-            echo "  请设置 DOMAIN=你的公网域名，否则 BASE_URL 使用公网 IP。"
-          else
-            DOMAIN_RESOLVED="$HFN"
-            echo "▸ 未设置 DOMAIN，使用 hostname -f: $DOMAIN_RESOLVED"
-          fi
-        fi
-      else
-        echo "▸ 使用 DOMAIN=$DOMAIN_RESOLVED"
-      fi
-    fi
-
-    if [ -n "$DOMAIN_RESOLVED" ] && domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
-      echo "⚠ 域名「$DOMAIN_RESOLVED」不适合 Let's Encrypt / 公网链接，已忽略。"
-      DOMAIN_RESOLVED=""
-    fi
-    if [ -z "$DOMAIN_RESOLVED" ]; then
-      if [ "$HTTPS_DECLINED_INTERACTIVE" != "1" ]; then
-        echo "⚠ 未配置域名，跳过 HTTPS。可稍后执行: sudo certbot --nginx -d 你的域名"
-      fi
-    else
-      if [ -z "$CERTBOT_EMAIL_VAL" ]; then
-        CERTBOT_EMAIL_VAL="admin@${DOMAIN_RESOLVED}"
-        echo "▸ 使用默认 Certbot 邮箱: $CERTBOT_EMAIL_VAL"
-      fi
-
-      if ! dns_resolves_to_public_ip "$DOMAIN_RESOLVED" "$PUBLIC_IP"; then
-        echo "⚠ DNS 记录未指向本机公网 IP（$PUBLIC_IP），跳过 certbot。请修正 DNS 后重新运行本脚本或手动: sudo certbot --nginx -d $DOMAIN_RESOLVED"
-      else
-        echo "▸ DNS 预检通过（$DOMAIN_RESOLVED → $PUBLIC_IP）"
-        echo "▸ 将 Nginx server_name 设为 $DOMAIN_RESOLVED 并试签发..."
-        if [ "$UNIFIED_NGINX" = "1" ]; then
-          write_nginx_release_hub_unified_snippet
-          if [ -f "$UNIFIED_SITE_AVAILABLE" ]; then
-            sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${DOMAIN_RESOLVED};/" "$UNIFIED_SITE_AVAILABLE"
-          else
-            ensure_unified_nginx_umbrella_http "$DOMAIN_RESOLVED"
-          fi
+      echo "▸ DNS 预检通过（$DOMAIN_RESOLVED → $PUBLIC_IP）"
+      echo "▸ 安装 certbot 与 nginx 插件..."
+      if sudo apt-get install -y certbot python3-certbot-nginx; then
+        echo "▸ certbot certonly --nginx --dry-run（staging）..."
+        set +e
+        sudo certbot certonly --nginx \
+          --dry-run \
+          --non-interactive \
+          --agree-tos \
+          --email "$CERTBOT_EMAIL_VAL" \
+          -d "$DOMAIN_RESOLVED"
+        DRY_EXIT=$?
+        set -e
+        if [ "$DRY_EXIT" -ne 0 ]; then
+          echo "⚠ certbot dry-run 失败（$DRY_EXIT），保持 HTTP。可稍后: sudo certbot --nginx -d $DOMAIN_RESOLVED"
         else
-          write_nginx_release_hub_config "$DOMAIN_RESOLVED"
-        fi
-        if ! sudo nginx -t; then
-          echo "⚠ nginx -t 失败，恢复 HTTP（server_name ${NGINX_SRV_NAME}）"
-          if [ "$UNIFIED_NGINX" = "1" ]; then
-            write_nginx_release_hub_unified_snippet
-            if [ -f "$UNIFIED_SITE_AVAILABLE" ]; then
-              sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${NGINX_SRV_NAME};/" "$UNIFIED_SITE_AVAILABLE"
-            fi
+          echo "▸ dry-run 成功，正式申请证书…"
+          set +e
+          sudo certbot --nginx \
+            --non-interactive \
+            --agree-tos \
+            --email "$CERTBOT_EMAIL_VAL" \
+            -d "$DOMAIN_RESOLVED" \
+            --redirect
+          CERTBOT_EXIT=$?
+          set -e
+          if [ "$CERTBOT_EXIT" -eq 0 ]; then
+            HTTPS_ENABLED=1
+            echo "✓ HTTPS 已启用（Let's Encrypt）"
           else
-            write_nginx_release_hub_config "$NGINX_SRV_NAME"
-          fi
-          sudo nginx -t && sudo systemctl reload nginx
-        else
-          sudo systemctl reload nginx
-          echo "▸ 安装 certbot 与 nginx 插件..."
-          if sudo apt-get install -y certbot python3-certbot-nginx; then
-            echo "▸ certbot --dry-run（staging，不占正式额度）..."
-            set +e
-            sudo certbot certonly --nginx \
-              --dry-run \
-              --non-interactive \
-              --agree-tos \
-              --email "$CERTBOT_EMAIL_VAL" \
-              -d "$DOMAIN_RESOLVED"
-            DRY_EXIT=$?
-            set -e
-            if [ "$DRY_EXIT" -ne 0 ]; then
-              echo "⚠ certbot dry-run 失败（退出码 $DRY_EXIT），不执行正式签发，恢复 HTTP（server_name ${NGINX_SRV_NAME}）"
-              if [ "$UNIFIED_NGINX" = "1" ]; then
-                write_nginx_release_hub_unified_snippet
-                [ -f "$UNIFIED_SITE_AVAILABLE" ] && sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${NGINX_SRV_NAME};/" "$UNIFIED_SITE_AVAILABLE"
-              else
-                write_nginx_release_hub_config "$NGINX_SRV_NAME"
-              fi
-              sudo nginx -t && sudo systemctl reload nginx
-              echo "  保留域名 $DOMAIN_RESOLVED 用于 BASE_URL（http）。修复 DNS/防火墙后可重新运行 deploy.sh 或: sudo certbot --nginx -d $DOMAIN_RESOLVED"
-            else
-              echo "▸ dry-run 成功，正式申请证书并配置 HTTPS..."
-              set +e
-              sudo certbot --nginx \
-                --non-interactive \
-                --agree-tos \
-                --email "$CERTBOT_EMAIL_VAL" \
-                -d "$DOMAIN_RESOLVED" \
-                --redirect
-              CERTBOT_EXIT=$?
-              set -e
-              if [ "$CERTBOT_EXIT" -eq 0 ]; then
-                HTTPS_ENABLED=1
-                echo "✓ HTTPS 已启用（Let's Encrypt）"
-              else
-                echo "⚠ certbot 正式申请失败（退出码 $CERTBOT_EXIT），恢复 HTTP（server_name ${NGINX_SRV_NAME}）"
-                if [ "$UNIFIED_NGINX" = "1" ]; then
-                  write_nginx_release_hub_unified_snippet
-                  [ -f "$UNIFIED_SITE_AVAILABLE" ] && sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${NGINX_SRV_NAME};/" "$UNIFIED_SITE_AVAILABLE"
-                else
-                  write_nginx_release_hub_config "$NGINX_SRV_NAME"
-                fi
-                sudo nginx -t && sudo systemctl reload nginx
-                echo "  保留域名 $DOMAIN_RESOLVED 用于 BASE_URL（http）。可稍后: sudo certbot --nginx -d $DOMAIN_RESOLVED"
-              fi
-            fi
-          else
-            echo "⚠ certbot 安装失败，保持 HTTP（server_name ${NGINX_SRV_NAME}）"
-            if [ "$UNIFIED_NGINX" = "1" ]; then
-              write_nginx_release_hub_unified_snippet
-              [ -f "$UNIFIED_SITE_AVAILABLE" ] && sudo sed -i "0,/^[[:space:]]*server_name /s/^[[:space:]]*server_name .*/    server_name ${NGINX_SRV_NAME};/" "$UNIFIED_SITE_AVAILABLE"
-            else
-              write_nginx_release_hub_config "$NGINX_SRV_NAME"
-            fi
-            sudo nginx -t && sudo systemctl reload nginx
+            echo "⚠ certbot 正式申请失败（$CERTBOT_EXIT），保持 HTTP"
           fi
         fi
+      else
+        echo "⚠ certbot 安装失败，保持 HTTP"
       fi
     fi
   fi
@@ -597,7 +477,7 @@ elif [ "$NGINX_ENABLED" = "1" ]; then
       echo "  Tauri updater（公开）: http://${DOMAIN_RESOLVED}/releases/<appName>/latest.json"
     fi
     echo "  直连 Node（排障用）: http://$SERVER_IP:$PORT"
-    echo "  启用 HTTPS：修正 DNS/防火墙后重新运行 deploy.sh，或: sudo certbot --nginx -d $DOMAIN_RESOLVED"
+    echo "  启用 HTTPS：设置 DOMAIN 并确保 DNS 指向本机后重新运行 deploy.sh，或: sudo certbot --nginx -d $DOMAIN_RESOLVED"
     echo "            成功后请在后台将 BASE_URL 改为 https://$DOMAIN_RESOLVED${NGINX_PREFIX_SLUG:+/$NGINX_PREFIX_SLUG}"
   else
     if [ -n "$NGINX_PREFIX_SLUG" ]; then
