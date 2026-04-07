@@ -13,11 +13,12 @@
 #
 # HTTPS（Let's Encrypt + Certbot，仅在已启用 Nginx 时）：
 #   USE_HTTPS=0    不尝试证书（仅 HTTP）
-#   未设置 USE_HTTPS  自动尝试签发（需 DOMAIN 与 DNS 已指向本机）
+#   未设置 USE_HTTPS  自动尝试 certonly 签发（需 DOMAIN 与 DNS；不写 certbot --nginx --redirect）
 #   CERTBOT_EMAIL    可选；默认 admin@域名
 #
 # 主 Nginx：/etc/nginx/conf.d/<根域标签>.conf（由域名倒数第二段命名，无域名为 _default.conf）
 # Location 片段：/etc/nginx/conf.d/locations/release-hub.conf
+# HTTPS：certbot certonly（只签发证书，不改 Nginx）；80/443 server 块由本脚本写入并含 include locations
 # ============================================
 
 set -e
@@ -85,7 +86,18 @@ nginx_disable_stock_default_site() {
   fi
 }
 
-# 主 server 块：已存在则不覆盖（多服务共用同一域名时由首次部署创建）
+# 已配置公网域名时删除旧的 _default.conf，避免与域名 server 块并存导致路由混乱
+nginx_remove_stale_default_conf_for_domain() {
+  if [ -z "$DOMAIN_RESOLVED" ] || domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
+    return 0
+  fi
+  if sudo test -f /etc/nginx/conf.d/_default.conf; then
+    echo "▸ 已配置公网域名，移除 /etc/nginx/conf.d/_default.conf（避免与域名主配置冲突）"
+    sudo rm -f /etc/nginx/conf.d/_default.conf
+  fi
+}
+
+# 主 server 块：HTTP-only（幂等覆盖）。HTTPS 成功后会由 write_main_server_block_https 整体替换本文件
 ensure_main_server_block() {
   local sn
   local listen_directive
@@ -99,13 +111,9 @@ ensure_main_server_block() {
     listen_directive='    listen 80 default_server;
     listen [::]:80 default_server;'
   fi
-  if sudo test -f "$MAIN_NGINX_CONF"; then
-    echo "▸ 主 Nginx 配置已存在，跳过创建: $MAIN_NGINX_CONF"
-    return 0
-  fi
-  echo "▸ 创建主 Nginx 配置: $MAIN_NGINX_CONF（server_name $sn）"
+  echo "▸ 写入主 Nginx 配置（HTTP）: $MAIN_NGINX_CONF（server_name $sn）"
   sudo tee "$MAIN_NGINX_CONF" > /dev/null <<NGX
-# Release Hub — 主 server 块（首次生成）；各服务 location 见 conf.d/locations/
+# Release Hub — 主 server 块（由 deploy.sh 管理）；各服务 location 见 conf.d/locations/
 server {
 ${listen_directive}
     server_name ${sn};
@@ -156,103 +164,38 @@ NGX
   fi
 }
 
-# certbot --nginx 常单独生成 443 server 块，但不带 include locations → HTTPS 访问 502；在含 listen 443 的 server 块内补全
-# 返回 0=已修补或无需修补；1=失败
-nginx_fix_certbot_443_missing_locations_all() {
-  if ! command -v python3 &>/dev/null; then
-    echo "⚠ 未找到 python3，无法自动修补 HTTPS 配置。请在 443 的 server { } 内手动加入:"
-    echo "    include /etc/nginx/conf.d/locations/*.conf;"
-    return 1
-  fi
-  local f patched=0
-  local st
-  while IFS= read -r -d '' f; do
-    sudo grep -qE 'listen.*443' "$f" 2>/dev/null || continue
-    sudo grep -q 'ssl_certificate' "$f" 2>/dev/null || continue
-    sudo cp -a "$f" "${f}.bak.releasehub" 2>/dev/null || true
-    set +e
-    sudo python3 - "$f" <<'PY'
-import re
-import sys
+# certbot certonly 成功后写入：HTTP 仅跳转 HTTPS + 443 含 include locations（不让 certbot --nginx 改写配置导致丢反代）
+write_main_server_block_https() {
+  local dom="$1"
+  local conf="${2:-$MAIN_NGINX_CONF}"
+  [ -z "$dom" ] && return 1
+  echo "▸ 写入 HTTPS 主配置: $conf（server_name $dom，由脚本自管 80/443）"
+  sudo tee "$conf" > /dev/null <<NGX
+# Release Hub — HTTPS（certonly 后由 deploy.sh 写入）；各服务 location 见 conf.d/locations/
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${dom};
 
-path = sys.argv[1]
-try:
-    with open(path, encoding="utf-8", errors="replace") as fh:
-        text = fh.read()
-except OSError as e:
-    print(e, file=sys.stderr)
-    sys.exit(2)
+    return 301 https://\$host\$request_uri;
+}
 
-if "443" not in text:
-    sys.exit(0)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${dom};
 
-def patch_servers(s: str) -> str:
-    pos = 0
-    out = []
-    while pos < len(s):
-        idx = s.find("server {", pos)
-        if idx == -1:
-            out.append(s[pos:])
-            break
-        out.append(s[pos:idx])
-        brace_open = s.find("{", idx)
-        depth = 0
-        j = brace_open
-        while j < len(s):
-            if s[j] == "{":
-                depth += 1
-            elif s[j] == "}":
-                depth -= 1
-                if depth == 0:
-                    block = s[idx : j + 1]
-                    if re.search(r"listen\s+(?:\[::\]:)?443\b", block) and "ssl" in block:
-                        if "include /etc/nginx/conf.d/locations" not in block:
-                            inner = block[:-1].rstrip()
-                            ins = "\n    client_max_body_size 500M;\n    client_body_timeout 300s;\n    include /etc/nginx/conf.d/locations/*.conf;\n"
-                            block = inner + ins + "}"
-                    out.append(block)
-                    pos = j + 1
-                    break
-            j += 1
-        else:
-            out.append(s[pos:])
-            break
-    return "".join(out)
+    ssl_certificate     /etc/letsencrypt/live/${dom}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${dom}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-new_text = patch_servers(text)
-if new_text != text:
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(new_text)
-    sys.exit(3)
-sys.exit(0)
-PY
-    st=$?
-    set -e
-    if [ "$st" -eq 3 ]; then
-      patched=1
-    elif [ "$st" -eq 2 ]; then
-      echo "⚠ 无法读取/写入: $f"
-      return 1
-    elif [ "$st" -ne 0 ]; then
-      echo "⚠ python 异常退出: $st ($f)"
-      return 1
-    fi
-  done < <(sudo find /etc/nginx/conf.d -maxdepth 1 -name '*.conf' -type f -print0 2>/dev/null)
+    client_max_body_size 500M;
+    client_body_timeout 300s;
 
-  if [ "$patched" != "1" ]; then
-    return 0
-  fi
-  if sudo nginx -t 2>/dev/null; then
-    echo "▸ 已补全 443 server 中的 include locations（修复 Certbot 漏掉的反代）"
-    sudo systemctl reload nginx
-    return 0
-  fi
-  echo "⚠ 修补后 nginx -t 失败，正在从 *.bak.releasehub 还原 conf.d 下刚备份的文件"
-  while IFS= read -r -d '' f; do
-    sudo test -f "${f}.bak.releasehub" && sudo cp -a "${f}.bak.releasehub" "$f"
-  done < <(sudo find /etc/nginx/conf.d -maxdepth 1 -name '*.conf' -type f -print0 2>/dev/null)
-  sudo nginx -t || true
-  return 1
+    include /etc/nginx/conf.d/locations/*.conf;
+}
+NGX
 }
 
 # DNS 预检：域名 A/AAAA 是否包含本机公网 IP。返回 0=可继续试签发；1=已知不匹配应跳过 certbot
@@ -350,8 +293,16 @@ if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   if sudo apt-get update -qq && sudo apt-get install -y nginx; then
     sudo rm -f /etc/nginx/sites-enabled/release-hub /etc/nginx/sites-available/release-hub 2>/dev/null || true
     nginx_disable_stock_default_site
+    nginx_remove_stale_default_conf_for_domain
     sudo mkdir -p /etc/nginx/conf.d/locations
-    ensure_main_server_block
+    # 已有 Let's Encrypt 证书时直接写 80/443（避免 ensure_main 仅 HTTP 覆盖掉上次部署的 HTTPS）
+    if [ -n "$DOMAIN_RESOLVED" ] && ! domain_is_nonpublic_hostname "$DOMAIN_RESOLVED" \
+      && [ "${USE_HTTPS:-}" != "0" ] \
+      && sudo test -f "/etc/letsencrypt/live/${DOMAIN_RESOLVED}/fullchain.pem"; then
+      write_main_server_block_https "$DOMAIN_RESOLVED" "$MAIN_NGINX_CONF"
+    else
+      ensure_main_server_block
+    fi
     write_release_hub_location
     if sudo nginx -t; then
       sudo systemctl enable nginx
@@ -428,23 +379,34 @@ else
         DRY_EXIT=$?
         set -e
         if [ "$DRY_EXIT" -ne 0 ]; then
-          echo "⚠ certbot dry-run 失败（$DRY_EXIT），保持 HTTP。可稍后: sudo certbot --nginx -d $DOMAIN_RESOLVED"
+          echo "⚠ certbot dry-run 失败（$DRY_EXIT），保持 HTTP。可稍后: sudo certbot certonly --nginx -d $DOMAIN_RESOLVED"
         else
-          echo "▸ dry-run 成功，正式申请证书…"
+          echo "▸ dry-run 成功，正式申请证书（certonly，不修改 Nginx 配置）…"
           set +e
-          sudo certbot --nginx \
+          sudo certbot certonly --nginx \
             --non-interactive \
             --agree-tos \
             --email "$CERTBOT_EMAIL_VAL" \
-            -d "$DOMAIN_RESOLVED" \
-            --redirect
+            -d "$DOMAIN_RESOLVED"
           CERTBOT_EXIT=$?
           set -e
           if [ "$CERTBOT_EXIT" -eq 0 ]; then
-            HTTPS_ENABLED=1
-            echo "✓ HTTPS 已启用（Let's Encrypt）"
+            write_main_server_block_https "$DOMAIN_RESOLVED" "$MAIN_NGINX_CONF"
+            if sudo nginx -t; then
+              sudo systemctl reload nginx
+              HTTPS_ENABLED=1
+              echo "✓ HTTPS 已启用（Let's Encrypt；Nginx 80/443 由 deploy.sh 写入并含 locations）"
+            else
+              echo "⚠ 写入 HTTPS 配置后 nginx -t 失败，回退为 HTTP-only 主配置"
+              ensure_main_server_block
+              if sudo nginx -t; then
+                sudo systemctl reload nginx
+              else
+                echo "⚠ 回退后 nginx -t 仍失败，请手动检查: sudo nginx -t"
+              fi
+            fi
           else
-            echo "⚠ certbot 正式申请失败（$CERTBOT_EXIT），保持 HTTP"
+            echo "⚠ certbot certonly 失败（$CERTBOT_EXIT），保持 HTTP"
           fi
         fi
       else
@@ -452,11 +414,6 @@ else
       fi
     fi
   fi
-fi
-
-# Certbot 的 443 server 常不含 include locations → HTTPS 502；幂等修补（含历史错误部署）
-if [ "$NGINX_ENABLED" = "1" ]; then
-  nginx_fix_certbot_443_missing_locations_all || echo "⚠ 若 HTTPS 仍 502，请检查 443 块是否含: include /etc/nginx/conf.d/locations/*.conf;"
 fi
 
 # ── 配置环境变量 ─────────────────────────
@@ -595,7 +552,7 @@ elif [ "$NGINX_ENABLED" = "1" ]; then
       echo "  Tauri updater（公开）: http://${DOMAIN_RESOLVED}/releases/<appName>/latest.json"
     fi
     echo "  直连 Node（排障用）: http://$SERVER_IP:$PORT"
-    echo "  启用 HTTPS：设置 DOMAIN 并确保 DNS 指向本机后重新运行 deploy.sh，或: sudo certbot --nginx -d $DOMAIN_RESOLVED"
+    echo "  启用 HTTPS：设置 DOMAIN 并确保 DNS 指向本机后重新运行 deploy.sh，或: sudo certbot certonly --nginx -d $DOMAIN_RESOLVED（证书签发后需含 locations 的 443 配置，建议直接再跑 deploy.sh）"
     echo "            成功后请在后台将 BASE_URL 改为 https://$DOMAIN_RESOLVED${NGINX_PREFIX_SLUG:+/$NGINX_PREFIX_SLUG}"
   else
     if [ -n "$NGINX_PREFIX_SLUG" ]; then
@@ -604,7 +561,7 @@ elif [ "$NGINX_ENABLED" = "1" ]; then
       echo "  管理后台（经 Nginx HTTP）: http://$SERVER_IP/"
     fi
     echo "  直连 Node（排障用）: http://$SERVER_IP:$PORT"
-    echo "  启用 HTTPS：设置 DOMAIN 后重新运行 deploy.sh，或: sudo certbot --nginx -d 你的域名"
+    echo "  启用 HTTPS：设置 DOMAIN 后重新运行 deploy.sh，或: sudo certbot certonly --nginx -d 你的域名"
   fi
 else
   echo "  管理后台：http://$SERVER_IP:$PORT"

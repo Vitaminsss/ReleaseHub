@@ -24,17 +24,17 @@ Tauri 应用发布管理后台：多应用、多版本、文件上传、`latest.
 `deploy.sh` 会在满足条件时**自动**申请证书，**无交互提问**。若要 HTTPS 一次成功，请先完成：
 
 1. **DNS**：将域名的 **A 记录**（或 AAAA）指向本服务器的公网 IP，并等待生效（通常数分钟至半小时）。可用下面命令检查（将 `your-domain.com` 换成你的域名）：
-   ```bash
+  ```bash
    dig +short your-domain.com A
-   ```
+  ```
 2. **端口**：确保本机 **80** 端口对公网开放（Let's Encrypt HTTP-01 验证需要；443 在证书签发成功后由脚本提示放行防火墙，若你自行管理防火墙请一并放行）。
 3. **传入域名**：部署时通过环境变量指定公网域名，例如：
-   ```bash
+  ```bash
    DOMAIN=www.example.com bash deploy.sh
-   ```
+  ```
    勿依赖 `hostname -f`（云主机常为内网名，与证书域名无关）。
 
-脚本顺序为：**DNS 预检** → `certbot certonly --nginx --dry-run` → 通过后正式 `certbot --nginx --redirect`。任一步失败则保持 **HTTP**，部署不中断；修好 DNS 后可再次运行 `deploy.sh`，或手动执行 `sudo certbot --nginx -d 你的域名`。
+脚本顺序为：**DNS 预检** → `certbot certonly --nginx --dry-run` → 通过后正式 **`certbot certonly --nginx`（只签发证书，不改 Nginx）**，再由脚本写入 **80 跳转 + 443 含 `include .../locations/`**。任一步失败则保持 **HTTP**，部署不中断；修好 DNS 后可再次运行 `deploy.sh`。勿使用会改写整站配置的 `certbot --nginx --redirect`，否则易丢失反代导致域名 **502**。
 
 跳过自动申请证书（仅 HTTP，仍可用 `DOMAIN` 生成 `BASE_URL`）：
 
@@ -55,18 +55,20 @@ bash deploy.sh
 
 ### Nginx 与环境变量
 
-默认**不询问**；安装 **Nginx**（HTTP 80 反代到本机 `:3721`）；路径前缀默认为 **`releasehub`**（访问 `http://<公网IP>/releasehub/`）。**HTTPS** 在未设置 `USE_HTTPS=0` 且已安装 Nginx 时**自动尝试** Let's Encrypt（需 `DOMAIN` 与 DNS，见上文「启用 HTTPS」）。
+默认**不询问**；安装 **Nginx**（HTTP 80 反代到本机 `:3721`）；路径前缀默认为 `**releasehub`**（访问 `http://<公网IP>/releasehub/`）。**HTTPS** 在未设置 `USE_HTTPS=0` 且已安装 Nginx 时**自动尝试** Let's Encrypt（需 `DOMAIN` 与 DNS，见上文「启用 HTTPS」）。
 
-| 变量             | 含义                                                                  |
-| -------------- | ------------------------------------------------------------------- |
-| `USE_NGINX=0`  | **不**安装 Nginx（直连 `http://<公网IP>:3721`） |
-| `SKIP_NGINX=1` | 与 `USE_NGINX=0` 相同（兼容旧用法） |
-| 未设置 `USE_NGINX` | **默认安装 Nginx** |
-| `NGINX_PREFIX` | **HTTP 路径前缀**（仅字母数字 `_` `-`）。**未设置**时默认为 `releasehub`；**显式设为空** `NGINX_PREFIX=` 表示整站根路径 `/`；其他值如 `NGINX_PREFIX=my-app` 会覆盖默认 |
-| `USE_HTTPS=0` | 不尝试证书（仅 HTTP）；可配合 `DOMAIN` 生成 **BASE_URL** |
-| 未设置 `USE_HTTPS` | 在已装 Nginx 时自动尝试签发（见「HTTPS 自动试签发」） |
-| `DOMAIN` | **公网域名**（如 `www.example.com`），须与 DNS 一致；**建议显式设置**。未设置时脚本会尝试 `hostname -f`（非内网保留名时采用）。`*.local` / `*.lan` 等内网保留名会被忽略 |
-| `CERTBOT_EMAIL` | Let's Encrypt 注册邮箱（可选；缺省为 `admin@域名`） |
+
+| 变量              | 含义                                                                                                                           |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `USE_NGINX=0`   | **不**安装 Nginx（直连 `http://<公网IP>:3721`）                                                                                       |
+| `SKIP_NGINX=1`  | 与 `USE_NGINX=0` 相同（兼容旧用法）                                                                                                    |
+| 未设置 `USE_NGINX` | **默认安装 Nginx**                                                                                                               |
+| `NGINX_PREFIX`  | **HTTP 路径前缀**（仅字母数字 `_` `-`）。**未设置**时默认为 `releasehub`；**显式设为空** `NGINX_PREFIX=` 表示整站根路径 `/`；其他值如 `NGINX_PREFIX=my-app` 会覆盖默认 |
+| `USE_HTTPS=0`   | 不尝试证书（仅 HTTP）；可配合 `DOMAIN` 生成 **BASE_URL**                                                                                   |
+| 未设置 `USE_HTTPS` | 在已装 Nginx 时自动尝试签发（见「HTTPS 自动试签发」）                                                                                            |
+| `DOMAIN`        | **公网域名**（如 `www.example.com`），须与 DNS 一致；**建议显式设置**。未设置时脚本会尝试 `hostname -f`（非内网保留名时采用）。`*.local` / `*.lan` 等内网保留名会被忽略         |
+| `CERTBOT_EMAIL` | Let's Encrypt 注册邮箱（可选；缺省为 `admin@域名`）                                                                                        |
+
 
 ```bash
 bash deploy.sh
@@ -81,10 +83,11 @@ NGINX_PREFIX=custom bash deploy.sh   # 自定义前缀 /custom/
 
 在**已安装 Nginx** 的前提下：
 
-1. **域名**：优先环境变量 **`DOMAIN`**；若未设置且 `hostname -f` 为**非**内网保留名则自动采用。云主机常见 `hostname` 与证书域名无关，**请设置 `DOMAIN`**。
+1. **域名**：优先环境变量 `**DOMAIN`**；若未设置且 `hostname -f` 为**非**内网保留名则自动采用。云主机常见 `hostname` 与证书域名无关，**请设置 `DOMAIN`**。
 2. **DNS 预检**：脚本的公网 IP（`curl` 检测）须与域名 `A`/`AAAA` 记录之一一致（需安装 `dig`，通常来自 `dnsutils` / `bind9-dnsutils`）。不一致则**不调用 certbot**，Nginx 保持 HTTP。
-3. **试签发**：`certbot certonly --nginx --dry-run`（staging）。仅当 dry-run **成功** 后才执行正式 `certbot --nginx --redirect`。
-4. **失败**：任一步失败则保持 HTTP，不中断部署；可修正 DNS 后再次运行 `deploy.sh` 或手动 `sudo certbot --nginx -d 你的域名`。
+3. **试签发**：`certbot certonly --nginx --dry-run`（staging）。仅当 dry-run **成功** 后才执行正式 `certbot certonly --nginx`。
+4. **写入 Nginx**：证书落在 `/etc/letsencrypt/live/<域名>/` 后，由 `deploy.sh` 覆盖写入主 `server` 块（HTTP 301 + HTTPS + `include` locations），**不由 certbot 自动改配置**。
+5. **失败**：任一步失败则保持 HTTP，不中断部署；可修正 DNS 后再次运行 `deploy.sh`。手动补证书时优先 `sudo certbot certonly --nginx -d 你的域名`，再运行 `deploy.sh` 以刷新 Nginx。
 
 ### 部署结果摘要
 
@@ -120,7 +123,7 @@ NGINX_PREFIX=custom bash deploy.sh   # 自定义前缀 /custom/
 
 ### 忘记密码（重置为初始密码）
 
-需要能 SSH 登录服务器，进入**项目根目录**（与 `server.js`、`deploy.sh` 同级，即 `release-server` 目录），执行仓库自带的重置脚本，将管理员密码恢复为默认 **`rainy`**，并写回同目录下的 `.env`：
+需要能 SSH 登录服务器，进入**项目根目录**（与 `server.js`、`deploy.sh` 同级，即 `release-server` 目录），执行仓库自带的重置脚本，将管理员密码恢复为默认 `**rainy`**，并写回同目录下的 `.env`：
 
 ```bash
 cd ~/release-server   # 换成你 clone 的实际路径
@@ -241,16 +244,17 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 
 - 由 `deploy.sh` 生成：**主配置** `/etc/nginx/conf.d/<根域标签>.conf`，**Release Hub 片段** `/etc/nginx/conf.d/locations/release-hub.conf`（详见上文「部署结果摘要」）。
 - 若日志出现 `conflicting server name "_"` 或 **502**（且 `pm2 status` 正常）：多为旧配置与发行版 `sites-enabled/default` 冲突。执行 `sudo rm -f /etc/nginx/sites-enabled/default`，再删除有问题的 `/etc/nginx/conf.d/_default.conf`（或对应主配置）后重新运行 `deploy.sh`，或手动为无域名站点加上 `listen 80 default_server` 并 `nginx -t`。
-- **HTTP 正常、HTTPS 502**（`curl http://localhost:3721/` 为 200）：多为 **Certbot** 生成的 `listen 443` 块里**没有** `include /etc/nginx/conf.d/locations/*.conf;`。重新运行 `bash deploy.sh` 会自动修补；或在该 `server { }` 内、`ssl_certificate` 相关行之后手动加入上述 `include` 一行后执行 `sudo nginx -t && sudo systemctl reload nginx`。
+- **HTTP 正常、HTTPS 502**（`curl http://localhost:3721/` 为 200）：多为曾用 **`certbot --nginx` 改写配置**，导致 80/443 的 `server` 里丢了 `include /etc/nginx/conf.d/locations/*.conf;`。当前脚本已改为 **`certbot certonly` + 自管 80/443**；若仍为旧配置，请重新运行 `bash deploy.sh`，或手动在 443 的 `server { }` 内补上上述 `include` 后 `sudo nginx -t && sudo systemctl reload nginx`。
 - 重载：`sudo nginx -t && sudo systemctl reload nginx`
 - 仓库内 [nginx.conf](nginx.conf) 可供对照与手工覆盖（域名等）
-- 一键部署已包含 **DNS 预检 → certbot dry-run → 正式签发**，失败则保持 HTTP；详见上文「启用 HTTPS」与「HTTPS 自动试签发」。
+- 一键部署已包含 **DNS 预检 → certbot certonly dry-run → 正式 certonly → 脚本写入 80/443**，失败则保持 HTTP；详见上文「启用 HTTPS」与「HTTPS 自动试签发」。
 
 手动补证书（例如首次仅用 HTTP 部署后再开 HTTPS）：
 
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d your-domain.com
+sudo certbot certonly --nginx -d your-domain.com
+bash deploy.sh   # 刷新主 server 块（含 HTTPS 与 locations include）
 ```
 
 配置 HTTPS 后，在后台将 **BASE_URL** 改为 `https://你的域名`（若 `deploy.sh` 已成功签发，首次 `.env` 通常已是 `https://`）。
