@@ -77,13 +77,27 @@ release_hub_resolve_domain() {
   fi
 }
 
+# 移除 Ubuntu/Debian 自带 default 站点，否则与 server_name _ 重复，nginx 会忽略其一，导致 locations 不生效
+nginx_disable_stock_default_site() {
+  if sudo test -e /etc/nginx/sites-enabled/default; then
+    echo "▸ 移除发行版默认站点 sites-enabled/default（避免与 _default.conf 的 server_name _ 冲突）"
+    sudo rm -f /etc/nginx/sites-enabled/default
+  fi
+}
+
 # 主 server 块：已存在则不覆盖（多服务共用同一域名时由首次部署创建）
 ensure_main_server_block() {
   local sn
+  local listen_directive
   if [ -n "$DOMAIN_RESOLVED" ] && ! domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
     sn="$DOMAIN_RESOLVED"
+    listen_directive='    listen 80;
+    listen [::]:80;'
   else
     sn="_"
+    # 无域名时须为 default_server，且已去掉发行版 default，否则按 IP 访问不会落到本 server
+    listen_directive='    listen 80 default_server;
+    listen [::]:80 default_server;'
   fi
   if sudo test -f "$MAIN_NGINX_CONF"; then
     echo "▸ 主 Nginx 配置已存在，跳过创建: $MAIN_NGINX_CONF"
@@ -93,8 +107,7 @@ ensure_main_server_block() {
   sudo tee "$MAIN_NGINX_CONF" > /dev/null <<NGX
 # Release Hub — 主 server 块（首次生成）；各服务 location 见 conf.d/locations/
 server {
-    listen 80;
-    listen [::]:80;
+${listen_directive}
     server_name ${sn};
 
     client_max_body_size 500M;
@@ -237,6 +250,7 @@ if [ "$USE_NGINX_RESOLVED" = "1" ]; then
   echo "▸ 安装并配置 Nginx 反向代理..."
   if sudo apt-get update -qq && sudo apt-get install -y nginx; then
     sudo rm -f /etc/nginx/sites-enabled/release-hub /etc/nginx/sites-available/release-hub 2>/dev/null || true
+    nginx_disable_stock_default_site
     sudo mkdir -p /etc/nginx/conf.d/locations
     ensure_main_server_block
     write_release_hub_location

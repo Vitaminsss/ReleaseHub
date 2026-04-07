@@ -89,7 +89,7 @@ NGINX_PREFIX=custom bash deploy.sh   # 自定义前缀 /custom/
 ### 部署结果摘要
 
 - 安装 Node.js 20（若未安装）、PM2。
-- 若启用 Nginx：主 server 块写入 `/etc/nginx/conf.d/<根域标签>.conf`（由域名倒数第二段命名，如 `www.example.com` → `example.conf`；无可用域名时为 `_default.conf`）；Release Hub 的反向代理写在 `/etc/nginx/conf.d/locations/release-hub.conf`（`include` 进主 server 块）。HTTP 80 → `127.0.0.1:3721`；默认路径前缀为 `releasehub`，除非 `NGINX_PREFIX=` 空或自定义。可与其它服务共用同一主 server 块，各自只维护 `locations/` 下自己的片段。
+- 若启用 Nginx：主 server 块写入 `/etc/nginx/conf.d/<根域标签>.conf`（由域名倒数第二段命名，如 `www.example.com` → `example.conf`；无可用域名时为 `_default.conf`）；Release Hub 的反向代理写在 `/etc/nginx/conf.d/locations/release-hub.conf`（`include` 进主 server 块）。HTTP 80 → `127.0.0.1:3721`；默认路径前缀为 `releasehub`，除非 `NGINX_PREFIX=` 空或自定义。可与其它服务共用同一主 server 块，各自只维护 `locations/` 下自己的片段。脚本会**删除**发行版自带的 `/etc/nginx/sites-enabled/default`，否则与无域名时的 `server_name _` 冲突，nginx 会忽略其一并导致反代不生效；若你依赖该默认站点请自行恢复后再合并配置。
 - **程序与数据目录**：`deploy.sh` 所在目录（与 `server.js` 同级），其中 `**releases/`** 存放安装包与 `latest.json`，`**.env`** 在同目录。
 - 首次生成 `.env`（含 `JWT_SECRET`、`ADMIN_PASSWORD_HASH`、`RELEASES_DIR`（指向本目录下 `releases/`）、`BASE_URL`、`PORT`）。启用 Nginx 且使用默认前缀时首次 `BASE_URL` 多为 `http://<公网IP>/releasehub`；无前缀（整站根）时为 `http://<公网IP>`；若配置了域名且 HTTPS 未成功，则可能为 `http://<域名>/...`；HTTPS 成功时为 `https://<域名>/...`；未启用 Nginx 时为 `http://<公网IP>:3721`。
 - PM2 进程名：`release-hub`；防火墙在启用 Nginx 时通常放行 **80** 与 **3721**；仅在 HTTPS 成功时额外放行 **443**。
@@ -240,6 +240,7 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 ## Nginx 与 HTTPS
 
 - 由 `deploy.sh` 生成：**主配置** `/etc/nginx/conf.d/<根域标签>.conf`，**Release Hub 片段** `/etc/nginx/conf.d/locations/release-hub.conf`（详见上文「部署结果摘要」）。
+- 若日志出现 `conflicting server name "_"` 或 **502**（且 `pm2 status` 正常）：多为旧配置与发行版 `sites-enabled/default` 冲突。执行 `sudo rm -f /etc/nginx/sites-enabled/default`，再删除有问题的 `/etc/nginx/conf.d/_default.conf`（或对应主配置）后重新运行 `deploy.sh`，或手动为无域名站点加上 `listen 80 default_server` 并 `nginx -t`。
 - 重载：`sudo nginx -t && sudo systemctl reload nginx`
 - 仓库内 [nginx.conf](nginx.conf) 可供对照与手工覆盖（域名等）
 - 一键部署已包含 **DNS 预检 → certbot dry-run → 正式签发**，失败则保持 HTTP；详见上文「启用 HTTPS」与「HTTPS 自动试签发」。
