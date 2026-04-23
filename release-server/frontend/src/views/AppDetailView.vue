@@ -49,35 +49,15 @@
     <section v-if="publicBase" class="card api-block">
       <h2>对外接口</h2>
       <p class="hint">旧版 Tauri / 脚本请继续使用 <code>latest.json</code>，行为不变。</p>
-      <div v-if="latestAppShortcutUrl" class="link-row">
-        <span class="lbl">最新版本页（推荐）</span>
-        <code class="mono">{{ latestAppShortcutUrl }}</code>
-        <button type="button" class="btn btn-sm btn-ghost" @click="copy(latestAppShortcutUrl)">复制</button>
-      </div>
-      <div v-if="publishedVersionPageUrl" class="link-row">
-        <span class="lbl">当前发布版本页</span>
-        <code class="mono">{{ publishedVersionPageUrl }}</code>
-        <button type="button" class="btn btn-sm btn-ghost" @click="copy(publishedVersionPageUrl)">复制</button>
-      </div>
+      <ShareLinkRow v-if="latestAppShortcutUrl" label="最新版本页（推荐）" :url="latestAppShortcutUrl" />
+      <ShareLinkRow v-if="publishedVersionPageUrl" label="当前发布版本页" :url="publishedVersionPageUrl" />
       <p v-if="latestAppShortcutUrl" class="hint sm no-mt">
         <code>/app/{{ appName }}/latest</code> 会 302 到当前已发布目录；固定版本链接为 <code>/app/{{ appName }}/&lt;目录名&gt;</code>。版本页：<strong>点击文件名</strong>进入单文件说明页，右侧<strong>下载</strong>为直链；列表不展示
         <code>.sig</code>。
       </p>
-      <div class="link-row">
-        <span class="lbl">latest.json</span>
-        <code class="mono">{{ latestJsonUrl }}</code>
-        <button type="button" class="btn btn-sm btn-ghost" @click="copy(latestJsonUrl)">复制</button>
-      </div>
-      <div class="link-row">
-        <span class="lbl">JSON 摘要</span>
-        <code class="mono">{{ downloadInfoUrl }}</code>
-        <button type="button" class="btn btn-sm btn-ghost" @click="copy(downloadInfoUrl)">复制</button>
-      </div>
-      <div class="link-row">
-        <span class="lbl">直链跳转</span>
-        <code class="mono">{{ downloadRedirectUrl }}</code>
-        <button type="button" class="btn btn-sm btn-ghost" @click="copy(downloadRedirectUrl)">复制</button>
-      </div>
+      <ShareLinkRow label="latest.json" :url="latestJsonUrl" />
+      <ShareLinkRow label="JSON 摘要" :url="downloadInfoUrl" />
+      <ShareLinkRow label="直链跳转" :url="downloadRedirectUrl" />
       <p class="hint sm no-mt">
         带 <code>?redirect=1</code> 时 302 到<strong>当前已发布</strong>主安装包直链（按磁盘 + BASE_URL）。<strong>Tauri</strong> 会排除
         <code>.sig</code>，只选 exe/msi/dmg/AppImage 等本体。
@@ -238,6 +218,7 @@ import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, uploadWithProgress } from '@/api/client';
 import { useToast } from '@/composables/useToast';
+import ShareLinkRow from '@/components/ShareLinkRow.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -841,19 +822,6 @@ h1 {
   font-size: 13px;
   color: var(--text2);
   line-height: 1.5;
-}
-.link-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 13px;
-}
-.link-row .lbl {
-  min-width: 88px;
-  color: var(--text3);
-  font-size: 12px;
 }
 .mono {
   flex: 1;

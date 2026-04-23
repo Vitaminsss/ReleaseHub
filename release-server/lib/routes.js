@@ -49,7 +49,7 @@ const {
   deleteLibrary,
   patchLibraryMeta,
   renameLibrary,
-  registerUpload,
+  registerUploadBatch,
   patchItem,
   deleteItem,
   resolveResourceFile,
@@ -352,13 +352,9 @@ function registerRoutes(app) {
     },
     (req, res) => {
       const { name } = req.params;
-      const uploaded = [];
-      for (const f of req.files || []) {
-        const r = registerUpload(name, f.originalname, f.size);
-        if (r.error) return res.status(r.status).json({ error: r.error });
-        uploaded.push(r.item);
-      }
-      res.json({ uploaded });
+      const r = registerUploadBatch(name, req.files || []);
+      if (r.error) return res.status(r.status).json({ error: r.error });
+      res.json({ uploaded: r.uploaded });
     },
   );
 

@@ -157,7 +157,7 @@ ul{list-style:none}
 </html>`;
 }
 
-/** 资源库公开页：列表 + 每项显示名/简介/下载 */
+/** 资源库公开页：与后台版本卡片类似的响应式网格，每项一卡 */
 function renderResourceLibraryHtml(opts) {
   const { displayLabel, description, items } = opts;
   const initial = pageAvatarInitial(displayLabel);
@@ -168,26 +168,34 @@ function renderResourceLibraryHtml(opts) {
     description && String(description).trim()
       ? `<div class="intro">${formatPlainMultiline(String(description).trim())}</div>`
       : '';
-  const rows = (items || [])
+  const list = items || [];
+  const cards = list
     .map(it => {
       const title = (it.displayName && String(it.displayName).trim()) || it.fileName;
       const desc =
         it.description && String(it.description).trim()
-          ? `<div class="item-desc">${formatPlainMultiline(String(it.description).trim())}</div>`
+          ? `<div class="res-card-desc">${formatPlainMultiline(String(it.description).trim())}</div>`
           : '';
-      return `<li class="res-row">
-  <div class="res-main">
-    <a class="res-title" href="${htmlEsc(it.landingHref)}">${htmlEsc(title)}</a>
+      return `<article class="res-card">
+  <header class="res-card-head">
+    <a class="res-card-title" href="${htmlEsc(it.landingHref)}">${htmlEsc(title)}</a>
+  </header>
+  <div class="res-card-meta">
     <span class="res-fn">${htmlEsc(it.fileName)}</span>
-    ${desc}
-  </div>
-  <div class="res-side">
     <span class="sz">${htmlEsc(fmtBytesServer(it.size))}</span>
+  </div>
+  ${desc}
+  <div class="res-card-actions">
+    <a class="link-landing" href="${htmlEsc(it.landingHref)}">说明页</a>
     <a class="btn-dl" href="${htmlEsc(it.directHref)}" download rel="noopener">⬇ 下载</a>
   </div>
-</li>`;
+</article>`;
     })
     .join('');
+  const gridInner =
+    list.length === 0
+      ? '<div class="res-empty">暂无资源</div>'
+      : `<div class="items-grid">${cards}</div>`;
   return `<!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -198,36 +206,36 @@ function renderResourceLibraryHtml(opts) {
 <style>
 :root { --bg:#0c0b09; --text:#ebe6df; --text2:#9a9288; --accent:#e8a035; --border:rgba(235,230,223,0.08); }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;margin:0;padding:24px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;margin:0;padding:24px 20px 40px;display:flex;flex-direction:column;align-items:center}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.028) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
-.wrap{position:relative;z-index:1;width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.wrap{position:relative;z-index:1;width:100%;max-width:1040px;display:flex;flex-direction:column;align-items:center}
 .page-avatar{width:72px;height:72px;margin:0 auto 20px;border-radius:18px;background:linear-gradient(145deg,#f0b24a 0%,var(--accent) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#1a1208;box-shadow:0 12px 32px rgba(232,160,53,.2);letter-spacing:0;flex-shrink:0}
 h1{font-size:22px;font-weight:800;margin:0 0 14px;text-align:center;line-height:1.3;max-width:100%}
-.intro{width:100%;text-align:center;color:var(--text2);font-size:14px;line-height:1.7;margin:0 auto 26px;padding:0 8px;max-width:36rem}
-.card{width:100%;text-align:left;border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:8px 0 4px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
-ul{list-style:none}
-.res-row{display:flex;align-items:flex-start;gap:14px;padding:16px 16px;border-top:1px solid var(--border);font-size:14px}
-.res-row:first-child{border-top:none}
-.res-main{flex:1;min-width:0;text-align:left}
-.res-title{display:block;color:var(--accent);text-decoration:none;font-weight:700;font-size:15px;margin-bottom:6px;word-break:break-word}
-.res-title:hover{text-decoration:underline}
-.res-fn{font-size:12px;color:var(--text2);word-break:break-all;display:block;margin-bottom:8px}
-.item-desc{font-size:13px;color:var(--text2);line-height:1.65}
-.res-side{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0}
-.sz{color:var(--text2);font-size:12px;white-space:nowrap}
+.intro{width:100%;text-align:center;color:var(--text2);font-size:14px;line-height:1.7;margin:0 auto 22px;padding:0 8px;max-width:42rem}
+.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;width:100%;align-items:stretch}
+.res-card{border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:0;box-shadow:0 24px 48px rgba(0,0,0,.35);display:flex;flex-direction:column;text-align:left;min-height:100%}
+.res-card-head{padding:14px 16px;border-bottom:1px solid var(--border)}
+.res-card-title{display:block;color:var(--accent);text-decoration:none;font-weight:700;font-size:16px;line-height:1.35;word-break:break-word}
+.res-card-title:hover{text-decoration:underline}
+.res-card-meta{padding:10px 16px 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;font-size:12px;color:var(--text2)}
+.res-fn{word-break:break-all;flex:1;min-width:0}
+.sz{white-space:nowrap;flex-shrink:0}
+.res-card-desc{padding:0 16px 12px;font-size:13px;color:var(--text2);line-height:1.65;flex:1}
+.res-card-actions{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px;padding:12px 16px;border-top:1px solid var(--border)}
+.link-landing{font-size:12px;color:var(--text2);text-decoration:none}
+.link-landing:hover{color:var(--accent);text-decoration:underline}
 .btn-dl{display:inline-flex;align-items:center;justify-content:center;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;text-decoration:none;border-radius:6px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s}
 .btn-dl:hover{filter:brightness(1.06);box-shadow:0 0 18px rgba(232,160,53,.22)}
+.res-empty{width:100%;text-align:center;color:var(--text2);font-size:14px;padding:32px 16px;border:1px dashed var(--border);border-radius:8px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="page-avatar" aria-hidden="true">${htmlEsc(initial)}</div>
   <h1>${htmlEsc(displayLabel)}</h1>
-  <p class="intro" style="margin-top:-8px;margin-bottom:20px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)">资源库</p>
+  <p class="intro" style="margin-top:-8px;margin-bottom:16px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)">资源库</p>
   ${introHtml}
-  <div class="card">
-    <ul>${rows || '<li class="res-row" style="color:var(--text2);justify-content:center">暂无资源</li>'}</ul>
-  </div>
+  ${gridInner}
 </div>
 </body>
 </html>`;

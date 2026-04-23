@@ -1,3 +1,7 @@
 .env
 .notes-cache/
 node_modules/
+
+# 前端构建产物（在 release-server 目录执行 npm run build 生成）
+public/assets/
+public/index.html

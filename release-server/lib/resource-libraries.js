@@ -272,6 +272,56 @@ function registerUpload(name, originalname, size) {
   return { success: true, item };
 }
 
+/** 单次请求多文件：只读/写一次 index.json，避免连续写入竞态 */
+function registerUploadBatch(name, multerFiles) {
+  if (!libraryExists(name)) return { error: '资源库不存在', status: 404 };
+  const list = Array.isArray(multerFiles) ? multerFiles : [];
+  if (!list.length) return { uploaded: [] };
+  const idx = readIndex(name);
+  if (!idx) return { error: '索引损坏', status: 500 };
+  const uploaded = [];
+  for (const f of list) {
+    const fn = String(f.originalname || '').trim();
+    if (!fn || fn.includes('/') || fn.includes('\\') || fn === '.' || fn === '..') {
+      return { error: `无效文件名：${fn || '(空)'}`, status: 400 };
+    }
+    const fp = f.path || resolveResourceFile(name, fn);
+    if (!fp || !fs.existsSync(fp)) {
+      return { error: `上传文件未找到：${fn}`, status: 500 };
+    }
+    let st;
+    try {
+      st = fs.statSync(fp);
+    } catch {
+      return { error: `无法读取文件：${fn}`, status: 500 };
+    }
+    if (!st.isFile()) {
+      return { error: `非文件：${fn}`, status: 400 };
+    }
+    const existing = idx.items.find(it => it.fileName === fn);
+    const item = existing
+      ? {
+          ...existing,
+          size: st.size,
+          updatedAt: st.mtime.toISOString(),
+        }
+      : {
+          id: crypto.randomUUID(),
+          fileName: fn,
+          displayName: '',
+          description: '',
+          size: st.size,
+          updatedAt: st.mtime.toISOString(),
+        };
+    idx.items = idx.items.filter(it => it.fileName !== fn);
+    idx.items.push(item);
+    uploaded.push(item);
+  }
+  idx.items.sort((a, b) => a.fileName.localeCompare(b.fileName, undefined, { numeric: true }));
+  writeIndex(name, idx);
+  return { uploaded };
+}
+
 function patchItem(name, itemId, body = {}) {
   if (!libraryExists(name)) return { error: '资源库不存在', status: 404 };
   const idx = readIndex(name);
@@ -382,6 +432,7 @@ module.exports = {
   readIndex,
   syncItemsWithDisk,
   registerUpload,
+  registerUploadBatch,
   patchItem,
   deleteItem,
   resolveResourceFile,

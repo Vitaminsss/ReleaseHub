@@ -40,16 +40,8 @@
 
     <section v-if="publicBase" class="card api-block">
       <h2>对外链接</h2>
-      <div v-if="publicPageUrl" class="link-row">
-        <span class="lbl">公开下载页</span>
-        <code class="mono">{{ publicPageUrl }}</code>
-        <button type="button" class="btn btn-sm btn-ghost" @click="copy(publicPageUrl)">复制</button>
-      </div>
-      <div v-if="publicJsonUrl" class="link-row">
-        <span class="lbl">JSON</span>
-        <code class="mono">{{ publicJsonUrl }}</code>
-        <button type="button" class="btn btn-sm btn-ghost" @click="copy(publicJsonUrl)">复制</button>
-      </div>
+      <ShareLinkRow v-if="publicPageUrl" label="公开下载页" :url="publicPageUrl" />
+      <ShareLinkRow v-if="publicJsonUrl" label="JSON" :url="publicJsonUrl" />
       <p class="hint sm no-mt">访客打开公开页可浏览列表；每项可点进单文件说明页再下载。</p>
     </section>
 
@@ -83,9 +75,18 @@
           <span class="sz">{{ fmtSize(it.size) }}</span>
         </header>
         <label class="lbl">显示名（可选）</label>
-        <input v-model="itemEdits[it.id].displayName" class="input sm" />
+        <input
+          class="input sm"
+          :modelValue="editFor(it).displayName"
+          @update:modelValue="v => { editFor(it).displayName = v }"
+        />
         <label class="lbl">简介（可选）</label>
-        <textarea v-model="itemEdits[it.id].description" class="textarea sm" rows="2" />
+        <textarea
+          class="textarea sm"
+          rows="2"
+          :modelValue="editFor(it).description"
+          @update:modelValue="v => { editFor(it).description = v }"
+        />
         <div class="row-btns">
           <button type="button" class="btn btn-primary btn-sm" :disabled="savingItem === it.id" @click="saveItem(it.id)">
             保存此项
@@ -105,6 +106,7 @@ import { ref, computed, watch, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, uploadWithProgress } from '@/api/client';
 import { useToast } from '@/composables/useToast';
+import ShareLinkRow from '@/components/ShareLinkRow.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -164,6 +166,16 @@ function syncItemEdits(list) {
   }
 }
 
+/** 渲染前保证 itemEdits[id] 存在，避免 v-model 访问 undefined */
+function editFor(it) {
+  const id = it?.id;
+  if (!id) return { displayName: '', description: '' };
+  if (!itemEdits[id]) {
+    itemEdits[id] = { displayName: it.displayName || '', description: it.description || '' };
+  }
+  return itemEdits[id];
+}
+
 async function loadDetail() {
   loading.value = true;
   try {
@@ -172,10 +184,12 @@ async function loadDetail() {
     displayNameEdit.value = d.displayName != null ? String(d.displayName) : '';
     descriptionEdit.value = d.description != null ? String(d.description) : '';
     idEdit.value = libraryName.value;
-    items.value = d.items || [];
-    syncItemEdits(items.value);
+    const rawItems = d.items || [];
+    syncItemEdits(rawItems);
+    items.value = rawItems;
   } catch (e) {
     toast(e.message, 'error');
+    syncItemEdits([]);
     items.value = [];
   } finally {
     loading.value = false;
@@ -441,25 +455,6 @@ h1 {
 }
 .hint.no-mt {
   margin-top: 0;
-}
-.link-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 13px;
-}
-.link-row .lbl {
-  min-width: 88px;
-  margin: 0;
-}
-.mono {
-  flex: 1;
-  min-width: 200px;
-  word-break: break-all;
-  font-size: 12px;
-  color: var(--accent-dim);
 }
 .drop-zone {
   padding: 22px;
