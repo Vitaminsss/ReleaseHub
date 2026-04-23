@@ -157,9 +157,151 @@ ul{list-style:none}
 </html>`;
 }
 
+/** 资源库公开页：列表 + 每项显示名/简介/下载 */
+function renderResourceLibraryHtml(opts) {
+  const { displayLabel, description, items } = opts;
+  const initial = pageAvatarInitial(displayLabel);
+  const initialSvg = svgTextEsc(initial);
+  const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#e8a035"/><text x="16" y="21" text-anchor="middle" fill="#1a1208" font-size="15" font-weight="700" font-family="system-ui,sans-serif">${initialSvg}</text></svg>`;
+  const faviconHref = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
+  const introHtml =
+    description && String(description).trim()
+      ? `<div class="intro">${formatPlainMultiline(String(description).trim())}</div>`
+      : '';
+  const rows = (items || [])
+    .map(it => {
+      const title = (it.displayName && String(it.displayName).trim()) || it.fileName;
+      const desc =
+        it.description && String(it.description).trim()
+          ? `<div class="item-desc">${formatPlainMultiline(String(it.description).trim())}</div>`
+          : '';
+      return `<li class="res-row">
+  <div class="res-main">
+    <a class="res-title" href="${htmlEsc(it.landingHref)}">${htmlEsc(title)}</a>
+    <span class="res-fn">${htmlEsc(it.fileName)}</span>
+    ${desc}
+  </div>
+  <div class="res-side">
+    <span class="sz">${htmlEsc(fmtBytesServer(it.size))}</span>
+    <a class="btn-dl" href="${htmlEsc(it.directHref)}" download rel="noopener">⬇ 下载</a>
+  </div>
+</li>`;
+    })
+    .join('');
+  return `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="${faviconHref}" type="image/svg+xml">
+<title>${htmlEsc(displayLabel)} — 资源库</title>
+<style>
+:root { --bg:#0c0b09; --text:#ebe6df; --text2:#9a9288; --accent:#e8a035; --border:rgba(235,230,223,0.08); }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;margin:0;padding:24px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.028) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.page-avatar{width:72px;height:72px;margin:0 auto 20px;border-radius:18px;background:linear-gradient(145deg,#f0b24a 0%,var(--accent) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#1a1208;box-shadow:0 12px 32px rgba(232,160,53,.2);letter-spacing:0;flex-shrink:0}
+h1{font-size:22px;font-weight:800;margin:0 0 14px;text-align:center;line-height:1.3;max-width:100%}
+.intro{width:100%;text-align:center;color:var(--text2);font-size:14px;line-height:1.7;margin:0 auto 26px;padding:0 8px;max-width:36rem}
+.card{width:100%;text-align:left;border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:8px 0 4px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
+ul{list-style:none}
+.res-row{display:flex;align-items:flex-start;gap:14px;padding:16px 16px;border-top:1px solid var(--border);font-size:14px}
+.res-row:first-child{border-top:none}
+.res-main{flex:1;min-width:0;text-align:left}
+.res-title{display:block;color:var(--accent);text-decoration:none;font-weight:700;font-size:15px;margin-bottom:6px;word-break:break-word}
+.res-title:hover{text-decoration:underline}
+.res-fn{font-size:12px;color:var(--text2);word-break:break-all;display:block;margin-bottom:8px}
+.item-desc{font-size:13px;color:var(--text2);line-height:1.65}
+.res-side{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0}
+.sz{color:var(--text2);font-size:12px;white-space:nowrap}
+.btn-dl{display:inline-flex;align-items:center;justify-content:center;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;text-decoration:none;border-radius:6px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s}
+.btn-dl:hover{filter:brightness(1.06);box-shadow:0 0 18px rgba(232,160,53,.22)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-avatar" aria-hidden="true">${htmlEsc(initial)}</div>
+  <h1>${htmlEsc(displayLabel)}</h1>
+  <p class="intro" style="margin-top:-8px;margin-bottom:20px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)">资源库</p>
+  ${introHtml}
+  <div class="card">
+    <ul>${rows || '<li class="res-row" style="color:var(--text2);justify-content:center">暂无资源</li>'}</ul>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+/** 资源库单文件落地页 */
+function renderResourceItemLandingHtml(opts) {
+  const { libraryName, displayTitle, filename, description, size, badge, downloadHref } = opts;
+  const cls = badge.cls;
+  const badgeStyle =
+    cls === 'sig'
+      ? 'background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.4);color:#a78bfa'
+      : cls === 'win'
+        ? 'background:rgba(110,181,255,.1);border-color:rgba(110,181,255,.35);color:#6eb5ff'
+        : cls === 'linux'
+          ? 'background:rgba(82,212,138,.1);border-color:rgba(82,212,138,.35);color:#52d48a'
+          : cls === 'mac'
+            ? 'background:rgba(232,160,53,.12);border-color:rgba(232,160,53,.35);color:#e8a035'
+            : 'background:rgba(235,230,223,.06);border-color:rgba(235,230,223,.12);color:#9a9288';
+  const descBlock =
+    description && String(description).trim()
+      ? `<div style="margin:0 0 18px;font-size:14px;color:var(--text2);line-height:1.65;text-align:left">${formatPlainMultiline(String(description).trim())}</div>`
+      : '';
+  return `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${htmlEsc(displayTitle || filename)} — ReleaseHub</title>
+<style>
+:root { --bg:#0c0b09; --text:#ebe6df; --text2:#9a9288; --accent:#e8a035; --border:rgba(235,230,223,0.08); }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.028) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;width:100%;max-width:480px}
+.brand{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.35em;text-transform:uppercase;margin-bottom:18px;text-align:center}
+.meta{font-size:14px;color:var(--text2);text-align:center;margin-bottom:22px;line-height:1.5}
+.meta strong{color:var(--text);font-weight:600}
+.card{border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:28px 24px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
+.filename{font-size:17px;font-weight:700;word-break:break-all;line-height:1.45;margin-bottom:14px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:22px;font-size:14px;color:var(--text2)}
+.badge{display:inline-flex;align-items:center;font-size:10px;letter-spacing:.6px;padding:4px 8px;border:1px solid;border-radius:4px;text-transform:uppercase;font-weight:600;${badgeStyle}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;font-size:15px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;text-decoration:none;border-radius:6px;border:none;cursor:pointer;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s}
+.btn:hover{filter:brightness(1.06);box-shadow:0 0 24px rgba(232,160,53,.25)}
+.footer{margin-top:28px;text-align:center;font-size:11px;color:var(--text2);letter-spacing:.2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">ReleaseHub · 资源库</div>
+  <p class="meta"><strong>${htmlEsc(libraryName)}</strong></p>
+  <div class="card">
+    <div class="filename">${htmlEsc(displayTitle || filename)}</div>
+    ${descBlock}
+    <div class="row">
+      <span>文件：<strong style="color:var(--text);font-weight:600;word-break:break-all">${htmlEsc(filename)}</strong></span>
+    </div>
+    <div class="row">
+      <span>大小：<strong style="color:var(--text)">${htmlEsc(fmtBytesServer(size))}</strong></span>
+      <span class="badge">${htmlEsc(badge.label)}</span>
+    </div>
+    <a class="btn" href="${htmlEsc(downloadHref)}" download rel="noopener">⬇ 立即下载</a>
+  </div>
+  <p class="footer">Powered by ReleaseHub</p>
+</div>
+</body>
+</html>`;
+}
+
 module.exports = {
   htmlEsc,
   renderDownload404Html,
   renderDownloadPageHtml,
   renderVersionBrowserHtml,
+  renderResourceLibraryHtml,
+  renderResourceItemLandingHtml,
 };

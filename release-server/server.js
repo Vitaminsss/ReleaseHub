@@ -21,7 +21,7 @@ app.use((req, res, next) => {
   const parts = req.path.split('/').filter(Boolean);
   if (parts.length !== 3) return next();
   const [appName, version, filename] = parts;
-  if (['api', 'releases', 'public', 'app', 'd'].includes(appName)) return next();
+  if (['api', 'releases', 'public', 'app', 'd', 'r', 'rd'].includes(appName)) return next();
   const filePath = resolveReleaseFile(appName, version, filename);
   if (!filePath || !fs.existsSync(filePath)) return next();
   try {
@@ -43,7 +43,9 @@ app.get('*', (req, res, next) => {
     req.path.startsWith('/releases') ||
     req.path.startsWith('/d/') ||
     req.path === '/d' ||
-    req.path.startsWith('/app/')
+    req.path.startsWith('/app/') ||
+    req.path.startsWith('/r/') ||
+    req.path.startsWith('/rd/')
   ) {
     return next();
   }
@@ -55,4 +57,5 @@ app.get('*', (req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 数据分发控制台 running at http://localhost:${PORT}`);
   console.log(`📁 Releases dir: ${CONFIG.RELEASES_DIR}`);
+  console.log(`📚 Resource libraries dir: ${CONFIG.RESOURCE_LIBRARIES_DIR}`);
 });

@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const CONFIG = require('./config');
 const { MIN_PASSWORD_LENGTH } = require('./admin-password-defaults');
 const { auth } = require('./auth-middleware');
-const { upload, validateVersionForUpload } = require('./multer-upload');
+const { upload, validateVersionForUpload, resourceLibraryUpload } = require('./multer-upload');
 const {
   readAppMeta,
   writeAppMeta,
@@ -34,7 +34,32 @@ const {
   getLatestPrimaryDownloadUrl,
   resolvePublishedVersionDir,
 } = require('./releases');
-const { renderDownload404Html, renderDownloadPageHtml, renderVersionBrowserHtml } = require('./download-pages');
+const {
+  renderDownload404Html,
+  renderDownloadPageHtml,
+  renderVersionBrowserHtml,
+  renderResourceLibraryHtml,
+  renderResourceItemLandingHtml,
+} = require('./download-pages');
+const {
+  isValidLibraryName,
+  libraryExists,
+  listLibraries,
+  createLibrary,
+  deleteLibrary,
+  patchLibraryMeta,
+  renameLibrary,
+  registerUpload,
+  patchItem,
+  deleteItem,
+  resolveResourceFile,
+  itemDownloadUrl,
+  itemLandingUrl,
+  toPublicPayload,
+  toAdminDetail,
+  toListSummary,
+  readIndex,
+} = require('./resource-libraries');
 const { fileBadgeLabel } = require('./download-utils');
 
 function registerRoutes(app) {
@@ -258,6 +283,159 @@ function registerRoutes(app) {
     if (!rebuilt) return res.status(404).json({ error: '无已发布数据或版本目录不存在' });
     writeLatest(app, rebuilt);
     res.json({ success: true, latest: rebuilt, mode });
+  });
+
+  /* ========== 资源库（独立模块，无版本概念）========== */
+  app.get('/api/resources', auth, (req, res) => {
+    res.json(listLibraries().map(n => toListSummary(n)));
+  });
+
+  app.post('/api/resources', auth, (req, res) => {
+    const { name, displayName, description } = req.body || {};
+    const n = String(name || '').trim();
+    if (!isValidLibraryName(n)) {
+      return res.status(400).json({ error: '资源库标识只能包含字母、数字、下划线和连字符' });
+    }
+    const result = createLibrary(n, { displayName, description });
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json({ success: true });
+  });
+
+  app.delete('/api/resources/:name', auth, (req, res) => {
+    const result = deleteLibrary(req.params.name);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json({ success: true });
+  });
+
+  app.patch('/api/resources/:name', auth, (req, res) => {
+    const result = patchLibraryMeta(req.params.name, req.body || {});
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json(result.index);
+  });
+
+  app.post('/api/resources/:name/rename', auth, (req, res) => {
+    const newName = String(req.body?.newName || '').trim();
+    const result = renameLibrary(req.params.name, newName);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json({ success: true, name: result.name });
+  });
+
+  app.get('/api/resources/:name', auth, (req, res) => {
+    if (!libraryExists(req.params.name)) return res.status(404).json({ error: '资源库不存在' });
+    const detail = toAdminDetail(req.params.name);
+    if (!detail) return res.status(500).json({ error: '读取资源库失败' });
+    res.json(detail);
+  });
+
+  app.post(
+    '/api/resources/:name/upload',
+    auth,
+    (req, res, next) => {
+      if (!libraryExists(req.params.name)) return res.status(404).json({ error: '资源库不存在' });
+      next();
+    },
+    (req, res, next) => {
+      resourceLibraryUpload.array('files', 20)(req, res, err => {
+        if (!err) return next();
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ error: '单个文件超过 500MB 限制', code: 'FILE_TOO_LARGE' });
+        }
+        return res.status(400).json({ error: err.message || '上传失败', code: 'UPLOAD_ERROR' });
+      });
+    },
+    (req, res) => {
+      const { name } = req.params;
+      const uploaded = [];
+      for (const f of req.files || []) {
+        const r = registerUpload(name, f.originalname, f.size);
+        if (r.error) return res.status(r.status).json({ error: r.error });
+        uploaded.push(r.item);
+      }
+      res.json({ uploaded });
+    },
+  );
+
+  app.patch('/api/resources/:name/items/:id', auth, (req, res) => {
+    const result = patchItem(req.params.name, req.params.id, req.body || {});
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json({ success: true, item: result.item });
+  });
+
+  app.delete('/api/resources/:name/items/:id', auth, (req, res) => {
+    const result = deleteItem(req.params.name, req.params.id);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json({ success: true });
+  });
+
+  app.get('/api/public/resources/:name', (req, res) => {
+    const payload = toPublicPayload(req.params.name);
+    if (!payload) return res.status(404).json({ error: '资源库不存在' });
+    res.json(payload);
+  });
+
+  app.get('/r/:name/files/:filename', (req, res) => {
+    const { name, filename } = req.params;
+    const fp = resolveResourceFile(name, filename);
+    if (!fp || !fs.existsSync(fp)) return res.status(404).type('html').send(renderDownload404Html());
+    try {
+      if (!fs.statSync(fp).isFile()) return res.status(404).type('html').send(renderDownload404Html());
+    } catch {
+      return res.status(404).type('html').send(renderDownload404Html());
+    }
+    res.sendFile(fp);
+  });
+
+  app.get('/rd/:name/:filename', (req, res) => {
+    const { name, filename } = req.params;
+    const fp = resolveResourceFile(name, filename);
+    if (!fp || !fs.existsSync(fp)) return res.status(404).type('html').send(renderDownload404Html());
+    let st;
+    try {
+      st = fs.statSync(fp);
+    } catch {
+      return res.status(404).type('html').send(renderDownload404Html());
+    }
+    if (!st.isFile()) return res.status(404).type('html').send(renderDownload404Html());
+    const idx = readIndex(name);
+    const item = idx?.items.find(it => it.fileName === filename);
+    const pub = toPublicPayload(name);
+    const libraryLabel = pub?.displayLabel || name;
+    const displayTitle = (item?.displayName && String(item.displayName).trim()) || filename;
+    const description = item?.description || '';
+    const badge = fileBadgeLabel(filename);
+    const downloadHref = itemDownloadUrl(name, filename);
+    res.type('html').send(
+      renderResourceItemLandingHtml({
+        libraryName: libraryLabel,
+        displayTitle,
+        filename,
+        description,
+        size: st.size,
+        badge,
+        downloadHref,
+      }),
+    );
+  });
+
+  app.get('/r/:name', (req, res) => {
+    const { name } = req.params;
+    const payload = toPublicPayload(name);
+    if (!payload) return res.status(404).type('html').send(renderDownload404Html());
+    const items = payload.items.map(it => ({
+      displayName: it.displayName,
+      fileName: it.fileName,
+      description: it.description,
+      size: it.size,
+      landingHref: itemLandingUrl(name, it.fileName),
+      directHref: it.downloadUrl,
+    }));
+    res.type('html').send(
+      renderResourceLibraryHtml({
+        displayLabel: payload.displayLabel,
+        description: payload.description,
+        items,
+      }),
+    );
   });
 
   /**

@@ -19,6 +19,22 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 },
 });
 
+const { libraryFilesDir, ensureLibraryFilesDir } = require('./resource-libraries');
+
+const resourceLibraryStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const name = req.params.name;
+    ensureLibraryFilesDir(name);
+    cb(null, libraryFilesDir(name));
+  },
+  filename: (req, file, cb) => cb(null, file.originalname),
+});
+
+const resourceLibraryUpload = multer({
+  storage: resourceLibraryStorage,
+  limits: { fileSize: 500 * 1024 * 1024 },
+});
+
 function validateVersionForUpload(req, res, next) {
   const { app, version } = req.params;
   const meta = readAppMeta(app);
@@ -38,4 +54,4 @@ function validateVersionForUpload(req, res, next) {
   next();
 }
 
-module.exports = { upload, validateVersionForUpload };
+module.exports = { upload, validateVersionForUpload, resourceLibraryUpload };

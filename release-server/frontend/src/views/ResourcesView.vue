@@ -2,13 +2,13 @@
   <div class="layout-max">
     <header class="top">
       <div>
-        <h1>应用</h1>
-        <p class="sub">选择应用管理版本与发布</p>
+        <h1>资源库</h1>
+        <p class="sub">无版本概念，公开一页列出当前所有安装包，可为每项写简介</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn btn-ghost" @click="router.push('/resources')">资源库</button>
+        <button type="button" class="btn btn-ghost" @click="router.push('/')">应用</button>
         <button type="button" class="btn btn-ghost" @click="router.push('/settings')">设置</button>
-        <button type="button" class="btn btn-primary" @click="showCreate = true">新建应用</button>
+        <button type="button" class="btn btn-primary" @click="showCreate = true">新建资源库</button>
       </div>
     </header>
 
@@ -16,17 +16,15 @@
     <div v-else class="grid">
       <transition-group name="slide-up">
         <button
-          v-for="a in apps"
-          :key="a.name"
+          v-for="r in libraries"
+          :key="r.name"
           type="button"
           class="app-tile card"
-          @click="router.push(`/app/${encodeURIComponent(a.name)}`)"
+          @click="router.push(`/resources/${encodeURIComponent(r.name)}`)"
         >
-          <span class="name">{{ a.displayLabel || a.name }}</span>
-          <span v-if="a.displayName" class="pkg-id">{{ a.name }}</span>
-          <span class="meta">{{ a.repoType }} · {{ a.versionCount }} 个版本</span>
-          <span v-if="a.latestVersion" class="ver">最新 {{ a.latestVersion }}</span>
-          <span v-else class="ver muted2">尚未发布</span>
+          <span class="name">{{ r.displayLabel || r.name }}</span>
+          <span v-if="r.displayName" class="pkg-id">{{ r.name }}</span>
+          <span class="meta">{{ r.itemCount }} 个文件</span>
         </button>
       </transition-group>
     </div>
@@ -34,19 +32,16 @@
     <teleport to="body">
       <div v-if="showCreate" class="modal-back" @click.self="showCreate = false">
         <div class="modal card">
-          <h2>新建应用</h2>
-          <label class="lbl">软件名（可选，用于展示）</label>
-          <input v-model="newDisplayName" class="input" placeholder="例如：闪电助手" />
-          <label class="lbl">包名（目录与 URL，仅字母数字、_ -）</label>
-          <input v-model="newName" class="input" placeholder="my-app" />
-          <label class="lbl">类型</label>
-          <select v-model="newRepoType" class="input">
-            <option value="general">通用</option>
-            <option value="tauri">Tauri</option>
-          </select>
+          <h2>新建资源库</h2>
+          <label class="lbl">展示名（可选）</label>
+          <input v-model="newDisplayName" class="input" placeholder="例如：常用工具合集" />
+          <label class="lbl">资源库标识（目录与 URL，仅字母数字、_ -）</label>
+          <input v-model="newName" class="input" placeholder="my-resources" />
+          <label class="lbl">资源库简介（可选）</label>
+          <textarea v-model="newDescription" class="textarea" rows="3" placeholder="对外下载页顶部说明" />
           <div class="row">
             <button type="button" class="btn btn-ghost" @click="showCreate = false">取消</button>
-            <button type="button" class="btn btn-primary" :disabled="creating" @click="createApp">创建</button>
+            <button type="button" class="btn btn-primary" :disabled="creating" @click="createLibrary">创建</button>
           </div>
         </div>
       </div>
@@ -62,18 +57,18 @@ import { useToast } from '@/composables/useToast';
 
 const router = useRouter();
 const { toast } = useToast();
-const apps = ref([]);
+const libraries = ref([]);
 const loading = ref(true);
 const showCreate = ref(false);
 const newName = ref('');
 const newDisplayName = ref('');
-const newRepoType = ref('general');
+const newDescription = ref('');
 const creating = ref(false);
 
 async function load() {
   loading.value = true;
   try {
-    apps.value = await api('GET', '/api/apps');
+    libraries.value = await api('GET', '/api/resources');
   } catch (e) {
     toast(e.message, 'error');
   } finally {
@@ -81,24 +76,31 @@ async function load() {
   }
 }
 
-async function createApp() {
+async function createLibrary() {
   const name = newName.value.trim();
   if (!name) {
-    toast('请填写包名', 'error');
+    toast('请填写资源库标识', 'error');
+    return;
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    toast('标识只能包含字母、数字、下划线和连字符', 'error');
     return;
   }
   creating.value = true;
   try {
-    const body = { name, repoType: newRepoType.value };
+    const body = { name };
     const dn = newDisplayName.value.trim();
     if (dn) body.displayName = dn;
-    await api('POST', '/api/apps', body);
+    const desc = newDescription.value.trim();
+    if (desc) body.description = desc;
+    await api('POST', '/api/resources', body);
     toast('已创建');
     showCreate.value = false;
     newName.value = '';
     newDisplayName.value = '';
+    newDescription.value = '';
     await load();
-    router.push(`/app/${encodeURIComponent(name)}`);
+    router.push(`/resources/${encodeURIComponent(name)}`);
   } catch (e) {
     toast(e.message, 'error');
   } finally {
@@ -122,31 +124,31 @@ h1 {
   font-size: 26px;
 }
 .sub {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--text2);
   font-size: 14px;
 }
 .actions {
   display: flex;
-  gap: 10px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
 }
 .app-tile {
   text-align: left;
-  padding: 20px;
   cursor: pointer;
+  padding: 18px;
   border: 1px solid var(--border);
-  background: linear-gradient(165deg, var(--surface) 0%, var(--surface2) 100%);
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  background: var(--surface);
+  border-radius: var(--radius);
+  transition: border-color 0.2s, transform 0.15s;
 }
 .app-tile:hover {
-  border-color: rgba(232, 160, 53, 0.35);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  border-color: rgba(232, 160, 53, 0.4);
   transform: translateY(-2px);
 }
 .name {
@@ -160,26 +162,35 @@ h1 {
   font-size: 12px;
   color: var(--text3);
   font-family: ui-monospace, monospace;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 .meta {
-  display: block;
-  font-size: 12px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.ver {
-  display: block;
-  margin-top: 12px;
   font-size: 13px;
-  color: var(--accent);
+  color: var(--text2);
 }
 .muted {
   color: var(--text2);
 }
-.muted2 {
-  color: var(--text3);
+.lbl {
+  display: block;
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.input,
+.textarea {
+  width: 100%;
+  margin-bottom: 12px;
+}
+.textarea {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
 }
 .modal-back {
   position: fixed;
@@ -194,26 +205,15 @@ h1 {
 .modal {
   width: 100%;
   max-width: 420px;
-  padding: 24px;
+  padding: 22px;
 }
 .modal h2 {
-  margin: 0 0 16px;
-  font-size: 18px;
-}
-.lbl {
-  display: block;
-  font-size: 12px;
-  color: var(--text2);
-  margin-bottom: 6px;
-  margin-top: 12px;
-}
-.lbl:first-of-type {
-  margin-top: 0;
+  margin: 0 0 12px;
 }
 .row {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 8px;
 }
 </style>
