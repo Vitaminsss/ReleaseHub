@@ -244,6 +244,7 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 | GET   | `/api/apps`                           | 是     | 应用列表（含 `displayName` / `displayLabel`）                              |
 | POST  | `/api/apps`                           | 是     | 创建应用；body 可选 `displayName`（软件名），`name` 为包名                         |
 | PATCH | `/api/apps/:app/meta`                 | 是     | 更新 `.meta`（如 `displayName`）                                         |
+| POST  | `/api/apps/:app/rename`               | 是     | 重命名包名；body `{ "newName": "..." }`，迁移 releases / `.meta` / 草稿并合并刷新 URL |
 | GET   | `/api/apps/:app/meta`                | 是     | 读取应用元数据（`repoType`、`displayName` 等）                              |
 | GET   | `/api/apps/:app/versions`             | 是     | 版本与文件                                                                |
 | GET   | `/api/apps/:app/notes-drafts`         | 是     | 各版本「更新日志」草稿（服务端持久化）                                                  |

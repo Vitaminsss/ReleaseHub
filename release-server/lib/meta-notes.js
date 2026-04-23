@@ -77,13 +77,25 @@ function appDirExists(app) {
   return fs.existsSync(path.join(CONFIG.RELEASES_DIR, app));
 }
 
+/** 将 .meta / .notes-cache 从旧包名迁到新包名（releases 目录需已在外部 rename） */
+function migrateAppSidecarFiles(oldName, newName) {
+  const meta = readAppMeta(oldName);
+  writeAppMeta(newName, meta);
+  deleteAppMeta(oldName);
+  const drafts = readDrafts(oldName);
+  deleteDraftFile(oldName);
+  if (drafts && typeof drafts === 'object' && Object.keys(drafts).length) writeDrafts(newName, drafts);
+}
+
 module.exports = {
   readAppMeta,
   writeAppMeta,
   deleteAppMeta,
   readDrafts,
+  writeDrafts,
   setDraft,
   removeDraft,
   deleteDraftFile,
   appDirExists,
+  migrateAppSidecarFiles,
 };

@@ -5,7 +5,7 @@
       <div class="title-block">
         <div class="titles">
           <h1>{{ displayLabel }}</h1>
-          <p v-if="displayNameEdit.trim()" class="pkg-sub">包名 <code>{{ appName }}</code></p>
+          <p class="pkg-sub">包名 <code>{{ appName }}</code></p>
         </div>
         <span class="badge-type">{{ repoType }}</span>
       </div>
@@ -18,6 +18,18 @@
 
     <section class="card meta-name-block">
       <h2>软件信息</h2>
+      <label class="lbl">包名（目录与 URL；修改后 latest.json、直链与公开页路径全部变为新包名）</label>
+      <div class="row-input">
+        <input v-model="packageNameEdit" class="input code" spellcheck="false" :placeholder="appName" />
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          :disabled="savingPackageName || packageNameEdit.trim() === appName || !packageNameEdit.trim()"
+          @click="savePackageRename"
+        >
+          保存包名
+        </button>
+      </div>
       <label class="lbl">软件名（对外展示；留空则仅显示包名）</label>
       <div class="row-input">
         <input v-model="displayNameEdit" class="input" :placeholder="appName" />
@@ -58,7 +70,10 @@
         <code class="mono">{{ downloadRedirectUrl }}</code>
         <button type="button" class="btn btn-sm btn-ghost" @click="copy(downloadRedirectUrl)">复制</button>
       </div>
-      <p class="hint sm no-mt">带 <code>?redirect=1</code> 时始终 302 到<strong>当前已发布</strong>主安装包直链（按磁盘扫描 + 当前 BASE_URL，不依赖 JSON 内旧 URL）。</p>
+      <p class="hint sm no-mt">
+        带 <code>?redirect=1</code> 时 302 到<strong>当前已发布</strong>主安装包直链（按磁盘 + BASE_URL）。<strong>Tauri</strong> 会排除
+        <code>.sig</code>，只选 exe/msi/dmg/AppImage 等本体。
+      </p>
     </section>
 
     <section v-if="latestLoaded && published" class="card pub-block">
@@ -211,7 +226,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, uploadWithProgress } from '@/api/client';
 import { useToast } from '@/composables/useToast';
@@ -225,6 +240,8 @@ const loading = ref(true);
 const repoType = ref('general');
 const displayNameEdit = ref('');
 const savingDisplayName = ref(false);
+const packageNameEdit = ref('');
+const savingPackageName = ref(false);
 const versions = ref([]);
 const notesDraft = ref({});
 const publicBase = ref('');
@@ -348,6 +365,31 @@ async function saveDisplayName() {
     toast(e.message, 'error');
   } finally {
     savingDisplayName.value = false;
+  }
+}
+
+async function savePackageRename() {
+  const next = packageNameEdit.value.trim();
+  if (!next || !/^[a-zA-Z0-9_-]+$/.test(next)) {
+    toast('包名只能包含字母、数字、下划线和连字符', 'error');
+    return;
+  }
+  if (next === appName.value) return;
+  if (
+    !window.confirm(
+      `将包名「${appName.value}」改为「${next}」：releases 目录、latest.json 内 URL、公开链接中的包名段都会变化，旧链接将失效。确定继续？`,
+    )
+  )
+    return;
+  savingPackageName.value = true;
+  try {
+    await api('POST', `/api/apps/${encodeURIComponent(appName.value)}/rename`, { newName: next });
+    toast('已修改包名');
+    await router.replace(`/app/${encodeURIComponent(next)}`);
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    savingPackageName.value = false;
   }
 }
 
@@ -704,11 +746,11 @@ async function createVersion() {
 watch(
   () => route.params.name,
   () => {
+    packageNameEdit.value = appName.value;
     loadAll();
   },
+  { immediate: true },
 );
-
-onMounted(loadAll);
 </script>
 
 <style scoped>

@@ -25,6 +25,7 @@
 | GET | `/api/apps` | 应用列表（新增字段 `displayName`、`displayLabel`，旧客户端可忽略） |
 | POST | `/api/apps` | 创建应用（可选 body `displayName`；`name` 仍为包名） |
 | PATCH | `/api/apps/:app/meta` | 更新元数据（如 `displayName`） |
+| POST | `/api/apps/:app/rename` | **新增** 重命名包（body `newName`）；迁移数据并刷新 `latest` 内 URL |
 | DELETE | `/api/apps/:app` | 删除应用 |
 | GET | `/api/apps/:app/meta` | 元数据 |
 | GET | `/api/apps/:app/versions` | 版本列表 |

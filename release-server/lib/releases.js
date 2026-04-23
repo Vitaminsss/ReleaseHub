@@ -147,6 +147,22 @@ function versionToVdir(version) {
   return v ? `v${v}` : null;
 }
 
+/** Tauri：仅安装包/镜像本体，排除 .sig 及无法识别的杂文件 */
+function isTauriPrimaryArtifactFilename(filename) {
+  const n = String(filename || '');
+  if (!n || n.toLowerCase().endsWith('.sig')) return false;
+  if (detectPlatform(n)) return true;
+  const low = n.toLowerCase();
+  return (
+    low.endsWith('.exe') ||
+    low.endsWith('.msi') ||
+    low.endsWith('.dmg') ||
+    low.endsWith('.appimage') ||
+    low.endsWith('.appimage.tar.gz') ||
+    low.endsWith('.app.tar.gz')
+  );
+}
+
 /** 当前已发布主下载 URL：按磁盘 + 当前 BASE_URL 生成，不依赖 latest 内旧 url */
 function getLatestPrimaryDownloadUrl(app, platform = null) {
   const latest = readLatest(app);
@@ -159,14 +175,13 @@ function getLatestPrimaryDownloadUrl(app, platform = null) {
     const order = ['windows-x86_64', 'darwin-aarch64', 'darwin-x86_64', 'linux-x86_64', 'linux-aarch64'];
     const want = platform && order.includes(platform) ? platform : null;
     const tryOrder = want ? [want, ...order.filter(p => p !== want)] : order;
-    const files = getFiles(app, vdir);
+    const files = getFiles(app, vdir).filter(f => isTauriPrimaryArtifactFilename(f.name));
     for (const plat of tryOrder) {
       for (const f of files) {
-        if (f.name.endsWith('.sig')) continue;
         if (detectPlatform(f.name) === plat) return fileUrl(app, vdir, f.name);
       }
     }
-    const first = files.find(f => !f.name.endsWith('.sig'));
+    const first = files[0];
     return first ? fileUrl(app, vdir, first.name) : null;
   }
 
@@ -391,22 +406,38 @@ function getPublicDownloadInfo(app) {
   return out;
 }
 
+function urlLooksLikeSigArtifact(url) {
+  if (!url) return true;
+  const s = String(url).trim();
+  try {
+    const u = new URL(s);
+    return u.pathname.toLowerCase().endsWith('.sig');
+  } catch {
+    return s.toLowerCase().split('?')[0].endsWith('.sig');
+  }
+}
+
 function pickPrimaryTauriUrl(platforms) {
   if (!platforms || typeof platforms !== 'object') return null;
   const order = ['windows-x86_64', 'darwin-aarch64', 'darwin-x86_64', 'linux-x86_64', 'linux-aarch64'];
   for (const k of order) {
     const v = platforms[k];
-    if (v && typeof v === 'object' && v.url) return v.url;
+    if (v && typeof v === 'object' && v.url && !urlLooksLikeSigArtifact(v.url)) return v.url;
   }
-  const first = Object.values(platforms).find(v => v && typeof v === 'object' && v.url);
+  const first = Object.values(platforms).find(
+    v => v && typeof v === 'object' && v.url && !urlLooksLikeSigArtifact(v.url),
+  );
   return first?.url || null;
 }
 
 function getTauriPlatformUrl(latest, platform) {
   if (!latest?.platforms || typeof latest.platforms !== 'object') return null;
   const v = latest.platforms[platform];
-  if (v && typeof v === 'object') return v.url || null;
-  if (typeof v === 'string') return v;
+  if (v && typeof v === 'object') {
+    const u = v.url || null;
+    return u && !urlLooksLikeSigArtifact(u) ? u : null;
+  }
+  if (typeof v === 'string') return urlLooksLikeSigArtifact(v) ? null : v;
   return null;
 }
 
@@ -428,6 +459,7 @@ module.exports = {
   resolveDiskDirForLogicalVersion,
   resolvePublishedVersionDir,
   getLatestPrimaryDownloadUrl,
+  isTauriPrimaryArtifactFilename,
   rebuildLatestUrls,
   rebuildLatestUrlsMerge,
   rebuildLatestUrlsReplace,

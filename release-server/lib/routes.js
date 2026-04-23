@@ -16,6 +16,7 @@ const {
   removeDraft,
   deleteDraftFile,
   appDirExists,
+  migrateAppSidecarFiles,
 } = require('./meta-notes');
 const {
   getApps,
@@ -91,6 +92,48 @@ function registerRoutes(app) {
     }
     writeAppMeta(app, next);
     res.json(next);
+  });
+
+  /**
+   * 重命名包（releases 目录、.meta、草稿）；成功后合并刷新 latest 内 URL
+   * body: { newName }
+   */
+  app.post('/api/apps/:app/rename', auth, (req, res) => {
+    const oldName = req.params.app;
+    const newName = String(req.body?.newName || '').trim();
+    if (!newName || !/^[a-zA-Z0-9_-]+$/.test(newName))
+      return res.status(400).json({ error: '包名只能包含字母、数字、下划线和连字符' });
+    if (newName === oldName) return res.json({ success: true, name: newName });
+    if (!appDirExists(oldName)) return res.status(404).json({ error: 'App 不存在' });
+    if (appDirExists(newName)) return res.status(400).json({ error: '目标包名已存在' });
+    const metaDir = path.join(__dirname, '..', '.meta');
+    const notesDir = path.join(__dirname, '..', '.notes-cache');
+    if (fs.existsSync(path.join(metaDir, `${newName}.json`)))
+      return res.status(400).json({ error: '目标包名的元数据已存在，请先在 .meta 中清理冲突文件' });
+    if (fs.existsSync(path.join(notesDir, `${newName}.json`)))
+      return res.status(400).json({ error: '目标包名的草稿文件已存在，请先在 .notes-cache 中清理冲突文件' });
+
+    const oldDir = path.join(CONFIG.RELEASES_DIR, oldName);
+    const newDir = path.join(CONFIG.RELEASES_DIR, newName);
+    try {
+      fs.renameSync(oldDir, newDir);
+    } catch (e) {
+      return res.status(500).json({ error: e.message || '重命名 releases 目录失败' });
+    }
+
+    try {
+      migrateAppSidecarFiles(oldName, newName);
+    } catch (e) {
+      try {
+        fs.renameSync(newDir, oldDir);
+      } catch {}
+      return res.status(500).json({ error: e.message || '迁移元数据失败，已尝试回滚目录名' });
+    }
+
+    const rebuilt = rebuildLatestUrls(newName, 'merge');
+    if (rebuilt) writeLatest(newName, rebuilt);
+
+    res.json({ success: true, name: newName });
   });
 
   app.delete('/api/apps/:app', auth, (req, res) => {
