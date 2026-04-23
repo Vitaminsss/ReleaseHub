@@ -152,11 +152,12 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 
 ### 公开下载页（分享链接）
 
-- **推荐（短链、不暴露文件名）**：`{BASE_URL}/app/{包名}/{版本目录}`，例如 `https://example.com/releasehub/app/my-app/v1.2.0`。页面列出该版本文件，点击后进入单文件落地页再下载。
-- **单文件落地页（兼容保留）**：`{BASE_URL}/d/{包名}/{版本目录}/{文件名}`，行为与旧版一致。
-- **直链**：`{BASE_URL}/{包名}/{版本目录}/{文件名}`（由静态中间件提供，供 `latest.json` 内 URL 使用）。
+- **始终指向当前已发布（推荐）**：`{BASE_URL}/app/{包名}/latest`，**302** 到 `{BASE_URL}/app/{包名}/{当前版本目录}`（与 Vue 后台 `/app/{包名}` 不冲突）。
+- **固定某一版本**：`{BASE_URL}/app/{包名}/{版本目录}`（通用库目录名可与 `v` 前缀无关）。页面列出文件，再进入 `/d/...` 落地页下载。
+- **单文件落地页（兼容保留）**：`{BASE_URL}/d/{包名}/{版本目录}/{文件名}`。
+- **直链**：`{BASE_URL}/{包名}/{版本目录}/{文件名}`（静态中间件 + `latest.json` 内 URL）。
 
-后台「对外接口」默认优先展示**版本页**链接；`latest.json`、直链与旧 `/d/...` 地址长期兼容。
+`GET /api/public/{包名}/latest/download?redirect=1` **302** 到当前已发布主安装包直链（按**磁盘**与当前 **BASE_URL** 计算，不依赖 JSON 内旧 URL）。
 
 ---
 
@@ -164,7 +165,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 
 1. 浏览器打开部署地址，**仅输入密码**登录。
 2. **新建应用** → 填写**软件名**（可选，用于展示）与**包名**（目录与 URL，如 `my-tauri-app`）。
-3. **新建版本** → Tauri 须 `v1.2.0` 形式 SemVer；**通用**类型可为 `2.0.2`、`v2024-01` 等（将存为以 `v` 开头的目录名）。
+3. **新建版本** → Tauri 须 `v1.2.0` 形式 SemVer；**通用**类型目录名任意合法标识（如 `2.0.2`、`2024-01`），不强制 `v` 前缀。
 4. **上传** 安装包及对应 `.sig`（Tauri 热更新需要有效签名）。
 5. 填写**更新日志**（草稿保存在服务端 `.notes-cache/`，换浏览器或刷新后仍会加载）→ **发布为最新版本**（Tauri 若缺少 `.sig`，界面会**弹出确认**后仍允许发布；与旧版「强制发布」语义一致）。
 6. **查看接口** 中复制 `latest.json` URL，填入 Tauri 配置。
@@ -256,6 +257,7 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 | GET   | `/api/public/:app/latest/download`    | **否** | 最新下载信息 JSON；`?redirect=1` 302 跳转；Tauri 可加 `&platform=windows-x86_64` |
 | GET   | `/api/health`                         | **否** | 健康检查 `{ ok: true }`（部署脚本会探测）                                         |
 | GET   | `/releases/:app/latest.json`          | **否** | Tauri updater                                                        |
+| GET   | `/app/:app/latest`                   | **否** | 302 到当前已发布的 `/app/:app/:版本目录`                                       |
 | GET   | `/app/:app/:version`                 | **否** | 公开版本浏览页（文件列表，链到 `/d/...`）                                      |
 
 

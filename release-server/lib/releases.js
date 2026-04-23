@@ -20,10 +20,26 @@ function semverSort(a, b) {
 function getVersions(appName) {
   const dir = path.join(CONFIG.RELEASES_DIR, appName);
   if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter(f => fs.statSync(path.join(dir, f)).isDirectory() && f.startsWith('v'))
-    .sort(semverSort);
+  const meta = readAppMeta(appName);
+  const subdirs = fs.readdirSync(dir).filter(f => {
+    try {
+      return fs.statSync(path.join(dir, f)).isDirectory();
+    } catch {
+      return false;
+    }
+  });
+  if (meta.repoType === 'tauri') {
+    return subdirs.filter(f => f.startsWith('v')).sort(semverSort);
+  }
+  return subdirs.sort((a, b) => {
+    try {
+      const ma = fs.statSync(path.join(dir, a)).mtimeMs;
+      const mb = fs.statSync(path.join(dir, b)).mtimeMs;
+      return mb - ma;
+    } catch {
+      return b.localeCompare(a, undefined, { numeric: true });
+    }
+  });
 }
 
 function fileUrl(appName, version, filename) {
@@ -89,25 +105,74 @@ function isValidVersion(v) {
   return /^v\d+\.\d+(\.\d+)?(-[\w.]+)?$/.test(v);
 }
 
-/** general 类型：版本目录须 v 前缀 + 安全 slug（字母数字 ._-），禁止路径穿越 */
+/** general：目录名即版本标识，不强制 v 前缀 */
 const GENERAL_VER_MAX_LEN = 120;
 function isValidGeneralVersionForUpload(version) {
   const v = String(version || '');
-  if (!v.startsWith('v')) return false;
-  const slug = v.slice(1);
-  if (!slug || slug.length > GENERAL_VER_MAX_LEN) return false;
-  if (slug.includes('..') || /[/\\]/.test(v)) return false;
-  return /^[a-zA-Z0-9._-]+$/.test(slug);
+  if (!v || v.length > GENERAL_VER_MAX_LEN) return false;
+  if (v.includes('..') || /[/\\]/.test(v)) return false;
+  return /^[a-zA-Z0-9._-]+$/.test(v);
 }
 
 function isSemVer2CoreWithVPrefix(v) {
   return /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(v);
 }
 
-/** 将已发布 version 字段转为版本目录名 vX.Y.Z */
+/** latest.json 内 version 与磁盘目录对齐（Tauri 多为 v*；general 任意合法目录名） */
+function resolveDiskDirForLogicalVersion(app, logicalVersion) {
+  const lv = String(logicalVersion || '').trim();
+  if (!lv) return null;
+  const normalized = lv.replace(/^v/, '');
+  for (const d of getVersions(app)) {
+    if (d === lv || d.replace(/^v/, '') === normalized) return d;
+  }
+  const meta = readAppMeta(app);
+  if (meta.repoType === 'tauri') {
+    const cand = lv.startsWith('v') ? lv : `v${lv}`;
+    const p = path.join(CONFIG.RELEASES_DIR, app, cand);
+    if (fs.existsSync(p) && fs.statSync(p).isDirectory()) return cand;
+  }
+  return null;
+}
+
+function resolvePublishedVersionDir(app) {
+  const latest = readLatest(app);
+  if (!latest?.version) return null;
+  return resolveDiskDirForLogicalVersion(app, latest.version);
+}
+
+/** @deprecated 请用 resolvePublishedVersionDir */
 function versionToVdir(version) {
   const v = String(version || '').replace(/^v/, '');
   return v ? `v${v}` : null;
+}
+
+/** 当前已发布主下载 URL：按磁盘 + 当前 BASE_URL 生成，不依赖 latest 内旧 url */
+function getLatestPrimaryDownloadUrl(app, platform = null) {
+  const latest = readLatest(app);
+  if (!latest) return null;
+  const meta = readAppMeta(app);
+  const vdir = resolvePublishedVersionDir(app);
+  if (!vdir) return null;
+
+  if (meta.repoType === 'tauri') {
+    const order = ['windows-x86_64', 'darwin-aarch64', 'darwin-x86_64', 'linux-x86_64', 'linux-aarch64'];
+    const want = platform && order.includes(platform) ? platform : null;
+    const tryOrder = want ? [want, ...order.filter(p => p !== want)] : order;
+    const files = getFiles(app, vdir);
+    for (const plat of tryOrder) {
+      for (const f of files) {
+        if (f.name.endsWith('.sig')) continue;
+        if (detectPlatform(f.name) === plat) return fileUrl(app, vdir, f.name);
+      }
+    }
+    const first = files.find(f => !f.name.endsWith('.sig'));
+    return first ? fileUrl(app, vdir, first.name) : null;
+  }
+
+  const files = getFiles(app, vdir).filter(f => f.name !== '.gitkeep' && !f.name.endsWith('.sig'));
+  const first = files[0];
+  return first ? fileUrl(app, vdir, first.name) : null;
 }
 
 function buildPlatformsFromDisk(app, vdir) {
@@ -134,8 +199,8 @@ function rebuildLatestUrlsMerge(app) {
   const latest = readLatest(app);
   if (!latest || typeof latest !== 'object') return null;
   const meta = readAppMeta(app);
-  const vdir = versionToVdir(latest.version);
-  if (!vdir || !fs.existsSync(path.join(CONFIG.RELEASES_DIR, app, vdir))) return null;
+  const vdir = resolvePublishedVersionDir(app);
+  if (!vdir) return null;
 
   if (meta.repoType === 'tauri') {
     const fromDisk = buildPlatformsFromDisk(app, vdir);
@@ -180,8 +245,8 @@ function rebuildLatestUrlsReplace(app) {
   const latest = readLatest(app);
   if (!latest || typeof latest !== 'object') return null;
   const meta = readAppMeta(app);
-  const vdir = versionToVdir(latest.version);
-  if (!vdir || !fs.existsSync(path.join(CONFIG.RELEASES_DIR, app, vdir))) return null;
+  const vdir = resolvePublishedVersionDir(app);
+  if (!vdir) return null;
 
   if (meta.repoType === 'tauri') {
     return { ...latest, platforms: buildPlatformsFromDisk(app, vdir) };
@@ -269,7 +334,8 @@ function publishFromBody(app, body) {
       platforms,
     };
   } else {
-    const vdir = version.startsWith('v') ? version : `v${version}`;
+    const vdir = resolveDiskDirForLogicalVersion(app, version);
+    if (!vdir) return { error: '找不到对应版本目录', status: 400 };
     const fl =
       files ||
       getFiles(app, vdir)
@@ -311,7 +377,10 @@ function getPublicDownloadInfo(app) {
     out.files = latest.files.map(f => ({ name: f.name, url: f.url, size: f.size }));
   }
 
-  if (rt === 'tauri' && out.platforms) {
+  const fresh = getLatestPrimaryDownloadUrl(app);
+  if (fresh) {
+    out.primaryDownloadUrl = fresh;
+  } else if (rt === 'tauri' && out.platforms) {
     out.primaryDownloadUrl = pickPrimaryTauriUrl(latest.platforms);
   } else if (rt === 'general' && out.files?.length) {
     const first = latest.files.find(f => f.name && !String(f.name).endsWith('.sig'));
@@ -356,6 +425,9 @@ module.exports = {
   isValidGeneralVersionForUpload,
   isSemVer2CoreWithVPrefix,
   versionToVdir,
+  resolveDiskDirForLogicalVersion,
+  resolvePublishedVersionDir,
+  getLatestPrimaryDownloadUrl,
   rebuildLatestUrls,
   rebuildLatestUrlsMerge,
   rebuildLatestUrlsReplace,

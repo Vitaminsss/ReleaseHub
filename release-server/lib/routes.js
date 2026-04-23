@@ -30,8 +30,8 @@ const {
   rebuildLatestUrls,
   patchLatest,
   getPublicDownloadInfo,
-  getTauriPlatformUrl,
-  pickPrimaryTauriUrl,
+  getLatestPrimaryDownloadUrl,
+  resolvePublishedVersionDir,
 } = require('./releases');
 const { renderDownload404Html, renderDownloadPageHtml, renderVersionBrowserHtml } = require('./download-pages');
 const { fileBadgeLabel } = require('./download-utils');
@@ -211,6 +211,17 @@ function registerRoutes(app) {
   });
 
   /**
+   * 固定跳转当前已发布版本浏览页（避免与 Vue /app/:name 冲突，使用 /latest 后缀）
+   */
+  app.get('/app/:app/latest', (req, res) => {
+    const { app } = req.params;
+    if (!appDirExists(app)) return res.status(404).type('html').send(renderDownload404Html());
+    const vdir = resolvePublishedVersionDir(app);
+    if (!vdir) return res.status(404).type('html').send(renderDownload404Html());
+    res.redirect(302, `${CONFIG.BASE_URL}/app/${encodeURIComponent(app)}/${encodeURIComponent(vdir)}`);
+  });
+
+  /**
    * 公开版本浏览页（短链推荐）：/app/:包名/:版本目录
    * 列出该版本文件，点击进入 /d/... 落地页
    */
@@ -292,19 +303,14 @@ function registerRoutes(app) {
     const platform = req.query.platform ? String(req.query.platform) : null;
 
     const latest = readLatest(app);
-    if (!latest) return res.status(204).send();
+    if (!latest) {
+      if (wantRedirect) return res.status(404).json({ error: '尚无已发布版本' });
+      return res.status(204).send();
+    }
 
     if (wantRedirect) {
-      let url = null;
-      if (platform && latest.platforms) url = getTauriPlatformUrl(latest, platform);
-      if (!url && latest.platforms) {
-        url = pickPrimaryTauriUrl(latest.platforms);
-      }
-      if (!url && latest.files && latest.files.length) {
-        const first = latest.files.find(f => f.name && !String(f.name).endsWith('.sig'));
-        url = first?.url || null;
-      }
-      if (!url) return res.status(404).json({ error: '无法解析下载地址' });
+      const url = getLatestPrimaryDownloadUrl(app, platform);
+      if (!url) return res.status(404).json({ error: '无法解析当前发布的主下载文件（请确认已发布目录下存在安装包）' });
       return res.redirect(302, url);
     }
 

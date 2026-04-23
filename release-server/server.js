@@ -6,6 +6,7 @@ const cors = require('cors');
 const fs = require('fs');
 const CONFIG = require('./lib/config');
 const { registerRoutes } = require('./lib/routes');
+const { resolveReleaseFile } = require('./lib/releases');
 
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 3721;
@@ -20,10 +21,14 @@ app.use((req, res, next) => {
   const parts = req.path.split('/').filter(Boolean);
   if (parts.length !== 3) return next();
   const [appName, version, filename] = parts;
-  if (['api', 'releases', 'public'].includes(appName)) return next();
-  if (!version.startsWith('v')) return next();
-  const filePath = path.join(CONFIG.RELEASES_DIR, appName, version, filename);
-  if (!fs.existsSync(filePath)) return next();
+  if (['api', 'releases', 'public', 'app', 'd'].includes(appName)) return next();
+  const filePath = resolveReleaseFile(appName, version, filename);
+  if (!filePath || !fs.existsSync(filePath)) return next();
+  try {
+    if (!fs.statSync(filePath).isFile()) return next();
+  } catch {
+    return next();
+  }
   res.sendFile(filePath);
 });
 

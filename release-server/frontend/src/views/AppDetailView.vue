@@ -30,13 +30,18 @@
     <section v-if="publicBase" class="card api-block">
       <h2>对外接口</h2>
       <p class="hint">旧版 Tauri / 脚本请继续使用 <code>latest.json</code>，行为不变。</p>
+      <div v-if="latestAppShortcutUrl" class="link-row">
+        <span class="lbl">最新版本页（推荐）</span>
+        <code class="mono">{{ latestAppShortcutUrl }}</code>
+        <button type="button" class="btn btn-sm btn-ghost" @click="copy(latestAppShortcutUrl)">复制</button>
+      </div>
       <div v-if="publishedVersionPageUrl" class="link-row">
-        <span class="lbl">版本页（推荐分享）</span>
+        <span class="lbl">当前发布版本页</span>
         <code class="mono">{{ publishedVersionPageUrl }}</code>
         <button type="button" class="btn btn-sm btn-ghost" @click="copy(publishedVersionPageUrl)">复制</button>
       </div>
-      <p v-if="publishedVersionPageUrl" class="hint sm no-mt">
-        短链形态：<code>/app/{{ appName }}/&lt;版本目录&gt;</code>，进入后选择文件再打开落地页下载；旧版单文件链 <code>/d/...</code> 仍永久可用。
+      <p v-if="latestAppShortcutUrl" class="hint sm no-mt">
+        <code>/app/{{ appName }}/latest</code> 会 302 到当前已发布目录；固定版本链接为 <code>/app/{{ appName }}/&lt;目录名&gt;</code>；单文件落地页 <code>/d/...</code> 仍可用。
       </p>
       <div class="link-row">
         <span class="lbl">latest.json</span>
@@ -53,6 +58,7 @@
         <code class="mono">{{ downloadRedirectUrl }}</code>
         <button type="button" class="btn btn-sm btn-ghost" @click="copy(downloadRedirectUrl)">复制</button>
       </div>
+      <p class="hint sm no-mt">带 <code>?redirect=1</code> 时始终 302 到<strong>当前已发布</strong>主安装包直链（按磁盘扫描 + 当前 BASE_URL，不依赖 JSON 内旧 URL）。</p>
     </section>
 
     <section v-if="latestLoaded && published" class="card pub-block">
@@ -106,15 +112,6 @@
           <span v-if="v.isLatest" class="pill">当前最新</span>
           <div class="v-actions">
             <button
-              v-if="!v.isLatest"
-              type="button"
-              class="btn btn-sm btn-primary"
-              @click="quickPublish(v.version)"
-            >
-              设为最新发布
-            </button>
-            <button v-else type="button" class="btn btn-sm btn-ghost" @click="republish(v.version)">重新发布</button>
-            <button
               v-if="publicBase"
               type="button"
               class="btn btn-sm btn-ghost"
@@ -134,6 +131,17 @@
                 </button>
               </div>
             </details>
+            <div class="v-publish">
+              <button
+                v-if="!v.isLatest"
+                type="button"
+                class="btn btn-sm btn-primary"
+                @click="quickPublish(v.version)"
+              >
+                设为最新发布
+              </button>
+              <button v-else type="button" class="btn btn-sm btn-ghost" @click="republish(v.version)">重新发布</button>
+            </div>
           </div>
         </header>
         <div class="notes">
@@ -188,9 +196,9 @@
           <h2>新建版本</h2>
           <p v-if="repoType === 'tauri'" class="hint">Tauri：须为 SemVer 2.0 三段式，如 v1.0.0</p>
           <p v-else class="hint">
-            通用：可用任意可读版本号（将存为以 <code>v</code> 开头的目录名），如 <code>2.0.2</code>、<code>v2024-01</code>、<code>1.0-beta</code>
+            通用：目录名即版本标识（字母数字、点、下划线、连字符），如 <code>2.0.2</code>、<code>2024-01</code>、<code>1.0-beta</code>，不强制 <code>v</code> 前缀。
           </p>
-          <input v-model="newVerInput" class="input" :placeholder="repoType === 'tauri' ? 'v1.0.0' : '例如 2.0.2 或 v1.0-beta'" />
+          <input v-model="newVerInput" class="input" :placeholder="repoType === 'tauri' ? 'v1.0.0' : '例如 2.0.2 或 1.0-beta'" />
           <p v-if="newVerErr" class="err">{{ newVerErr }}</p>
           <div class="row">
             <button type="button" class="btn btn-ghost" @click="showNewVer = false">取消</button>
@@ -241,16 +249,16 @@ const fileInputs = ref({});
 
 const displayLabel = computed(() => displayNameEdit.value.trim() || appName.value);
 
-const publishedVersionDir = computed(() => {
-  if (!published.value?.version) return null;
-  const v = String(published.value.version);
-  return v.startsWith('v') ? v : `v${v}`;
-});
+const publishedVersionDir = computed(() => versions.value.find(v => v.isLatest)?.version ?? null);
 
 const publishedVersionPageUrl = computed(() => {
   if (!publicBase.value || !publishedVersionDir.value) return '';
   return `${publicBase.value}/app/${encodeURIComponent(appName.value)}/${encodeURIComponent(publishedVersionDir.value)}`;
 });
+
+const latestAppShortcutUrl = computed(() =>
+  publicBase.value && appName.value ? `${publicBase.value}/app/${encodeURIComponent(appName.value)}/latest` : '',
+);
 
 const latestJsonUrl = computed(() => `${publicBase.value}/releases/${appName.value}/latest.json`);
 const downloadInfoUrl = computed(
@@ -293,13 +301,11 @@ function isSemVer2CoreWithVPrefix(v) {
 
 const GENERAL_VER_MAX = 120;
 function normalizeGeneralVersionForClient(raw) {
-  let s = String(raw || '').trim();
+  const s = String(raw || '').trim();
   if (!s) return { error: '请填写版本号' };
-  if (!s.startsWith('v')) s = `v${s}`;
-  const slug = s.slice(1);
-  if (!slug || slug.length > GENERAL_VER_MAX) return { error: '版本号过长' };
-  if (slug.includes('..') || /[/\\]/.test(s)) return { error: '不可含路径字符或 ..' };
-  if (!/^[a-zA-Z0-9._-]+$/.test(slug)) return { error: '仅允许字母、数字、点、下划线、连字符' };
+  if (s.length > GENERAL_VER_MAX) return { error: '版本目录名过长' };
+  if (s.includes('..') || /[/\\]/.test(s)) return { error: '不可含路径字符或 ..' };
+  if (!/^[a-zA-Z0-9._-]+$/.test(s)) return { error: '仅允许字母、数字、点、下划线、连字符' };
   return { ver: s };
 }
 
@@ -920,6 +926,13 @@ code {
 .ver-more[open] .ver-more-sum {
   color: var(--text);
   border-color: rgba(232, 160, 53, 0.35);
+}
+.v-publish {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 .ver-more-menu {
   position: absolute;

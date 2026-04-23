@@ -32,7 +32,7 @@ function validateVersionForUpload(req, res, next) {
   } else if (!isValidGeneralVersionForUpload(version)) {
     return res.status(400).json({
       error:
-        '通用库版本须以 v 开头，且仅含字母、数字、点、下划线、连字符（不可含 /、\\ 或 ..），长度合理',
+        '通用库版本目录名仅含字母、数字、点、下划线、连字符（不可含 /、\\ 或 ..），长度不超过 120',
     });
   }
   next();
