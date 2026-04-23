@@ -17,7 +17,7 @@ Tauri 应用发布管理后台：多应用、多版本、文件上传、`latest.
 
 - Ubuntu/Debian 等（脚本使用 `apt` 安装 Node.js 20）
 - 具有 `sudo` 权限
-- 在**仓库根目录**执行（`deploy.sh` 与 `server.js` 同级）；程序与 `**releases/`**、`**.env`** 均放在该目录下，**不再使用** `/opt/release-hub`。
+- 在 **`release-server` 目录**执行（与 `deploy.sh`、`server.js` 同级）；程序与 `**releases/`**、`**.env`** 均放在该目录下，**不再使用** `/opt/release-hub`。（若 monorepo 根目录下还有一层 `ReleaseHub/`，请先 `cd release-server`。）
 
 ### 启用 HTTPS（Let's Encrypt）— 部署前必读
 
@@ -158,7 +158,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 2. **新建应用** → 填写应用标识（如 `my-tauri-app`）。
 3. **新建版本** → 如 `v1.2.0`。
 4. **上传** 安装包及对应 `.sig`（Tauri 热更新需要有效签名）。
-5. 填写**更新日志**（草稿保存在服务端 `.notes-cache/`，换浏览器或刷新后仍会加载）→ **发布为最新版本**（若仅需纯下载、暂无 `.sig`，可勾选 **强制发布**）。
+5. 填写**更新日志**（草稿保存在服务端 `.notes-cache/`，换浏览器或刷新后仍会加载）→ **发布为最新版本**（Tauri 若缺少 `.sig`，界面会**弹出确认**后仍允许发布；与旧版「强制发布」语义一致）。
 6. **查看接口** 中复制 `latest.json` URL，填入 Tauri 配置。
 
 ---
@@ -205,10 +205,14 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 ├── deploy.sh
 ├── server.js
 ├── package.json
+├── lib/                 # 路由与服务逻辑（由 server.js 加载）
+├── frontend/            # Vue3 管理后台源码（Vite）
 ├── node_modules/
 ├── .env
-├── public/
-│   └── index.html
+├── public/              # 静态资源（含 Vue 构建产物 index.html + assets/）
+│   ├── index.html
+│   └── assets/
+├── COMPATIBILITY.md     # 向后兼容说明
 └── releases/
     └── my-app/
         ├── latest.json
@@ -222,20 +226,26 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 ## API 一览
 
 
-| 方法   | 路径                                    | 认证    | 说明                              |
-| ---- | ------------------------------------- | ----- | ------------------------------- |
-| POST | `/api/login`                          | 否     | 登录                              |
-| GET  | `/api/settings`                       | 是     | 当前 `BASE_URL` 等                 |
-| POST | `/api/base-url`                       | 是     | 更新 `BASE_URL`                   |
-| POST | `/api/change-password`                | 是     | 修改密码（需 `oldPassword`，新密码至少 5 位） |
-| GET  | `/api/apps`                           | 是     | 应用列表                            |
-| POST | `/api/apps`                           | 是     | 创建应用                            |
-| GET  | `/api/apps/:app/versions`             | 是     | 版本与文件                           |
-| GET  | `/api/apps/:app/notes-drafts`         | 是     | 各版本「更新日志」草稿（服务端持久化）             |
-| PUT  | `/api/apps/:app/versions/:ver/notes`  | 是     | 保存某一版本的更新日志草稿（body: `{ text }`） |
-| POST | `/api/apps/:app/versions/:ver/upload` | 是     | 上传文件                            |
-| POST | `/api/apps/:app/publish`              | 是     | 发布 `latest.json`                |
-| GET  | `/releases/:app/latest.json`          | **否** | Tauri updater                   |
+| 方法    | 路径                                    | 认证    | 说明                                                                   |
+| ----- | ------------------------------------- | ----- | -------------------------------------------------------------------- |
+| POST  | `/api/login`                          | 否     | 登录                                                                   |
+| GET   | `/api/settings`                       | 是     | 当前 `BASE_URL` 等                                                      |
+| POST  | `/api/base-url`                       | 是     | 更新 `BASE_URL`                                                        |
+| POST  | `/api/change-password`                | 是     | 修改密码（需 `oldPassword`，新密码至少 5 位）                                      |
+| GET   | `/api/apps`                           | 是     | 应用列表                                                                 |
+| POST  | `/api/apps`                           | 是     | 创建应用                                                                 |
+| GET   | `/api/apps/:app/versions`             | 是     | 版本与文件                                                                |
+| GET   | `/api/apps/:app/notes-drafts`         | 是     | 各版本「更新日志」草稿（服务端持久化）                                                  |
+| PUT   | `/api/apps/:app/versions/:version/notes`  | 是     | 保存某一版本的更新日志草稿（body: `{ text }`）                                      |
+| POST  | `/api/apps/:app/versions/:version/upload` | 是     | 上传文件                                                                 |
+| POST  | `/api/apps/:app/publish`              | 是     | 发布 `latest.json`                                                     |
+| PATCH | `/api/apps/:app/latest`               | 是     | 直接更新当前已发布元数据（如 `notes` / `pub_date` / `platforms` / `files`）         |
+| POST  | `/api/apps/:app/latest/refresh-urls`  | 是     | 刷新下载 URL；body 可选 `{ "mode": "merge" \| "replace" }`，默认 `merge`，`replace` 为整表按磁盘重建 |
+| GET   | `/api/apps/:app/latest`               | 是     | 当前已发布 JSON（同 `latest.json`）                                          |
+| GET   | `/api/public/:app/latest`             | **否** | 公开最新 JSON（204 表示尚无发布）                                                |
+| GET   | `/api/public/:app/latest/download`    | **否** | 最新下载信息 JSON；`?redirect=1` 302 跳转；Tauri 可加 `&platform=windows-x86_64` |
+| GET   | `/api/health`                         | **否** | 健康检查 `{ ok: true }`（部署脚本会探测）                                         |
+| GET   | `/releases/:app/latest.json`          | **否** | Tauri updater                                                        |
 
 
 ---
@@ -263,9 +273,40 @@ bash deploy.sh   # 刷新主 server 块（含 HTTPS 与 locations include）
 
 ## 本地开发
 
+**后端 API：**
+
 ```bash
 npm install
 npm run dev
 ```
 
-默认端口 **3721**（环境变量 `PORT` 可覆盖）。本地访问 `http://localhost:3721`，登录方式同样是**仅密码**。
+默认端口 **3721**（环境变量 `PORT` 可覆盖）。
+
+**管理后台（Vue3，热更新）：**
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Vite 默认 **5173**。开发模式下 `VITE_BASE=/`（见 `frontend/.env.development`），已将 `/api`、`/releases`、`/d` 代理到 `http://127.0.0.1:3721`，请先启动后端再开前端。
+
+**子路径与生产构建：**
+
+- 默认 Nginx 前缀为 `releasehub` 时，生产构建的静态资源与前端请求基址为 **`/releasehub/`**，由 `deploy.sh` 在构建前端前设置环境变量 **`VITE_BASE`**（与 `NGINX_PREFIX` 一致）。
+- 若使用 `NGINX_PREFIX=`（整站根路径），则 **`VITE_BASE=/`**，与直连 `:3721` 一致。
+
+**仅构建管理后台到 `public/`：**
+
+```bash
+cd frontend && npm install && npm run build
+```
+
+未设置 `VITE_BASE` 时，生产模式默认按 **`/releasehub/`** 打包（与默认部署一致）。需要根路径包时可执行：
+
+```bash
+cd frontend && VITE_BASE=/ npm run build
+```
+
+登录方式仍是**仅密码**。向后兼容约定见 [COMPATIBILITY.md](COMPATIBILITY.md)。

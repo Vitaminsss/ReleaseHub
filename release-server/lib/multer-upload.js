@@ -1,0 +1,36 @@
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const CONFIG = require('./config');
+const { readAppMeta } = require('./meta-notes');
+const { isSemVer2CoreWithVPrefix } = require('./releases');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(CONFIG.RELEASES_DIR, req.params.app, req.params.version);
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => cb(null, file.originalname),
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 500 * 1024 * 1024 },
+});
+
+function validateVersionForUpload(req, res, next) {
+  const { app, version } = req.params;
+  const meta = readAppMeta(app);
+  if (meta.repoType === 'tauri') {
+    if (!isSemVer2CoreWithVPrefix(version)) {
+      return res.status(400).json({
+        error:
+          'Tauri 库版本须符合 SemVer 2.0：MAJOR.MINOR.PATCH 三段非负整数，且各位数不可前导零（例 v1.0.0）',
+      });
+    }
+  }
+  next();
+}
+
+module.exports = { upload, validateVersionForUpload };

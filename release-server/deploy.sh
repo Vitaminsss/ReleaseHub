@@ -261,7 +261,17 @@ mkdir -p "$INSTALL_DIR/releases"
 if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
   cp -f "$SCRIPT_DIR/server.js" "$INSTALL_DIR/"
   cp -f "$SCRIPT_DIR/package.json" "$INSTALL_DIR/"
-  cp -f "$SCRIPT_DIR/public/index.html" "$INSTALL_DIR/public/"
+  if [ -f "$SCRIPT_DIR/package-lock.json" ]; then
+    cp -f "$SCRIPT_DIR/package-lock.json" "$INSTALL_DIR/"
+  fi
+  rm -rf "$INSTALL_DIR/lib"
+  cp -a "$SCRIPT_DIR/lib" "$INSTALL_DIR/"
+  rm -rf "$INSTALL_DIR/frontend"
+  cp -a "$SCRIPT_DIR/frontend" "$INSTALL_DIR/"
+  if [ -d "$SCRIPT_DIR/scripts" ]; then
+    rm -rf "$INSTALL_DIR/scripts"
+    cp -a "$SCRIPT_DIR/scripts" "$INSTALL_DIR/"
+  fi
 else
   echo "✓ 已在项目目录内运行，跳过自复制（避免 cp 与自身为同一文件导致脚本中断）"
 fi
@@ -482,6 +492,19 @@ echo "▸ 安装依赖..."
 cd "$INSTALL_DIR"
 npm install --production
 
+# ── 构建管理后台（Vue3）────────────────────
+# Vite base 与 Nginx 路径前缀一致：有前缀则 /prefix/，整站根则为 /
+VITE_BASE="/"
+if [ "$USE_NGINX_RESOLVED" = "1" ] && [ -n "$NGINX_PREFIX_SLUG" ]; then
+  VITE_BASE="/${NGINX_PREFIX_SLUG}/"
+fi
+if [ -f "$INSTALL_DIR/frontend/package.json" ]; then
+  echo "▸ 构建管理后台 (Vue3 → public/，VITE_BASE=$VITE_BASE)..."
+  (cd "$INSTALL_DIR/frontend" && npm install && VITE_BASE="$VITE_BASE" npm run build)
+else
+  echo "⚠ 未找到 frontend/package.json，跳过前端构建（请确认已同步完整仓库）"
+fi
+
 # ── 启动服务 ──────────────────────────────
 echo "▸ 启动服务..."
 
@@ -516,6 +539,17 @@ set -e
 
 echo "▸ 再次保存 PM2 列表（确保与自启一致）..."
 pm2 save
+
+# ── 健康检查 ─────────────────────────────
+echo "▸ 健康检查 GET /api/health ..."
+set +e
+HC=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 "http://127.0.0.1:${PORT}/api/health")
+set -e
+if [ "$HC" = "200" ]; then
+  echo "✓ 服务已响应 (HTTP $HC)"
+else
+  echo "⚠ 本机健康检查未得到 200（HTTP ${HC:-超时}），请执行: pm2 logs $SERVICE_NAME"
+fi
 
 # ── 配置防火墙 ────────────────────────────
 if command -v ufw &> /dev/null; then
