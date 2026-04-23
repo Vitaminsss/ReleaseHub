@@ -7,24 +7,10 @@
 
     <div class="strip-inner layout-max">
       <RouterLink to="/" class="brand" title="返回应用列表">
-        <span class="brand-mark" aria-hidden="true">
-          <svg class="logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M6 11a2 2 0 0 1 2-2h2.5v22H8a2 2 0 0 1-2-2V11Z"
-              fill="currentColor"
-              opacity="0.35"
-            />
-            <rect x="13" y="9" width="21" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="rgba(56,189,248,0.12)" />
-            <rect x="13" y="17" width="21" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="rgba(56,189,248,0.08)" />
-            <rect x="13" y="25" width="21" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="rgba(56,189,248,0.05)" />
-            <circle cx="30" cy="12" r="1.1" fill="currentColor" opacity="0.85" />
-            <circle cx="30" cy="20" r="1.1" fill="currentColor" opacity="0.55" />
-            <circle cx="30" cy="28" r="1.1" fill="currentColor" opacity="0.4" />
-          </svg>
-        </span>
-        <span class="brand-text">
+        <span class="brand-rule" aria-hidden="true" />
+        <span class="brand-block">
           <span class="brand-name">ReleaseHub</span>
-          <span class="brand-tag mono">releases · 存储</span>
+          <span class="brand-sub mono">releases 卷</span>
         </span>
       </RouterLink>
 
@@ -32,12 +18,9 @@
 
       <template v-else-if="disk">
         <div class="console-panel">
-          <div class="panel-rail" aria-hidden="true">
-            <span /><span /><span /><span />
-          </div>
           <div class="panel-body">
             <div class="panel-head">
-              <span class="panel-title">Releases 卷</span>
+              <span class="panel-title">磁盘占用</span>
               <span class="panel-readout mono">{{ usedPct }}% 已用</span>
             </div>
             <div
@@ -48,12 +31,21 @@
               <div class="meter-fill" :style="{ width: `${usedPct}%` }" />
               <div class="meter-ticks" aria-hidden="true" />
             </div>
-            <div class="panel-stats mono">
-              <span><span class="k">剩余</span> {{ formatBytes(disk.free) }}</span>
-              <span class="sep">/</span>
-              <span><span class="k">已用</span> {{ formatBytes(disk.used) }}</span>
-              <span class="sep">/</span>
-              <span><span class="k">容量</span> {{ formatBytes(disk.total) }}</span>
+            <div class="panel-stats">
+              <div class="stat">
+                <span class="k">剩余</span>
+                <span class="val mono">{{ formatBytes(disk.free) }}</span>
+              </div>
+              <span class="sep mono">·</span>
+              <div class="stat">
+                <span class="k">已用</span>
+                <span class="val mono">{{ formatBytes(disk.used) }}</span>
+              </div>
+              <span class="sep mono">·</span>
+              <div class="stat">
+                <span class="k">容量</span>
+                <span class="val mono">{{ formatBytes(disk.total) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -111,8 +103,8 @@ onUnmounted(() => {
 <style scoped>
 .storage-strip {
   --s-bg: #07090c;
-  --s-panel: rgba(15, 23, 42, 0.55);
-  --s-border: rgba(56, 189, 248, 0.22);
+  --s-panel: rgba(15, 23, 42, 0.42);
+  --s-border: rgba(56, 189, 248, 0.16);
   --s-text: #e2e8f0;
   --s-dim: #64748b;
   --s-accent: #38bdf8;
@@ -120,7 +112,7 @@ onUnmounted(() => {
 
   position: relative;
   overflow: hidden;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.14);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12);
   background: var(--s-bg);
 }
 
@@ -137,18 +129,18 @@ onUnmounted(() => {
     0deg,
     transparent,
     transparent 3px,
-    rgba(56, 189, 248, 0.03) 3px,
-    rgba(56, 189, 248, 0.03) 4px
+    rgba(56, 189, 248, 0.025) 3px,
+    rgba(56, 189, 248, 0.025) 4px
   );
   animation: scan 14s linear infinite;
-  opacity: 0.65;
+  opacity: 0.55;
 }
 
 .strip-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 85% 120% at 12% -20%, rgba(14, 165, 233, 0.09), transparent 50%),
-    radial-gradient(ellipse 60% 80% at 100% 100%, rgba(15, 23, 42, 0.5), transparent 45%);
+  background: radial-gradient(ellipse 80% 100% at 8% -30%, rgba(14, 165, 233, 0.06), transparent 45%),
+    radial-gradient(ellipse 50% 70% at 100% 110%, rgba(15, 23, 42, 0.35), transparent 40%);
 }
 
 @keyframes scan {
@@ -163,7 +155,7 @@ onUnmounted(() => {
 @media (prefers-reduced-motion: reduce) {
   .strip-scan {
     animation: none;
-    opacity: 0.35;
+    opacity: 0.28;
   }
 }
 
@@ -173,152 +165,120 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 20px 28px;
-  padding-top: 15px;
-  padding-bottom: 15px;
+  gap: 14px 22px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 10px;
   flex-shrink: 0;
   text-decoration: none;
   color: inherit;
   outline: none;
-  border-radius: 10px;
-  margin: -4px -6px;
-  padding: 4px 6px;
+  border-radius: 8px;
+  margin: -2px -4px;
+  padding: 2px 4px;
   transition: background 0.18s ease, box-shadow 0.18s ease;
 }
 
 .brand:hover {
-  background: rgba(56, 189, 248, 0.06);
+  background: rgba(56, 189, 248, 0.05);
 }
 
 .brand:focus-visible {
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.45);
 }
 
-.brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 11px;
-  color: var(--s-accent);
-  background: linear-gradient(155deg, rgba(56, 189, 248, 0.14) 0%, rgba(7, 9, 12, 0.95) 70%);
-  border: 1px solid var(--s-border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(0, 0, 0, 0.4);
+.brand-rule {
+  width: 3px;
+  height: 34px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--s-accent) 0%, rgba(56, 189, 248, 0.15) 100%);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
 }
 
-.logo-svg {
-  width: 30px;
-  height: 30px;
-  display: block;
-}
-
-.brand-text {
+.brand-block {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
   min-width: 0;
+  line-height: 1.15;
 }
 
 .brand-name {
   font-family: 'Outfit', var(--font);
   font-weight: 700;
-  font-size: 1.12rem;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
+  font-size: 1.02rem;
+  letter-spacing: -0.03em;
   color: #f1f5f9;
 }
 
-.brand-tag {
-  font-size: 9px;
+.brand-sub {
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.88);
+  color: rgba(148, 163, 184, 0.82);
 }
 
 .console-panel {
   flex: 1;
-  min-width: min(100%, 300px);
-  display: flex;
-  gap: 0;
-  border-radius: 12px;
-  border: 1px solid rgba(56, 189, 248, 0.12);
+  min-width: min(100%, 260px);
+  border-radius: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.1);
   background: var(--s-panel);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
   overflow: hidden;
-  backdrop-filter: blur(8px);
-}
-
-.panel-rail {
-  width: 14px;
-  flex-shrink: 0;
-  background: linear-gradient(90deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.5));
-  border-right: 1px solid rgba(56, 189, 248, 0.08);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 0;
-}
-
-.panel-rail span {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(56, 189, 248, 0.35);
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
+  backdrop-filter: blur(6px);
 }
 
 .panel-body {
-  flex: 1;
-  padding: 12px 14px 12px 12px;
+  padding: 8px 11px 9px;
   min-width: 0;
+  border-left: 2px solid rgba(56, 189, 248, 0.35);
 }
 
 .panel-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .panel-title {
   font-family: 'Outfit', var(--font);
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.95);
+  color: rgba(148, 163, 184, 0.9);
 }
 
 .panel-readout {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--s-accent);
+  font-variant-numeric: tabular-nums;
 }
 
 .meter {
   position: relative;
-  height: 10px;
-  border-radius: 3px;
-  background: rgba(2, 6, 23, 0.75);
-  border: 1px solid rgba(51, 65, 85, 0.6);
+  height: 6px;
+  border-radius: 2px;
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid rgba(51, 65, 85, 0.45);
   overflow: hidden;
 }
 
 .meter-fill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: 1px;
   background: linear-gradient(90deg, var(--s-accent-dim) 0%, var(--s-accent) 48%, #7dd3fc 100%);
-  box-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.28);
   transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -329,9 +289,9 @@ onUnmounted(() => {
   background-image: repeating-linear-gradient(
     90deg,
     transparent,
-    transparent 19px,
-    rgba(148, 163, 184, 0.07) 19px,
-    rgba(148, 163, 184, 0.07) 20px
+    transparent 24px,
+    rgba(148, 163, 184, 0.06) 24px,
+    rgba(148, 163, 184, 0.06) 25px
   );
   mix-blend-mode: overlay;
 }
@@ -339,21 +299,41 @@ onUnmounted(() => {
 .panel-stats {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 5px;
-  margin-top: 10px;
-  font-size: 11px;
-  color: var(--s-text);
+  align-items: flex-end;
+  gap: 8px 6px;
+  margin-top: 8px;
 }
 
-.panel-stats .k {
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.stat .k {
+  font-family: 'Outfit', var(--font);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--s-dim);
-  margin-right: 4px;
-  font-size: 10px;
+}
+
+.stat .val {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--s-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
 }
 
 .sep {
-  color: rgba(71, 85, 105, 0.65);
+  align-self: center;
+  padding-bottom: 2px;
+  font-size: 18px;
+  line-height: 1;
+  color: rgba(71, 85, 105, 0.5);
   user-select: none;
 }
 

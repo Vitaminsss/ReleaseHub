@@ -172,22 +172,20 @@ function renderResourceLibraryHtml(opts) {
   const cards = list
     .map(it => {
       const title = (it.displayName && String(it.displayName).trim()) || it.fileName;
-      const desc =
+      const descInner =
         it.description && String(it.description).trim()
           ? `<div class="res-card-desc">${formatPlainMultiline(String(it.description).trim())}</div>`
           : '';
+      const mainBlock = descInner ? `<div class="res-card-main">${descInner}</div>` : '';
       return `<article class="res-card">
   <header class="res-card-head">
     <a class="res-card-title" href="${htmlEsc(it.landingHref)}">${htmlEsc(title)}</a>
   </header>
-  <div class="res-card-meta">
-    <span class="res-fn">${htmlEsc(it.fileName)}</span>
-    <span class="sz">${htmlEsc(fmtBytesServer(it.size))}</span>
-  </div>
-  ${desc}
-  <div class="res-card-actions">
+  ${mainBlock}
+  <footer class="res-card-foot">
+    <span class="res-sz">${htmlEsc(fmtBytesServer(it.size))}</span>
     <a class="btn-dl" href="${htmlEsc(it.directHref)}" download rel="noopener">⬇ 下载</a>
-  </div>
+  </footer>
 </article>`;
     })
     .join('');
@@ -201,28 +199,31 @@ function renderResourceLibraryHtml(opts) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="${faviconHref}" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,480;0,9..144,560;1,9..144,450&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 <title>${htmlEsc(displayLabel)} — 资源库</title>
 <style>
-:root { --bg:#0c0b09; --text:#ebe6df; --text2:#9a9288; --accent:#e8a035; --border:rgba(235,230,223,0.08); }
+:root { --bg:#0a0908; --text:#f0ebe3; --text2:#9a9288; --accent:#e8a035; --border:rgba(235,230,223,0.09); --desc:#e3ddd4; }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;margin:0;padding:24px 20px 40px;display:flex;flex-direction:column;align-items:center}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.028) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
+body{font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;margin:0;padding:24px 20px 40px;display:flex;flex-direction:column;align-items:center}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.022) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0}
 .wrap{position:relative;z-index:1;width:100%;max-width:1040px;display:flex;flex-direction:column;align-items:center}
-.page-avatar{width:72px;height:72px;margin:0 auto 20px;border-radius:18px;background:linear-gradient(145deg,#f0b24a 0%,var(--accent) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#1a1208;box-shadow:0 12px 32px rgba(232,160,53,.2);letter-spacing:0;flex-shrink:0}
-h1{font-size:22px;font-weight:800;margin:0 0 14px;text-align:center;line-height:1.3;max-width:100%}
-.intro{width:100%;text-align:center;color:var(--text2);font-size:14px;line-height:1.7;margin:0 auto 22px;padding:0 8px;max-width:42rem}
-.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;width:100%;align-items:stretch}
-.res-card{border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:0;box-shadow:0 24px 48px rgba(0,0,0,.35);display:flex;flex-direction:column;text-align:left;min-height:100%}
-.res-card-head{padding:14px 16px;border-bottom:1px solid var(--border)}
-.res-card-title{display:block;color:var(--accent);text-decoration:none;font-weight:700;font-size:16px;line-height:1.35;word-break:break-word}
-.res-card-title:hover{text-decoration:underline}
-.res-card-meta{padding:10px 16px 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;font-size:12px;color:var(--text2)}
-.res-fn{word-break:break-all;flex:1;min-width:0}
-.sz{white-space:nowrap;flex-shrink:0}
-.res-card-desc{padding:0 16px 12px;font-size:13px;color:var(--text2);line-height:1.65;flex:1}
-.res-card-actions{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px;padding:12px 16px;border-top:1px solid var(--border)}
-.btn-dl{display:inline-flex;align-items:center;justify-content:center;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;text-decoration:none;border-radius:6px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s}
-.btn-dl:hover{filter:brightness(1.06);box-shadow:0 0 18px rgba(232,160,53,.22)}
+.page-avatar{width:72px;height:72px;margin:0 auto 20px;border-radius:18px;background:linear-gradient(145deg,#f0b24a 0%,var(--accent) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#1a1208;box-shadow:0 12px 32px rgba(232,160,53,.2);letter-spacing:0;flex-shrink:0;font-family:'Manrope',system-ui,sans-serif}
+h1{font-family:'Manrope',system-ui,sans-serif;font-size:24px;font-weight:800;margin:0 0 14px;text-align:center;line-height:1.25;max-width:100%;letter-spacing:-.02em}
+.intro{width:100%;text-align:center;color:var(--text2);font-size:14px;line-height:1.75;margin:0 auto 22px;padding:0 8px;max-width:42rem;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-weight:450}
+.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;width:100%;align-items:stretch}
+.res-card{position:relative;border:1px solid var(--border);background:linear-gradient(168deg,#14110e 0%,#0e0c0a 52%,#12100e 100%);border-radius:12px;padding:0;box-shadow:0 20px 50px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.04);display:flex;flex-direction:column;text-align:left;min-height:100%;overflow:hidden}
+.res-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--accent) 0%,rgba(232,160,53,.25) 100%);opacity:.85;pointer-events:none}
+.res-card-head{padding:15px 16px 14px 18px;border-bottom:1px solid var(--border)}
+.res-card-title{display:block;color:var(--accent);text-decoration:none;font-weight:700;font-size:17px;line-height:1.3;word-break:break-word;letter-spacing:-.015em;font-family:'Manrope',system-ui,sans-serif}
+.res-card-title:hover{text-decoration:underline;text-underline-offset:3px}
+.res-card-main{flex:1;min-height:0;display:flex;flex-direction:column}
+.res-card-desc{padding:14px 16px 10px 18px;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-size:15px;font-weight:500;font-style:normal;color:var(--desc);line-height:1.72;letter-spacing:.01em}
+.res-card-foot{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px 12px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,.18)}
+.res-sz{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:13px;font-weight:600;color:var(--text);letter-spacing:.04em;opacity:.92}
+.btn-dl{display:inline-flex;align-items:center;justify-content:center;padding:8px 15px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;border-radius:7px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s,transform .12s;font-family:'Manrope',system-ui,sans-serif}
+.btn-dl:hover{filter:brightness(1.06);box-shadow:0 0 20px rgba(232,160,53,.28);transform:translateY(-1px)}
 .res-empty{width:100%;text-align:center;color:var(--text2);font-size:14px;padding:32px 16px;border:1px dashed var(--border);border-radius:8px}
 </style>
 </head>
