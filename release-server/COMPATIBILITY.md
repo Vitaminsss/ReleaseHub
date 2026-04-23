@@ -41,7 +41,7 @@
 | GET | `/api/public/:app/latest` | 公开 JSON（与 `latest.json` 同源） |
 | GET | `/d/:app/:version/:filename` | 下载落地页（保留） |
 | GET | `/app/:app/latest` | **新增** 302 到当前已发布版本的 `/app/:app/:version`（与 Vue `/app/:name` 不冲突） |
-| GET | `/app/:app/:version` | **新增** 公开版本浏览页（列表 → `/d/...`） |
+| GET | `/app/:app/:version` | **新增** 公开版本浏览页（列表不含 `.sig`，→ `/d/...`） |
 | GET | `/:app/:v/:filename` | 短链直链（非 api/releases/public/d/app；**通用**时第二段可不以 `v` 开头） |
 
 ## 新增接口（可选使用，不影响旧客户端）

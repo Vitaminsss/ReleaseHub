@@ -281,7 +281,7 @@ function registerRoutes(app) {
     const meta = readAppMeta(app);
     const displayLabel = meta.displayName && String(meta.displayName).trim() ? String(meta.displayName).trim() : app;
     const files = getFiles(app, version)
-      .filter(f => f.name !== '.gitkeep')
+      .filter(f => f.name !== '.gitkeep' && !String(f.name).toLowerCase().endsWith('.sig'))
       .map(f => ({
         name: f.name,
         size: f.size,

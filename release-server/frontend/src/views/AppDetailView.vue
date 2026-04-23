@@ -53,7 +53,8 @@
         <button type="button" class="btn btn-sm btn-ghost" @click="copy(publishedVersionPageUrl)">复制</button>
       </div>
       <p v-if="latestAppShortcutUrl" class="hint sm no-mt">
-        <code>/app/{{ appName }}/latest</code> 会 302 到当前已发布目录；固定版本链接为 <code>/app/{{ appName }}/&lt;目录名&gt;</code>；单文件落地页 <code>/d/...</code> 仍可用。
+        <code>/app/{{ appName }}/latest</code> 会 302 到当前已发布目录；固定版本链接为 <code>/app/{{ appName }}/&lt;目录名&gt;</code>。上述版本浏览页列表<strong>不展示</strong>
+        <code>.sig</code>，仅安装包等本体；单文件落地页 <code>/d/...</code> 仍可直接打开任意文件（含签名）。
       </p>
       <div class="link-row">
         <span class="lbl">latest.json</span>
