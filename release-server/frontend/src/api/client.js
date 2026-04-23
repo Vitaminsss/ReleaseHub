@@ -1,4 +1,12 @@
 import { useAuthStore } from '@/stores/auth';
+import router from '@/router';
+
+function redirectToLoginIfNeeded() {
+  const r = router.currentRoute.value;
+  if (r.meta.requiresAuth) {
+    router.replace({ name: 'login', query: { redirect: r.fullPath } });
+  }
+}
 
 /** 与 Vite base 一致，保证子路径部署下 /api 经 Nginx 前缀转发 */
 function appBase() {
@@ -30,6 +38,7 @@ export async function api(method, path, body = null, options = {}) {
 
   if (res.status === 401) {
     auth.logout();
+    redirectToLoginIfNeeded();
     throw new Error('未授权');
   }
 
@@ -101,6 +110,7 @@ export function uploadWithProgress({ method, path: p, formData, onProgress, sign
       }
       if (xhr.status === 401) {
         auth.logout();
+        redirectToLoginIfNeeded();
         reject(new Error('未授权'));
         return;
       }

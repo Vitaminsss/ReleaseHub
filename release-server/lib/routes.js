@@ -1,7 +1,6 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const CONFIG = require('./config');
@@ -565,15 +564,8 @@ function registerRoutes(app) {
   });
 
   app.get('/api/system', auth, (req, res) => {
-    const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const memory = {
-      total: totalMem,
-      free: freeMem,
-      used: totalMem - freeMem,
-    };
     if (typeof fs.statfsSync !== 'function') {
-      return res.json({ memory, disk: null });
+      return res.json({ disk: null });
     }
     try {
       const p = CONFIG.RELEASES_DIR;
@@ -584,9 +576,9 @@ function registerRoutes(app) {
       const bavail = Number(s.bavail != null ? s.bavail : s.bfree);
       const total = blocks * bs;
       const free = bavail * bs;
-      res.json({ memory, disk: { total, free, used: total - free } });
+      res.json({ disk: { total, free, used: total - free } });
     } catch {
-      res.json({ memory, disk: null });
+      res.json({ disk: null });
     }
   });
 

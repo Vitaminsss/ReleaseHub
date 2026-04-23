@@ -1,80 +1,100 @@
 <template>
-  <header class="server-strip" aria-label="服务器资源概览">
-    <div class="strip-noise" aria-hidden="true" />
+  <header class="storage-strip" aria-label="Releases 所在磁盘容量">
+    <div class="strip-bg" aria-hidden="true">
+      <div class="strip-scan" />
+      <div class="strip-vignette" />
+    </div>
+
     <div class="strip-inner layout-max">
-      <div class="brand-cluster">
-        <span class="wordmark">ReleaseHub</span>
-        <span class="badge">node</span>
-      </div>
+      <RouterLink to="/" class="brand" title="返回应用列表">
+        <span class="brand-mark" aria-hidden="true">
+          <svg class="logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M6 11a2 2 0 0 1 2-2h2.5v22H8a2 2 0 0 1-2-2V11Z"
+              fill="currentColor"
+              opacity="0.35"
+            />
+            <rect x="13" y="9" width="21" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="rgba(56,189,248,0.12)" />
+            <rect x="13" y="17" width="21" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="rgba(56,189,248,0.08)" />
+            <rect x="13" y="25" width="21" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="rgba(56,189,248,0.05)" />
+            <circle cx="30" cy="12" r="1.1" fill="currentColor" opacity="0.85" />
+            <circle cx="30" cy="20" r="1.1" fill="currentColor" opacity="0.55" />
+            <circle cx="30" cy="28" r="1.1" fill="currentColor" opacity="0.4" />
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">ReleaseHub</span>
+          <span class="brand-tag mono">releases · 存储</span>
+        </span>
+      </RouterLink>
 
-      <div v-if="error" class="err-line">{{ error }}</div>
+      <div v-if="error" class="state err mono">{{ error }}</div>
 
-      <template v-else-if="memory">
-        <div class="mem-panel">
-          <div class="mem-head">
-            <span class="mem-title">主机内存</span>
-            <span class="mem-pct mono">{{ usedPct }}% 已用</span>
+      <template v-else-if="disk">
+        <div class="console-panel">
+          <div class="panel-rail" aria-hidden="true">
+            <span /><span /><span /><span />
           </div>
-          <div class="mem-track" role="img" :aria-label="`内存已用 ${usedPct}%`">
-            <div class="mem-fill" :style="{ width: `${usedPct}%` }" />
-            <div class="mem-glow" :style="{ width: `${usedPct}%` }" />
+          <div class="panel-body">
+            <div class="panel-head">
+              <span class="panel-title">Releases 卷</span>
+              <span class="panel-readout mono">{{ usedPct }}% 已用</span>
+            </div>
+            <div
+              class="meter"
+              role="img"
+              :aria-label="`releases 卷已用 ${usedPct}%，剩余 ${formatBytes(disk.free)}`"
+            >
+              <div class="meter-fill" :style="{ width: `${usedPct}%` }" />
+              <div class="meter-ticks" aria-hidden="true" />
+            </div>
+            <div class="panel-stats mono">
+              <span><span class="k">剩余</span> {{ formatBytes(disk.free) }}</span>
+              <span class="sep">/</span>
+              <span><span class="k">已用</span> {{ formatBytes(disk.used) }}</span>
+              <span class="sep">/</span>
+              <span><span class="k">容量</span> {{ formatBytes(disk.total) }}</span>
+            </div>
           </div>
-          <div class="mem-stats mono">
-            <span><em>可用</em> {{ fmt(memory.free) }}</span>
-            <span class="dot">·</span>
-            <span><em>已用</em> {{ fmt(memory.used) }}</span>
-            <span class="dot">·</span>
-            <span><em>总计</em> {{ fmt(memory.total) }}</span>
-          </div>
-        </div>
-
-        <div v-if="disk" class="disk-chip mono">
-          <span class="disk-label">releases 卷</span>
-          <span class="disk-val">{{ fmt(disk.free) }} 空闲</span>
-          <span class="disk-sep">/</span>
-          <span>{{ fmt(disk.total) }}</span>
         </div>
       </template>
 
-      <div v-else class="loading-line mono">读取中…</div>
+      <div v-else-if="loaded" class="state muted mono">当前环境无法读取 releases 目录所在磁盘统计</div>
+      <div v-else class="state muted mono">读取中…</div>
     </div>
   </header>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { RouterLink } from 'vue-router';
 import { api } from '@/api/client';
+import { formatBytes } from '@/utils/format-bytes';
 
-const memory = ref(null);
 const disk = ref(null);
 const error = ref('');
+const loaded = ref(false);
 
 const usedPct = computed(() => {
-  const m = memory.value;
-  if (!m?.total) return 0;
-  return Math.min(100, Math.max(0, Math.round((m.used / m.total) * 100)));
+  const d = disk.value;
+  if (!d?.total) return 0;
+  return Math.min(100, Math.max(0, Math.round((d.used / d.total) * 100)));
 });
-
-function fmt(n) {
-  if (n == null || Number.isNaN(n)) return '—';
-  if (n < 1024) return `${n} B`;
-  if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1073741824) return `${(n / 1048576).toFixed(1)} MB`;
-  return `${(n / 1073741824).toFixed(2)} GB`;
-}
 
 let timer = null;
 
 async function pull() {
   try {
     const s = await api('GET', '/api/system');
-    memory.value = s.memory || null;
-    disk.value = s.disk || null;
+    disk.value = s?.disk || null;
     error.value = '';
   } catch (e) {
-    error.value = e.message || '无法读取系统信息';
-    memory.value = null;
+    if (e.message !== '未授权') {
+      error.value = e.message || '无法读取磁盘信息';
+    }
     disk.value = null;
+  } finally {
+    loaded.value = true;
   }
 }
 
@@ -89,21 +109,62 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.server-strip {
+.storage-strip {
+  --s-bg: #07090c;
+  --s-panel: rgba(15, 23, 42, 0.55);
+  --s-border: rgba(56, 189, 248, 0.22);
+  --s-text: #e2e8f0;
+  --s-dim: #64748b;
+  --s-accent: #38bdf8;
+  --s-accent-dim: #0ea5e9;
+
   position: relative;
   overflow: hidden;
-  border-bottom: 1px solid rgba(232, 160, 53, 0.14);
-  background: linear-gradient(105deg, #0a0908 0%, #14110d 42%, #0f0d0a 100%);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.14);
+  background: var(--s-bg);
 }
 
-.strip-noise {
+.strip-bg {
   pointer-events: none;
   position: absolute;
   inset: 0;
-  opacity: 0.07;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
+}
+
+.strip-scan {
+  position: absolute;
+  inset: -40% -10%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(56, 189, 248, 0.03) 3px,
+    rgba(56, 189, 248, 0.03) 4px
+  );
+  animation: scan 14s linear infinite;
+  opacity: 0.65;
+}
+
+.strip-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 85% 120% at 12% -20%, rgba(14, 165, 233, 0.09), transparent 50%),
+    radial-gradient(ellipse 60% 80% at 100% 100%, rgba(15, 23, 42, 0.5), transparent 45%);
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strip-scan {
+    animation: none;
+    opacity: 0.35;
+  }
 }
 
 .strip-inner {
@@ -113,163 +174,202 @@ onUnmounted(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 20px 28px;
-  padding-top: 18px;
-  padding-bottom: 18px;
+  padding-top: 15px;
+  padding-bottom: 15px;
 }
 
-.brand-cluster {
+.brand {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  align-items: center;
+  gap: 13px;
   flex-shrink: 0;
+  text-decoration: none;
+  color: inherit;
+  outline: none;
+  border-radius: 10px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
 }
 
-.wordmark {
-  font-family: 'Bricolage Grotesque', var(--font);
+.brand:hover {
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.brand:focus-visible {
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.5);
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  color: var(--s-accent);
+  background: linear-gradient(155deg, rgba(56, 189, 248, 0.14) 0%, rgba(7, 9, 12, 0.95) 70%);
+  border: 1px solid var(--s-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+.logo-svg {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.brand-name {
+  font-family: 'Outfit', var(--font);
   font-weight: 700;
-  font-size: 1.15rem;
-  letter-spacing: -0.03em;
-  background: linear-gradient(92deg, #f0d7a8 0%, var(--accent) 48%, #c98728 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-size: 1.12rem;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: #f1f5f9;
 }
 
-.badge {
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+.brand-tag {
+  font-size: 9px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(235, 230, 223, 0.45);
-  border: 1px solid rgba(235, 230, 223, 0.12);
-  padding: 3px 8px;
-  border-radius: 4px;
+  color: rgba(148, 163, 184, 0.88);
 }
 
-.mem-panel {
+.console-panel {
   flex: 1;
-  min-width: min(100%, 320px);
+  min-width: min(100%, 300px);
+  display: flex;
+  gap: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.12);
+  background: var(--s-panel);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  backdrop-filter: blur(8px);
 }
 
-.mem-head {
+.panel-rail {
+  width: 14px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.5));
+  border-right: 1px solid rgba(56, 189, 248, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.panel-rail span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
+}
+
+.panel-body {
+  flex: 1;
+  padding: 12px 14px 12px 12px;
+  min-width: 0;
+}
+
+.panel-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.mem-title {
-  font-family: 'Bricolage Grotesque', var(--font);
-  font-size: 11px;
+.panel-title {
+  font-family: 'Outfit', var(--font);
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(235, 230, 223, 0.55);
+  color: rgba(148, 163, 184, 0.95);
 }
 
-.mem-pct {
+.panel-readout {
   font-size: 11px;
-  color: var(--accent);
+  font-weight: 500;
+  color: var(--s-accent);
 }
 
-.mem-track {
+.meter {
   position: relative;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(235, 230, 223, 0.06);
+  height: 10px;
+  border-radius: 3px;
+  background: rgba(2, 6, 23, 0.75);
+  border: 1px solid rgba(51, 65, 85, 0.6);
   overflow: hidden;
 }
 
-.mem-fill {
+.meter-fill {
   height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #7a5c20 0%, var(--accent) 55%, #f0b24a 100%);
-  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--s-accent-dim) 0%, var(--s-accent) 48%, #7dd3fc 100%);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
+  transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.mem-glow {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
-  opacity: 0.35;
+.meter-ticks {
   pointer-events: none;
-  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-  animation: sheen 4.5s ease-in-out infinite;
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 19px,
+    rgba(148, 163, 184, 0.07) 19px,
+    rgba(148, 163, 184, 0.07) 20px
+  );
+  mix-blend-mode: overlay;
 }
 
-@keyframes sheen {
-  0%,
-  100% {
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 0.45;
-  }
-}
-
-.mem-stats {
+.panel-stats {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 4px;
+  gap: 6px 5px;
   margin-top: 10px;
   font-size: 11px;
-  color: rgba(235, 230, 223, 0.72);
+  color: var(--s-text);
 }
 
-.mem-stats em {
-  font-style: normal;
-  color: var(--text3);
-  margin-right: 3px;
+.panel-stats .k {
+  color: var(--s-dim);
+  margin-right: 4px;
+  font-size: 10px;
 }
 
-.dot {
-  color: rgba(235, 230, 223, 0.25);
+.sep {
+  color: rgba(71, 85, 105, 0.65);
   user-select: none;
 }
 
-.disk-chip {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: rgba(232, 160, 53, 0.06);
-  border: 1px solid rgba(232, 160, 53, 0.12);
-  font-size: 11px;
-  color: rgba(235, 230, 223, 0.75);
-}
-
-.disk-label {
-  font-family: 'Bricolage Grotesque', var(--font);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(235, 230, 223, 0.45);
-}
-
-.disk-sep {
-  opacity: 0.35;
-}
-
 .mono {
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
 }
 
-.loading-line,
-.err-line {
+.state {
   font-size: 12px;
-  color: var(--text2);
 }
 
-.err-line {
+.state.err {
   color: var(--danger);
+}
+
+.state.muted {
+  color: var(--text2);
 }
 </style>

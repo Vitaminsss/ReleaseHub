@@ -28,10 +28,11 @@
 
     <section class="card block">
       <h2>磁盘空间（releases 卷）</h2>
-      <p v-if="!disk" class="muted">当前环境无法读取磁盘统计</p>
+      <p v-if="diskError" class="disk-err">{{ diskError }}</p>
+      <p v-else-if="!disk" class="muted">当前环境无法读取磁盘统计（不支持 statfs 或路径不可用）</p>
       <p v-else class="disk">
-        已用 <strong>{{ fmt(disk.used) }}</strong> / 共 {{ fmt(disk.total) }} · 剩余
-        {{ fmt(disk.free) }}
+        已用 <strong>{{ formatBytes(disk.used) }}</strong> / 共 {{ formatBytes(disk.total) }} · 剩余
+        {{ formatBytes(disk.free) }}
       </p>
     </section>
 
@@ -58,6 +59,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { api } from '@/api/client';
 import { useToast } from '@/composables/useToast';
+import { formatBytes } from '@/utils/format-bytes';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -68,17 +70,11 @@ const releasesDir = ref('');
 const resourceLibrariesDir = ref('');
 const savingBase = ref(false);
 const disk = ref(null);
+const diskError = ref('');
 const oldPwd = ref('');
 const newPwd = ref('');
 const newPwd2 = ref('');
 const changingPwd = ref(false);
-
-function fmt(n) {
-  if (n == null) return '—';
-  if (n < 1024) return `${n} B`;
-  if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1048576).toFixed(1)} MB`;
-}
 
 async function load() {
   try {
@@ -89,11 +85,15 @@ async function load() {
   } catch (e) {
     toast(e.message, 'error');
   }
+  diskError.value = '';
   try {
     const sys = await api('GET', '/api/system');
-    disk.value = sys.disk;
-  } catch {
+    disk.value = sys?.disk ?? null;
+  } catch (e) {
     disk.value = null;
+    if (e.message !== '未授权') {
+      diskError.value = e.message || '无法读取磁盘信息';
+    }
   }
 }
 
@@ -204,6 +204,12 @@ onMounted(load);
 }
 .disk strong {
   color: var(--text);
+}
+.disk-err {
+  margin: 0;
+  font-size: 14px;
+  color: var(--danger);
+  line-height: 1.5;
 }
 .foot {
   margin-top: 28px;
