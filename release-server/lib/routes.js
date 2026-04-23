@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const CONFIG = require('./config');
@@ -33,6 +34,7 @@ const {
   getPublicDownloadInfo,
   getLatestPrimaryDownloadUrl,
   resolvePublishedVersionDir,
+  getAppLastActivityMs,
 } = require('./releases');
 const {
   renderDownload404Html,
@@ -74,21 +76,24 @@ function registerRoutes(app) {
   });
 
   app.get('/api/apps', auth, (req, res) => {
-    res.json(
-      getApps().map(n => {
-        const latest = readLatest(n);
-        const meta = readAppMeta(n);
-        const displayName = meta.displayName && String(meta.displayName).trim() ? String(meta.displayName).trim() : null;
-        return {
+    const rows = getApps().map(n => {
+      const latest = readLatest(n);
+      const meta = readAppMeta(n);
+      const displayName = meta.displayName && String(meta.displayName).trim() ? String(meta.displayName).trim() : null;
+      return {
+        row: {
           name: n,
           displayName,
           displayLabel: displayName || n,
           repoType: meta.repoType || 'general',
           latestVersion: latest?.version || null,
           versionCount: getVersions(n).length,
-        };
-      }),
-    );
+        },
+        lastActivityMs: getAppLastActivityMs(n),
+      };
+    });
+    rows.sort((a, b) => (b.lastActivityMs || 0) - (a.lastActivityMs || 0));
+    res.json(rows.map(r => r.row));
   });
 
   app.post('/api/apps', auth, (req, res) => {
@@ -560,8 +565,15 @@ function registerRoutes(app) {
   });
 
   app.get('/api/system', auth, (req, res) => {
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const memory = {
+      total: totalMem,
+      free: freeMem,
+      used: totalMem - freeMem,
+    };
     if (typeof fs.statfsSync !== 'function') {
-      return res.json({ disk: null });
+      return res.json({ memory, disk: null });
     }
     try {
       const p = CONFIG.RELEASES_DIR;
@@ -572,9 +584,9 @@ function registerRoutes(app) {
       const bavail = Number(s.bavail != null ? s.bavail : s.bfree);
       const total = blocks * bs;
       const free = bavail * bs;
-      res.json({ disk: { total, free, used: total - free } });
+      res.json({ memory, disk: { total, free, used: total - free } });
     } catch {
-      res.json({ disk: null });
+      res.json({ memory, disk: null });
     }
   });
 

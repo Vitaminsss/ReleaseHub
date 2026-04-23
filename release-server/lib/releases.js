@@ -10,6 +10,36 @@ function getApps() {
     .filter(f => fs.statSync(path.join(CONFIG.RELEASES_DIR, f)).isDirectory());
 }
 
+/** 应用 releases 目录内最近活动时间（目录、latest.json、各版本子目录的 mtime 取最大），用于列表排序 */
+function getAppLastActivityMs(appName) {
+  const dir = path.join(CONFIG.RELEASES_DIR, appName);
+  let max = 0;
+  try {
+    max = Math.max(max, fs.statSync(dir).mtimeMs);
+  } catch {
+    return 0;
+  }
+  const latestPath = path.join(dir, 'latest.json');
+  try {
+    if (fs.existsSync(latestPath)) max = Math.max(max, fs.statSync(latestPath).mtimeMs);
+  } catch {}
+  let entries;
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return max;
+  }
+  for (const ent of entries) {
+    if (ent === 'latest.json') continue;
+    const p = path.join(dir, ent);
+    try {
+      const st = fs.statSync(p);
+      if (st.isDirectory()) max = Math.max(max, st.mtimeMs);
+    } catch {}
+  }
+  return max;
+}
+
 function semverSort(a, b) {
   const p = s => s.replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
   const [am, an, ap] = p(a);
@@ -443,6 +473,7 @@ function getTauriPlatformUrl(latest, platform) {
 
 module.exports = {
   getApps,
+  getAppLastActivityMs,
   semverSort,
   getVersions,
   fileUrl,
