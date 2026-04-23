@@ -90,6 +90,13 @@ function registerRoutes(app) {
       if (d) next.displayName = d;
       else delete next.displayName;
     }
+    if (req.body.description !== undefined) {
+      let t = req.body.description == null ? '' : String(req.body.description);
+      if (t.length > 6000) return res.status(400).json({ error: '软件简介过长（最多 6000 字）' });
+      t = t.trim();
+      if (t) next.description = t;
+      else delete next.description;
+    }
     writeAppMeta(app, next);
     res.json(next);
   });
@@ -280,6 +287,8 @@ function registerRoutes(app) {
     }
     const meta = readAppMeta(app);
     const displayLabel = meta.displayName && String(meta.displayName).trim() ? String(meta.displayName).trim() : app;
+    const description =
+      meta.description != null && String(meta.description).trim() ? String(meta.description).trim() : '';
     const files = getFiles(app, version)
       .filter(f => f.name !== '.gitkeep' && !String(f.name).toLowerCase().endsWith('.sig'))
       .map(f => ({
@@ -290,10 +299,10 @@ function registerRoutes(app) {
       }));
     res.type('html').send(
       renderVersionBrowserHtml({
-        appName: app,
         displayLabel,
         version,
         files,
+        description,
       }),
     );
   });

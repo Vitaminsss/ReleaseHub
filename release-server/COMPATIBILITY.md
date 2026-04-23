@@ -6,7 +6,7 @@
 
 - `releases/<app>/<版本目录>/`（Tauri 多为 `v*`；**通用**可为任意合法目录名，不限 `v` 前缀）
 - `releases/<app>/latest.json` 已发布元数据（Tauri `platforms` / 通用 `files` 形状不变）
-- `.meta/<app>.json` 应用类型（`tauri` / `general`）与可选 **`displayName`**（软件展示名；缺省时界面回退为包名）
+- `.meta/<app>.json` 应用类型（`tauri` / `general`）、可选 **`displayName`**、可选 **`description`**（对外版本页简介；纯文本）
 - `.notes-cache/<app>.json` 各版本说明草稿
 - 根目录 `.env`（`BASE_URL`、`JWT_SECRET`、`ADMIN_PASSWORD_HASH` 等）
 
@@ -24,7 +24,7 @@
 | POST | `/api/change-password` | 改密 |
 | GET | `/api/apps` | 应用列表（新增字段 `displayName`、`displayLabel`，旧客户端可忽略） |
 | POST | `/api/apps` | 创建应用（可选 body `displayName`；`name` 仍为包名） |
-| PATCH | `/api/apps/:app/meta` | 更新元数据（如 `displayName`） |
+| PATCH | `/api/apps/:app/meta` | 更新元数据（`displayName`、`description` 等；简介最多约 6000 字） |
 | POST | `/api/apps/:app/rename` | **新增** 重命名包（body `newName`）；迁移数据并刷新 `latest` 内 URL |
 | DELETE | `/api/apps/:app` | 删除应用 |
 | GET | `/api/apps/:app/meta` | 元数据 |

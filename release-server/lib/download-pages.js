@@ -24,6 +24,14 @@ function svgTextEsc(s) {
     .replace(/"/g, '&quot;');
 }
 
+/** 多行纯文本：先 HTML 转义再换行变 br */
+function formatPlainMultiline(s) {
+  return htmlEsc(String(s || ''))
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n/g, '<br />');
+}
+
 function renderDownload404Html() {
   return `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>文件不存在 — ReleaseHub</title></head><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0c0b09;color:#ebe6df;font-family:system-ui,sans-serif;padding:24px">
 <div style="text-align:center;max-width:420px">
@@ -88,14 +96,18 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </html>`;
 }
 
-/** 公开「应用 + 版本」页：文件名进详情页，右侧直链下载 */
+/** 公开「应用 + 版本」页：文件名进详情页，右侧直链下载；不展示包名，可展示简介 */
 function renderVersionBrowserHtml(opts) {
-  const { displayLabel, appName, version, files } = opts;
+  const { displayLabel, version, files, description } = opts;
   const initial = pageAvatarInitial(displayLabel);
   const initialSvg = svgTextEsc(initial);
   const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#e8a035"/><text x="16" y="21" text-anchor="middle" fill="#1a1208" font-size="15" font-weight="700" font-family="system-ui,sans-serif">${initialSvg}</text></svg>`;
   const faviconHref = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
   const pageTitle = `${displayLabel} ${version}`.trim();
+  const introHtml =
+    description && String(description).trim()
+      ? `<div class="intro">${formatPlainMultiline(String(description).trim())}</div>`
+      : '';
   const rows = (files || [])
     .map(
       f => `<li class="file-row">
@@ -115,14 +127,13 @@ function renderVersionBrowserHtml(opts) {
 <style>
 :root { --bg:#0c0b09; --text:#ebe6df; --text2:#9a9288; --accent:#e8a035; --border:rgba(235,230,223,0.08); }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:28px 20px}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:32px 20px 40px;display:flex;flex-direction:column;align-items:center}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.028) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
-.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto}
-.page-avatar{width:72px;height:72px;margin:0 auto 18px;border-radius:18px;background:linear-gradient(145deg,#f0b24a 0%,var(--accent) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#1a1208;box-shadow:0 12px 32px rgba(232,160,53,.2);letter-spacing:0}
-h1{font-size:22px;font-weight:800;margin:0 0 8px;text-align:center;line-height:1.25}
-.sub{font-size:14px;color:var(--text2);text-align:center;margin-bottom:24px;line-height:1.5}
-.sub code{color:var(--text);font-size:13px}
-.card{border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:8px 0 4px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
+.wrap{position:relative;z-index:1;width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.page-avatar{width:72px;height:72px;margin:0 auto 20px;border-radius:18px;background:linear-gradient(145deg,#f0b24a 0%,var(--accent) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#1a1208;box-shadow:0 12px 32px rgba(232,160,53,.2);letter-spacing:0;flex-shrink:0}
+h1{font-size:22px;font-weight:800;margin:0 0 14px;text-align:center;line-height:1.3;max-width:100%}
+.intro{width:100%;text-align:center;color:var(--text2);font-size:14px;line-height:1.7;margin:0 auto 26px;padding:0 8px;max-width:36rem}
+.card{width:100%;text-align:left;border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:8px 0 4px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
 ul{list-style:none}
 .file-row{display:flex;align-items:center;gap:10px 14px;padding:14px 16px;border-top:1px solid var(--border);font-size:14px}
 .file-row:first-child{border-top:none}
@@ -137,9 +148,9 @@ ul{list-style:none}
 <div class="wrap">
   <div class="page-avatar" aria-hidden="true">${htmlEsc(initial)}</div>
   <h1>${htmlEsc(pageTitle)}</h1>
-  <p class="sub">包名 <code>${htmlEsc(appName)}</code></p>
+  ${introHtml}
   <div class="card">
-    <ul>${rows || '<li class="file-row" style="color:var(--text2)">暂无文件</li>'}</ul>
+    <ul>${rows || '<li class="file-row" style="color:var(--text2);justify-content:center">暂无文件</li>'}</ul>
   </div>
 </div>
 </body>

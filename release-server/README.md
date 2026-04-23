@@ -153,7 +153,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 ### 公开下载页（分享链接）
 
 - **始终指向当前已发布（推荐）**：`{BASE_URL}/app/{包名}/latest`，**302** 到 `{BASE_URL}/app/{包名}/{当前版本目录}`（与 Vue 后台 `/app/{包名}` 不冲突）。
-- **固定某一版本**：`{BASE_URL}/app/{包名}/{版本目录}`。标题为软件名 + 版本号；**点击文件名**进入 `/d/...` 说明页，右侧 **下载** 为安装包直链。列表**不展示** `.sig`；签名请用 `/d/...` 直链。
+- **固定某一版本**：`{BASE_URL}/app/{包名}/{版本目录}`。标题为软件名 + 版本号，**不展示包名**；可在后台填写 **软件简介**（`.meta` 的 `description`）居中展示。**点击文件名**进入 `/d/...`，右侧 **下载** 为直链。列表**不展示** `.sig`。
 - **单文件落地页（兼容保留）**：`{BASE_URL}/d/{包名}/{版本目录}/{文件名}`。
 - **直链**：`{BASE_URL}/{包名}/{版本目录}/{文件名}`（静态中间件 + `latest.json` 内 URL）。
 
@@ -243,7 +243,7 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 | POST  | `/api/change-password`                | 是     | 修改密码（需 `oldPassword`，新密码至少 5 位）                                      |
 | GET   | `/api/apps`                           | 是     | 应用列表（含 `displayName` / `displayLabel`）                              |
 | POST  | `/api/apps`                           | 是     | 创建应用；body 可选 `displayName`（软件名），`name` 为包名                         |
-| PATCH | `/api/apps/:app/meta`                 | 是     | 更新 `.meta`（如 `displayName`）                                         |
+| PATCH | `/api/apps/:app/meta`                 | 是     | 更新 `.meta`（`displayName`、`description` 软件简介等）                         |
 | POST  | `/api/apps/:app/rename`               | 是     | 重命名包名；body `{ "newName": "..." }`，迁移 releases / `.meta` / 草稿并合并刷新 URL |
 | GET   | `/api/apps/:app/meta`                | 是     | 读取应用元数据（`repoType`、`displayName` 等）                              |
 | GET   | `/api/apps/:app/versions`             | 是     | 版本与文件                                                                |

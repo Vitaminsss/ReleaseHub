@@ -31,10 +31,17 @@
         </button>
       </div>
       <label class="lbl">软件名（对外展示；留空则仅显示包名）</label>
-      <div class="row-input">
-        <input v-model="displayNameEdit" class="input" :placeholder="appName" />
-        <button type="button" class="btn btn-primary btn-sm" :disabled="savingDisplayName" @click="saveDisplayName">
-          保存软件名
+      <input v-model="displayNameEdit" class="input" :placeholder="appName" />
+      <label class="lbl">软件简介（可选，显示在对外版本页；不展示包名）</label>
+      <textarea
+        v-model="descriptionEdit"
+        class="textarea"
+        rows="4"
+        placeholder="一句话或简短介绍，支持换行"
+      />
+      <div class="row-btns" style="margin-top: 12px">
+        <button type="button" class="btn btn-primary" :disabled="savingPublicDisplay" @click="savePublicDisplay">
+          保存名称与简介
         </button>
       </div>
     </section>
@@ -240,7 +247,8 @@ const appName = computed(() => decodeURIComponent(route.params.name || ''));
 const loading = ref(true);
 const repoType = ref('general');
 const displayNameEdit = ref('');
-const savingDisplayName = ref(false);
+const descriptionEdit = ref('');
+const savingPublicDisplay = ref(false);
 const packageNameEdit = ref('');
 const savingPackageName = ref(false);
 const versions = ref([]);
@@ -353,19 +361,25 @@ async function loadMeta() {
   const m = await api('GET', `/api/apps/${encodeURIComponent(appName.value)}/meta`);
   repoType.value = m.repoType === 'tauri' ? 'tauri' : 'general';
   displayNameEdit.value = m.displayName != null ? String(m.displayName) : '';
+  descriptionEdit.value = m.description != null ? String(m.description) : '';
 }
 
-async function saveDisplayName() {
-  savingDisplayName.value = true;
+async function savePublicDisplay() {
+  if (descriptionEdit.value.length > 6000) {
+    toast('软件简介过长（最多 6000 字）', 'error');
+    return;
+  }
+  savingPublicDisplay.value = true;
   try {
     await api('PATCH', `/api/apps/${encodeURIComponent(appName.value)}/meta`, {
       displayName: displayNameEdit.value.trim(),
+      description: descriptionEdit.value.trim(),
     });
-    toast('已保存软件名');
+    toast('已保存名称与简介');
   } catch (e) {
     toast(e.message, 'error');
   } finally {
-    savingDisplayName.value = false;
+    savingPublicDisplay.value = false;
   }
 }
 
