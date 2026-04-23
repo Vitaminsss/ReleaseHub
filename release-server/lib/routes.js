@@ -140,10 +140,17 @@ function registerRoutes(app) {
     if (appDirExists(newName)) return res.status(400).json({ error: '目标包名已存在' });
     const metaDir = path.join(__dirname, '..', '.meta');
     const notesDir = path.join(__dirname, '..', '.notes-cache');
-    if (fs.existsSync(path.join(metaDir, `${newName}.json`)))
-      return res.status(400).json({ error: '目标包名的元数据已存在，请先在 .meta 中清理冲突文件' });
-    if (fs.existsSync(path.join(notesDir, `${newName}.json`)))
-      return res.status(400).json({ error: '目标包名的草稿文件已存在，请先在 .notes-cache 中清理冲突文件' });
+    /**
+     * 无 releases 子目录时，.meta / .notes-cache 下的同名 json 视为残留（删应用未清草稿、重命名中断等），自动删除以免阻塞重命名。
+     */
+    try {
+      const orphanMeta = path.join(metaDir, `${newName}.json`);
+      const orphanNotes = path.join(notesDir, `${newName}.json`);
+      if (fs.existsSync(orphanMeta)) fs.unlinkSync(orphanMeta);
+      if (fs.existsSync(orphanNotes)) fs.unlinkSync(orphanNotes);
+    } catch (e) {
+      return res.status(500).json({ error: e.message || '清理残留侧车文件失败' });
+    }
 
     const oldDir = path.join(CONFIG.RELEASES_DIR, oldName);
     const newDir = path.join(CONFIG.RELEASES_DIR, newName);
@@ -575,7 +582,13 @@ function registerRoutes(app) {
     }
   });
 
-  app.get('/api/settings', auth, (req, res) => res.json({ baseUrl: CONFIG.BASE_URL }));
+  app.get('/api/settings', auth, (req, res) =>
+    res.json({
+      baseUrl: CONFIG.BASE_URL,
+      releasesDir: CONFIG.RELEASES_DIR,
+      resourceLibrariesDir: CONFIG.RESOURCE_LIBRARIES_DIR,
+    }),
+  );
 
   app.post('/api/base-url', auth, (req, res) => {
     let { baseUrl } = req.body;

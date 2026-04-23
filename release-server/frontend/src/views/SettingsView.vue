@@ -6,6 +6,18 @@
     </header>
 
     <section class="card block">
+      <h2>数据目录（排查「应用列表为空」）</h2>
+      <p class="hint">
+        Tauri / 通用库只读 <strong>应用目录</strong>，与资源库无关。若升级后列表空了，多半是服务读到的路径下没有旧数据：请核对
+        <code>RELEASES_DIR</code> 是否仍指向你以前放包的目录（可在部署环境 <code>.env</code> 里设置）。
+      </p>
+      <p v-if="releasesDir" class="mono-path"><span class="lbl-inline">应用（releases）</span>{{ releasesDir }}</p>
+      <p v-if="resourceLibrariesDir" class="mono-path">
+        <span class="lbl-inline">资源库</span>{{ resourceLibrariesDir }}
+      </p>
+    </section>
+
+    <section class="card block">
       <h2>BASE_URL</h2>
       <p class="hint">下载直链与 latest.json 内 url 依赖此项。修改后可用应用页的「刷新下载链接」批量更新已发布 URL。</p>
       <div class="row-input">
@@ -52,6 +64,8 @@ const auth = useAuthStore();
 const { toast } = useToast();
 
 const baseUrl = ref('');
+const releasesDir = ref('');
+const resourceLibrariesDir = ref('');
 const savingBase = ref(false);
 const disk = ref(null);
 const oldPwd = ref('');
@@ -70,6 +84,8 @@ async function load() {
   try {
     const s = await api('GET', '/api/settings');
     baseUrl.value = s.baseUrl || '';
+    releasesDir.value = s.releasesDir || '';
+    resourceLibrariesDir.value = s.resourceLibrariesDir || '';
   } catch (e) {
     toast(e.message, 'error');
   }
@@ -144,6 +160,21 @@ onMounted(load);
   font-size: 13px;
   color: var(--text2);
   line-height: 1.5;
+}
+.mono-path {
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+  color: var(--accent-dim);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.lbl-inline {
+  display: block;
+  font-size: 11px;
+  color: var(--text3);
+  margin-bottom: 4px;
+  font-family: system-ui, sans-serif;
 }
 .row-input {
   display: flex;
