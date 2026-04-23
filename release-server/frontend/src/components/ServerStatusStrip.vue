@@ -1,60 +1,41 @@
 <template>
-  <header class="storage-strip" aria-label="Releases 所在磁盘容量">
-    <div class="strip-bg" aria-hidden="true">
-      <div class="strip-scan" />
-      <div class="strip-vignette" />
-    </div>
+  <aside class="disk-rail" aria-label="Releases 所在磁盘容量">
+    <RouterLink to="/" class="rail-brand" title="返回应用列表">ReleaseHub</RouterLink>
+    <p class="rail-scope">releases 卷</p>
 
-    <div class="strip-inner layout-max">
-      <RouterLink to="/" class="brand" title="返回应用列表">
-        <span class="brand-rule" aria-hidden="true" />
-        <span class="brand-block">
-          <span class="brand-name">ReleaseHub</span>
-          <span class="brand-sub mono">releases 卷</span>
-        </span>
-      </RouterLink>
+    <div v-if="error" class="state err mono">{{ error }}</div>
 
-      <div v-if="error" class="state err mono">{{ error }}</div>
+    <template v-else-if="disk">
+      <div class="rail-block">
+        <span class="hero-label">剩余</span>
+        <span class="hero-val mono">{{ formatBytes(disk.free) }}</span>
+      </div>
 
-      <template v-else-if="disk">
-        <div class="console-panel">
-          <div class="panel-body">
-            <div class="panel-head">
-              <span class="panel-title">磁盘占用</span>
-              <span class="panel-readout mono">{{ usedPct }}% 已用</span>
-            </div>
-            <div
-              class="meter"
-              role="img"
-              :aria-label="`releases 卷已用 ${usedPct}%，剩余 ${formatBytes(disk.free)}`"
-            >
-              <div class="meter-fill" :style="{ width: `${usedPct}%` }" />
-              <div class="meter-ticks" aria-hidden="true" />
-            </div>
-            <div class="panel-stats">
-              <div class="stat">
-                <span class="k">剩余</span>
-                <span class="val mono">{{ formatBytes(disk.free) }}</span>
-              </div>
-              <span class="sep mono">·</span>
-              <div class="stat">
-                <span class="k">已用</span>
-                <span class="val mono">{{ formatBytes(disk.used) }}</span>
-              </div>
-              <span class="sep mono">·</span>
-              <div class="stat">
-                <span class="k">容量</span>
-                <span class="val mono">{{ formatBytes(disk.total) }}</span>
-              </div>
-            </div>
-          </div>
+      <div
+        class="meter"
+        role="img"
+        :aria-label="`已用 ${usedPct}%，剩余 ${formatBytes(disk.free)}`"
+      >
+        <div class="meter-fill" :style="{ width: `${usedPct}%` }" />
+      </div>
+
+      <p class="pct-line mono">{{ usedPct }}% 已用</p>
+
+      <div class="sub-grid mono">
+        <div class="sub-item">
+          <span class="sub-k">已用</span>
+          <span class="sub-v">{{ formatBytes(disk.used) }}</span>
         </div>
-      </template>
+        <div class="sub-item">
+          <span class="sub-k">容量</span>
+          <span class="sub-v">{{ formatBytes(disk.total) }}</span>
+        </div>
+      </div>
+    </template>
 
-      <div v-else-if="loaded" class="state muted mono">当前环境无法读取 releases 目录所在磁盘统计</div>
-      <div v-else class="state muted mono">读取中…</div>
-    </div>
-  </header>
+    <div v-else-if="loaded" class="state muted mono">无法读取该卷磁盘统计</div>
+    <div v-else class="state muted mono">读取中…</div>
+  </aside>
 </template>
 
 <script setup>
@@ -101,240 +82,136 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.storage-strip {
-  --s-bg: #07090c;
-  --s-panel: rgba(15, 23, 42, 0.42);
-  --s-border: rgba(56, 189, 248, 0.16);
-  --s-text: #e2e8f0;
-  --s-dim: #64748b;
-  --s-accent: #38bdf8;
-  --s-accent-dim: #0ea5e9;
+.disk-rail {
+  --rail-accent: var(--accent, #e8a035);
+  --rail-accent-dim: var(--accent-dim, #c98728);
+  --rail-border: var(--border, rgba(235, 230, 223, 0.08));
 
-  position: relative;
-  overflow: hidden;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.12);
-  background: var(--s-bg);
-}
-
-.strip-bg {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
-.strip-scan {
-  position: absolute;
-  inset: -40% -10%;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(56, 189, 248, 0.025) 3px,
-    rgba(56, 189, 248, 0.025) 4px
-  );
-  animation: scan 14s linear infinite;
-  opacity: 0.55;
-}
-
-.strip-vignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 80% 100% at 8% -30%, rgba(14, 165, 233, 0.06), transparent 45%),
-    radial-gradient(ellipse 50% 70% at 100% 110%, rgba(15, 23, 42, 0.35), transparent 40%);
-}
-
-@keyframes scan {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(24px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .strip-scan {
-    animation: none;
-    opacity: 0.28;
-  }
-}
-
-.strip-inner {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px 22px;
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   flex-shrink: 0;
-  text-decoration: none;
-  color: inherit;
-  outline: none;
-  border-radius: 8px;
-  margin: -2px -4px;
-  padding: 2px 4px;
-  transition: background 0.18s ease, box-shadow 0.18s ease;
+  width: 240px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  z-index: 2;
+  padding: 22px 18px 28px;
+  background: linear-gradient(180deg, #0e0c0a 0%, var(--surface, #12100e) 38%, #0c0b09 100%);
+  border-right: 1px solid var(--rail-border);
+  box-sizing: border-box;
 }
 
-.brand:hover {
-  background: rgba(56, 189, 248, 0.05);
-}
-
-.brand:focus-visible {
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.45);
-}
-
-.brand-rule {
-  width: 3px;
-  height: 34px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, var(--s-accent) 0%, rgba(56, 189, 248, 0.15) 100%);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
-}
-
-.brand-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  min-width: 0;
-  line-height: 1.15;
-}
-
-.brand-name {
-  font-family: 'Outfit', var(--font);
+.rail-brand {
+  display: block;
+  font-family: 'Outfit', var(--font, system-ui, sans-serif);
   font-weight: 700;
-  font-size: 1.02rem;
+  font-size: 1.15rem;
   letter-spacing: -0.03em;
-  color: #f1f5f9;
+  color: var(--text, #ebe6df);
+  text-decoration: none;
+  line-height: 1.2;
+  margin-bottom: 4px;
+  transition: color 0.15s ease;
 }
 
-.brand-sub {
+.rail-brand:hover {
+  color: var(--rail-accent);
+}
+
+.rail-brand:focus-visible {
+  outline: 2px solid rgba(232, 160, 53, 0.45);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.rail-scope {
+  margin: 0 0 22px;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
   font-size: 10px;
   font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text2, #9a9288);
+}
+
+.rail-block {
+  margin-bottom: 14px;
+}
+
+.hero-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.82);
-}
-
-.console-panel {
-  flex: 1;
-  min-width: min(100%, 260px);
-  border-radius: 8px;
-  border: 1px solid rgba(56, 189, 248, 0.1);
-  background: var(--s-panel);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
-  overflow: hidden;
-  backdrop-filter: blur(6px);
-}
-
-.panel-body {
-  padding: 8px 11px 9px;
-  min-width: 0;
-  border-left: 2px solid rgba(56, 189, 248, 0.35);
-}
-
-.panel-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  color: var(--text3, #6b6459);
   margin-bottom: 6px;
 }
 
-.panel-title {
-  font-family: 'Outfit', var(--font);
-  font-size: 10px;
+.hero-val {
+  display: block;
+  font-size: 1.65rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.9);
-}
-
-.panel-readout {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--s-accent);
+  line-height: 1.15;
+  color: var(--text, #ebe6df);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  word-break: break-word;
 }
 
 .meter {
   position: relative;
-  height: 6px;
-  border-radius: 2px;
-  background: rgba(2, 6, 23, 0.72);
-  border: 1px solid rgba(51, 65, 85, 0.45);
+  height: 9px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(235, 230, 223, 0.08);
   overflow: hidden;
+  margin-bottom: 10px;
 }
 
 .meter-fill {
   height: 100%;
-  border-radius: 1px;
-  background: linear-gradient(90deg, var(--s-accent-dim) 0%, var(--s-accent) 48%, #7dd3fc 100%);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.28);
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--rail-accent-dim) 0%, var(--rail-accent) 55%, #f0b24a 100%);
+  box-shadow: 0 0 14px rgba(232, 160, 53, 0.22);
   transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.meter-ticks {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  background-image: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 24px,
-    rgba(148, 163, 184, 0.06) 24px,
-    rgba(148, 163, 184, 0.06) 25px
-  );
-  mix-blend-mode: overlay;
+.pct-line {
+  margin: 0 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rail-accent);
+  font-variant-numeric: tabular-nums;
 }
 
-.panel-stats {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px 6px;
-  margin-top: 8px;
-}
-
-.stat {
+.sub-grid {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--rail-border);
 }
 
-.stat .k {
-  font-family: 'Outfit', var(--font);
-  font-size: 9px;
+.sub-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sub-k {
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--s-dim);
+  color: var(--text3, #6b6459);
 }
 
-.stat .val {
-  font-size: 14px;
+.sub-v {
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.2;
-  color: var(--s-text);
+  color: var(--text2, #9a9288);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.03em;
-}
-
-.sep {
-  align-self: center;
-  padding-bottom: 2px;
-  font-size: 18px;
-  line-height: 1;
-  color: rgba(71, 85, 105, 0.5);
-  user-select: none;
 }
 
 .mono {
@@ -343,13 +220,34 @@ onUnmounted(() => {
 
 .state {
   font-size: 12px;
+  line-height: 1.5;
 }
 
 .state.err {
-  color: var(--danger);
+  color: var(--danger, #e85d4c);
 }
 
 .state.muted {
-  color: var(--text2);
+  color: var(--text2, #9a9288);
+}
+
+@media (max-width: 768px) {
+  .disk-rail {
+    width: 100%;
+    min-height: 0;
+    position: relative;
+    top: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--rail-border);
+    padding: 14px 18px 16px;
+  }
+
+  .rail-scope {
+    margin-bottom: 14px;
+  }
+
+  .hero-val {
+    font-size: 1.45rem;
+  }
 }
 </style>

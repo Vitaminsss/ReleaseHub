@@ -1,11 +1,15 @@
 <template>
   <ToastStack />
-  <ServerStatusStrip v-if="showServerStrip" />
-  <router-view v-slot="{ Component }">
-    <transition name="fade" mode="out-in">
-      <component :is="Component" />
-    </transition>
-  </router-view>
+  <div class="app-root" :class="{ 'app-root--shelled': showServerStrip }">
+    <ServerStatusStrip v-if="showServerStrip" />
+    <main class="app-main">
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
+    </main>
+  </div>
 </template>
 
 <script setup>
@@ -21,6 +25,28 @@ const showServerStrip = computed(() => !!auth.token && route.name !== 'login');
 </script>
 
 <style scoped>
+.app-root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.app-root--shelled {
+  display: flex;
+  align-items: flex-start;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .app-root--shelled {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;

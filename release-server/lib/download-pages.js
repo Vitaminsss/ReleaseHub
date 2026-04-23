@@ -213,14 +213,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 h1{font-family:'Manrope',system-ui,sans-serif;font-size:24px;font-weight:800;margin:0 0 14px;text-align:center;line-height:1.25;max-width:100%;letter-spacing:-.02em}
 .intro{width:100%;text-align:center;color:var(--text2);font-size:14px;line-height:1.75;margin:0 auto 22px;padding:0 8px;max-width:42rem;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-weight:450}
 .items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;width:100%;align-items:stretch}
-.res-card{position:relative;border:1px solid var(--border);background:linear-gradient(168deg,#14110e 0%,#0e0c0a 52%,#12100e 100%);border-radius:12px;padding:0;box-shadow:0 20px 50px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.04);display:flex;flex-direction:column;text-align:left;min-height:100%;overflow:hidden}
-.res-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--accent) 0%,rgba(232,160,53,.25) 100%);opacity:.85;pointer-events:none}
-.res-card-head{padding:15px 16px 14px 18px;border-bottom:1px solid var(--border)}
+.res-card{position:relative;border:1px solid var(--border);background:linear-gradient(168deg,#14110e 0%,#0e0c0a 52%,#12100e 100%);border-radius:12px;padding:0;box-shadow:0 20px 50px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.04);display:flex;flex-direction:column;text-align:left;min-height:100%;overflow:hidden;transition:border-color .22s ease,box-shadow .22s ease,transform .22s ease}
+.res-card:hover,.res-card:focus-within{border-color:rgba(232,160,53,.38);box-shadow:0 26px 56px rgba(0,0,0,.48),0 0 0 1px rgba(232,160,53,.12),inset 0 1px 0 rgba(255,255,255,.06);transform:translateY(-2px)}
+.res-card-head{padding:15px 16px 14px;border-bottom:1px solid var(--border)}
 .res-card-title{display:block;color:var(--accent);text-decoration:none;font-weight:700;font-size:17px;line-height:1.3;word-break:break-word;letter-spacing:-.015em;font-family:'Manrope',system-ui,sans-serif}
 .res-card-title:hover{text-decoration:underline;text-underline-offset:3px}
 .res-card-main{flex:1;min-height:0;display:flex;flex-direction:column}
-.res-card-desc{padding:14px 16px 10px 18px;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-size:15px;font-weight:500;font-style:normal;color:var(--desc);line-height:1.72;letter-spacing:.01em}
-.res-card-foot{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px 12px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,.18)}
+.res-card-desc{padding:14px 16px 10px;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-size:15px;font-weight:500;font-style:normal;color:var(--desc);line-height:1.72;letter-spacing:.01em}
+.res-card-foot{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px 12px;border-top:1px solid var(--border);background:rgba(0,0,0,.18)}
+@media (prefers-reduced-motion:reduce){.res-card,.res-card:hover,.res-card:focus-within{transition:border-color .2s ease,box-shadow .2s ease;transform:none}}
 .res-sz{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:13px;font-weight:600;color:var(--text);letter-spacing:.04em;opacity:.92}
 .btn-dl{display:inline-flex;align-items:center;justify-content:center;padding:8px 15px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;border-radius:7px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s,transform .12s;font-family:'Manrope',system-ui,sans-serif}
 .btn-dl:hover{filter:brightness(1.06);box-shadow:0 0 20px rgba(232,160,53,.28);transform:translateY(-1px)}
