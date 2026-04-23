@@ -33,7 +33,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('*', (req, res, next) => {
   if (req.method !== 'GET') return next();
-  if (req.path.startsWith('/api') || req.path.startsWith('/releases')) return next();
+  if (
+    req.path.startsWith('/api') ||
+    req.path.startsWith('/releases') ||
+    req.path.startsWith('/d/') ||
+    req.path === '/d' ||
+    req.path.startsWith('/app/')
+  ) {
+    return next();
+  }
   const indexPath = path.join(__dirname, 'public', 'index.html');
   if (fs.existsSync(indexPath)) res.sendFile(indexPath);
   else next();

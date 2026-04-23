@@ -33,7 +33,7 @@ const {
   getTauriPlatformUrl,
   pickPrimaryTauriUrl,
 } = require('./releases');
-const { renderDownload404Html, renderDownloadPageHtml } = require('./download-pages');
+const { renderDownload404Html, renderDownloadPageHtml, renderVersionBrowserHtml } = require('./download-pages');
 const { fileBadgeLabel } = require('./download-utils');
 
 function registerRoutes(app) {
@@ -52,8 +52,11 @@ function registerRoutes(app) {
       getApps().map(n => {
         const latest = readLatest(n);
         const meta = readAppMeta(n);
+        const displayName = meta.displayName && String(meta.displayName).trim() ? String(meta.displayName).trim() : null;
         return {
           name: n,
+          displayName,
+          displayLabel: displayName || n,
           repoType: meta.repoType || 'general',
           latestVersion: latest?.version || null,
           versionCount: getVersions(n).length,
@@ -63,14 +66,31 @@ function registerRoutes(app) {
   });
 
   app.post('/api/apps', auth, (req, res) => {
-    const { name, repoType } = req.body;
+    const { name, displayName, repoType } = req.body;
     if (!name || !/^[a-zA-Z0-9_-]+$/.test(name))
-      return res.status(400).json({ error: 'App 名称只能包含字母、数字、下划线和连字符' });
+      return res.status(400).json({ error: '包名只能包含字母、数字、下划线和连字符（用作目录与 URL）' });
     const dir = path.join(CONFIG.RELEASES_DIR, name);
     if (fs.existsSync(dir)) return res.status(400).json({ error: 'App 已存在' });
     fs.mkdirSync(dir, { recursive: true });
-    writeAppMeta(name, { repoType: repoType === 'tauri' ? 'tauri' : 'general' });
+    const meta = { repoType: repoType === 'tauri' ? 'tauri' : 'general' };
+    if (displayName != null && String(displayName).trim()) meta.displayName = String(displayName).trim();
+    writeAppMeta(name, meta);
     res.json({ success: true });
+  });
+
+  /** 更新展示名等元数据（不改包名/目录） */
+  app.patch('/api/apps/:app/meta', auth, (req, res) => {
+    const { app } = req.params;
+    if (!appDirExists(app)) return res.status(404).json({ error: 'App 不存在' });
+    const prev = readAppMeta(app);
+    const next = { ...prev };
+    if (req.body.displayName !== undefined) {
+      const d = req.body.displayName == null || req.body.displayName === '' ? '' : String(req.body.displayName).trim();
+      if (d) next.displayName = d;
+      else delete next.displayName;
+    }
+    writeAppMeta(app, next);
+    res.json(next);
   });
 
   app.delete('/api/apps/:app', auth, (req, res) => {
@@ -188,6 +208,39 @@ function registerRoutes(app) {
     if (!rebuilt) return res.status(404).json({ error: '无已发布数据或版本目录不存在' });
     writeLatest(app, rebuilt);
     res.json({ success: true, latest: rebuilt, mode });
+  });
+
+  /**
+   * 公开版本浏览页（短链推荐）：/app/:包名/:版本目录
+   * 列出该版本文件，点击进入 /d/... 落地页
+   */
+  app.get('/app/:app/:version', (req, res) => {
+    const { app, version } = req.params;
+    if (!appDirExists(app)) return res.status(404).type('html').send(renderDownload404Html());
+    const dir = path.join(CONFIG.RELEASES_DIR, app, version);
+    if (!fs.existsSync(dir)) return res.status(404).type('html').send(renderDownload404Html());
+    try {
+      if (!fs.statSync(dir).isDirectory()) return res.status(404).type('html').send(renderDownload404Html());
+    } catch {
+      return res.status(404).type('html').send(renderDownload404Html());
+    }
+    const meta = readAppMeta(app);
+    const displayLabel = meta.displayName && String(meta.displayName).trim() ? String(meta.displayName).trim() : app;
+    const files = getFiles(app, version)
+      .filter(f => f.name !== '.gitkeep')
+      .map(f => ({
+        name: f.name,
+        size: f.size,
+        landingHref: `${CONFIG.BASE_URL}/d/${[app, version, f.name].map(encodeURIComponent).join('/')}`,
+      }));
+    res.type('html').send(
+      renderVersionBrowserHtml({
+        appName: app,
+        displayLabel,
+        version,
+        files,
+      }),
+    );
   });
 
   app.get('/d/:app/:version/:filename', (req, res) => {

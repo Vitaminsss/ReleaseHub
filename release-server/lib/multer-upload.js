@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const CONFIG = require('./config');
 const { readAppMeta } = require('./meta-notes');
-const { isSemVer2CoreWithVPrefix } = require('./releases');
+const { isSemVer2CoreWithVPrefix, isValidGeneralVersionForUpload } = require('./releases');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -29,6 +29,11 @@ function validateVersionForUpload(req, res, next) {
           'Tauri 库版本须符合 SemVer 2.0：MAJOR.MINOR.PATCH 三段非负整数，且各位数不可前导零（例 v1.0.0）',
       });
     }
+  } else if (!isValidGeneralVersionForUpload(version)) {
+    return res.status(400).json({
+      error:
+        '通用库版本须以 v 开头，且仅含字母、数字、点、下划线、连字符（不可含 /、\\ 或 ..），长度合理',
+    });
   }
   next();
 }

@@ -21,7 +21,8 @@
           class="app-tile card"
           @click="router.push(`/app/${encodeURIComponent(a.name)}`)"
         >
-          <span class="name">{{ a.name }}</span>
+          <span class="name">{{ a.displayLabel || a.name }}</span>
+          <span v-if="a.displayName" class="pkg-id">{{ a.name }}</span>
           <span class="meta">{{ a.repoType }} · {{ a.versionCount }} 个版本</span>
           <span v-if="a.latestVersion" class="ver">最新 {{ a.latestVersion }}</span>
           <span v-else class="ver muted2">尚未发布</span>
@@ -33,7 +34,9 @@
       <div v-if="showCreate" class="modal-back" @click.self="showCreate = false">
         <div class="modal card">
           <h2>新建应用</h2>
-          <label class="lbl">标识（字母数字、_ -）</label>
+          <label class="lbl">软件名（可选，用于展示）</label>
+          <input v-model="newDisplayName" class="input" placeholder="例如：闪电助手" />
+          <label class="lbl">包名（目录与 URL，仅字母数字、_ -）</label>
           <input v-model="newName" class="input" placeholder="my-app" />
           <label class="lbl">类型</label>
           <select v-model="newRepoType" class="input">
@@ -62,6 +65,7 @@ const apps = ref([]);
 const loading = ref(true);
 const showCreate = ref(false);
 const newName = ref('');
+const newDisplayName = ref('');
 const newRepoType = ref('general');
 const creating = ref(false);
 
@@ -79,15 +83,19 @@ async function load() {
 async function createApp() {
   const name = newName.value.trim();
   if (!name) {
-    toast('请填写应用标识', 'error');
+    toast('请填写包名', 'error');
     return;
   }
   creating.value = true;
   try {
-    await api('POST', '/api/apps', { name, repoType: newRepoType.value });
+    const body = { name, repoType: newRepoType.value };
+    const dn = newDisplayName.value.trim();
+    if (dn) body.displayName = dn;
+    await api('POST', '/api/apps', body);
     toast('已创建');
     showCreate.value = false;
     newName.value = '';
+    newDisplayName.value = '';
     await load();
     router.push(`/app/${encodeURIComponent(name)}`);
   } catch (e) {
@@ -145,6 +153,13 @@ h1 {
   font-weight: 700;
   font-size: 17px;
   margin-bottom: 6px;
+}
+.pkg-id {
+  display: block;
+  font-size: 12px;
+  color: var(--text3);
+  font-family: ui-monospace, monospace;
+  margin-bottom: 4px;
 }
 .meta {
   display: block;

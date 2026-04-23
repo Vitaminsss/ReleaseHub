@@ -3,7 +3,10 @@
     <header class="top">
       <button type="button" class="btn btn-ghost" @click="router.push('/')">← 应用列表</button>
       <div class="title-block">
-        <h1>{{ appName }}</h1>
+        <div class="titles">
+          <h1>{{ displayLabel }}</h1>
+          <p v-if="displayNameEdit.trim()" class="pkg-sub">包名 <code>{{ appName }}</code></p>
+        </div>
         <span class="badge-type">{{ repoType }}</span>
       </div>
       <div class="actions">
@@ -13,9 +16,28 @@
       </div>
     </header>
 
+    <section class="card meta-name-block">
+      <h2>软件信息</h2>
+      <label class="lbl">软件名（对外展示；留空则仅显示包名）</label>
+      <div class="row-input">
+        <input v-model="displayNameEdit" class="input" :placeholder="appName" />
+        <button type="button" class="btn btn-primary btn-sm" :disabled="savingDisplayName" @click="saveDisplayName">
+          保存软件名
+        </button>
+      </div>
+    </section>
+
     <section v-if="publicBase" class="card api-block">
       <h2>对外接口</h2>
       <p class="hint">旧版 Tauri / 脚本请继续使用 <code>latest.json</code>，行为不变。</p>
+      <div v-if="publishedVersionPageUrl" class="link-row">
+        <span class="lbl">版本页（推荐分享）</span>
+        <code class="mono">{{ publishedVersionPageUrl }}</code>
+        <button type="button" class="btn btn-sm btn-ghost" @click="copy(publishedVersionPageUrl)">复制</button>
+      </div>
+      <p v-if="publishedVersionPageUrl" class="hint sm no-mt">
+        短链形态：<code>/app/{{ appName }}/&lt;版本目录&gt;</code>，进入后选择文件再打开落地页下载；旧版单文件链 <code>/d/...</code> 仍永久可用。
+      </p>
       <div class="link-row">
         <span class="lbl">latest.json</span>
         <code class="mono">{{ latestJsonUrl }}</code>
@@ -92,7 +114,26 @@
               设为最新发布
             </button>
             <button v-else type="button" class="btn btn-sm btn-ghost" @click="republish(v.version)">重新发布</button>
-            <button type="button" class="btn btn-sm btn-ghost danger" @click="confirmDeleteVersion(v.version)">删版本</button>
+            <button
+              v-if="publicBase"
+              type="button"
+              class="btn btn-sm btn-ghost"
+              @click="copy(versionPageUrl(v.version))"
+            >
+              复制版本页
+            </button>
+            <details class="ver-more">
+              <summary class="ver-more-sum">更多</summary>
+              <div class="ver-more-menu">
+                <button
+                  type="button"
+                  class="ver-more-danger"
+                  @click="confirmDeleteVersion(v.version)"
+                >
+                  删除此版本…
+                </button>
+              </div>
+            </details>
           </div>
         </header>
         <div class="notes">
@@ -133,7 +174,7 @@
         <div v-else-if="uploadProgress[v.version] === -1" class="prog indet">上传中（无法计算进度）…</div>
         <ul class="files">
           <li v-for="f in v.files.filter(x => x.name !== '.gitkeep')" :key="f.name">
-            <a :href="f.url" target="_blank" rel="noopener">{{ f.name }}</a>
+            <a :href="fileLandingUrl(v.version, f.name)" target="_blank" rel="noopener">{{ f.name }}</a>
             <span class="sz">{{ fmtSize(f.size) }}</span>
             <button type="button" class="btn-icon" @click.stop="deleteFile(v.version, f.name)">×</button>
           </li>
@@ -146,7 +187,10 @@
         <div class="modal card">
           <h2>新建版本</h2>
           <p v-if="repoType === 'tauri'" class="hint">Tauri：须为 SemVer 2.0 三段式，如 v1.0.0</p>
-          <input v-model="newVerInput" class="input" placeholder="v1.0.0" />
+          <p v-else class="hint">
+            通用：可用任意可读版本号（将存为以 <code>v</code> 开头的目录名），如 <code>2.0.2</code>、<code>v2024-01</code>、<code>1.0-beta</code>
+          </p>
+          <input v-model="newVerInput" class="input" :placeholder="repoType === 'tauri' ? 'v1.0.0' : '例如 2.0.2 或 v1.0-beta'" />
           <p v-if="newVerErr" class="err">{{ newVerErr }}</p>
           <div class="row">
             <button type="button" class="btn btn-ghost" @click="showNewVer = false">取消</button>
@@ -171,6 +215,8 @@ const { toast } = useToast();
 const appName = computed(() => decodeURIComponent(route.params.name || ''));
 const loading = ref(true);
 const repoType = ref('general');
+const displayNameEdit = ref('');
+const savingDisplayName = ref(false);
 const versions = ref([]);
 const notesDraft = ref({});
 const publicBase = ref('');
@@ -192,6 +238,19 @@ const creatingVer = ref(false);
 const dragVer = ref(null);
 const uploadProgress = ref({});
 const fileInputs = ref({});
+
+const displayLabel = computed(() => displayNameEdit.value.trim() || appName.value);
+
+const publishedVersionDir = computed(() => {
+  if (!published.value?.version) return null;
+  const v = String(published.value.version);
+  return v.startsWith('v') ? v : `v${v}`;
+});
+
+const publishedVersionPageUrl = computed(() => {
+  if (!publicBase.value || !publishedVersionDir.value) return '';
+  return `${publicBase.value}/app/${encodeURIComponent(appName.value)}/${encodeURIComponent(publishedVersionDir.value)}`;
+});
 
 const latestJsonUrl = computed(() => `${publicBase.value}/releases/${appName.value}/latest.json`);
 const downloadInfoUrl = computed(
@@ -231,8 +290,25 @@ function rewritePreviewUrls(preview, base) {
 function isSemVer2CoreWithVPrefix(v) {
   return /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(v);
 }
-function isGeneralVersion(v) {
-  return /^v\d+\.\d+(\.\d+)?(-[\w.]+)?$/.test(v);
+
+const GENERAL_VER_MAX = 120;
+function normalizeGeneralVersionForClient(raw) {
+  let s = String(raw || '').trim();
+  if (!s) return { error: '请填写版本号' };
+  if (!s.startsWith('v')) s = `v${s}`;
+  const slug = s.slice(1);
+  if (!slug || slug.length > GENERAL_VER_MAX) return { error: '版本号过长' };
+  if (slug.includes('..') || /[/\\]/.test(s)) return { error: '不可含路径字符或 ..' };
+  if (!/^[a-zA-Z0-9._-]+$/.test(slug)) return { error: '仅允许字母、数字、点、下划线、连字符' };
+  return { ver: s };
+}
+
+function versionPageUrl(ver) {
+  return `${publicBase.value}/app/${encodeURIComponent(appName.value)}/${encodeURIComponent(ver)}`;
+}
+
+function fileLandingUrl(ver, filename) {
+  return `${publicBase.value}/d/${[appName.value, ver, filename].map(encodeURIComponent).join('/')}`;
 }
 
 function fmtSize(b) {
@@ -252,6 +328,21 @@ function triggerFile(ver) {
 async function loadMeta() {
   const m = await api('GET', `/api/apps/${encodeURIComponent(appName.value)}/meta`);
   repoType.value = m.repoType === 'tauri' ? 'tauri' : 'general';
+  displayNameEdit.value = m.displayName != null ? String(m.displayName) : '';
+}
+
+async function saveDisplayName() {
+  savingDisplayName.value = true;
+  try {
+    await api('PATCH', `/api/apps/${encodeURIComponent(appName.value)}/meta`, {
+      displayName: displayNameEdit.value.trim(),
+    });
+    toast('已保存软件名');
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    savingDisplayName.value = false;
+  }
 }
 
 async function loadSettingsBase() {
@@ -498,7 +589,12 @@ async function deleteFile(ver, name) {
 }
 
 function confirmDeleteVersion(ver) {
-  if (!window.confirm(`删除版本 ${ver} 及其全部文件？不可恢复。`)) return;
+  if (
+    !window.confirm(
+      `删除版本「${ver}」将永久移除该目录下全部文件；若当前已发布指向此版本，latest.json 会被清空。不可恢复，确定继续？`,
+    )
+  )
+    return;
   api('DELETE', `/api/apps/${encodeURIComponent(appName.value)}/versions/${encodeURIComponent(ver)}`)
     .then(async () => {
       toast(`版本 ${ver} 已删除`);
@@ -510,7 +606,12 @@ function confirmDeleteVersion(ver) {
 }
 
 function confirmDeleteApp() {
-  if (!window.confirm(`删除应用 ${appName.value} 及全部数据？不可恢复。`)) return;
+  if (
+    !window.confirm(
+      `将删除应用「${displayLabel.value}」（包名 ${appName.value}）及 releases 下全部版本、latest.json、草稿与元数据。不可恢复，确定继续？`,
+    )
+  )
+    return;
   api('DELETE', `/api/apps/${encodeURIComponent(appName.value)}`)
     .then(() => {
       toast('已删除');
@@ -566,11 +667,12 @@ async function createVersion() {
       return;
     }
   } else {
-    if (!ver.startsWith('v')) ver = `v${ver}`;
-    if (!isGeneralVersion(ver)) {
-      newVerErr.value = '格式不正确，请使用 v1.0.0';
+    const r = normalizeGeneralVersionForClient(ver);
+    if (r.error) {
+      newVerErr.value = r.error;
       return;
     }
+    ver = r.ver;
   }
   creatingVer.value = true;
   try {
@@ -618,9 +720,31 @@ onMounted(loadAll);
   align-items: center;
   gap: 12px;
 }
+.titles {
+  min-width: 0;
+}
 h1 {
   margin: 0;
   font-size: 24px;
+}
+.pkg-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text2);
+}
+.pkg-sub code {
+  font-size: 12px;
+}
+.meta-name-block {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.meta-name-block h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.hint.no-mt {
+  margin-top: 0;
 }
 .badge-type {
   font-size: 11px;
@@ -775,6 +899,54 @@ code {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  align-items: center;
+}
+.ver-more {
+  position: relative;
+}
+.ver-more-sum {
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text3);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+}
+.ver-more-sum::-webkit-details-marker {
+  display: none;
+}
+.ver-more[open] .ver-more-sum {
+  color: var(--text);
+  border-color: rgba(232, 160, 53, 0.35);
+}
+.ver-more-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  z-index: 20;
+  min-width: 160px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+.ver-more-danger {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(232, 93, 76, 0.12);
+  color: #ff9a8b;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ver-more-danger:hover {
+  background: rgba(232, 93, 76, 0.2);
 }
 .notes {
   padding: 12px 16px;

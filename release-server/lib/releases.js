@@ -89,6 +89,17 @@ function isValidVersion(v) {
   return /^v\d+\.\d+(\.\d+)?(-[\w.]+)?$/.test(v);
 }
 
+/** general 类型：版本目录须 v 前缀 + 安全 slug（字母数字 ._-），禁止路径穿越 */
+const GENERAL_VER_MAX_LEN = 120;
+function isValidGeneralVersionForUpload(version) {
+  const v = String(version || '');
+  if (!v.startsWith('v')) return false;
+  const slug = v.slice(1);
+  if (!slug || slug.length > GENERAL_VER_MAX_LEN) return false;
+  if (slug.includes('..') || /[/\\]/.test(v)) return false;
+  return /^[a-zA-Z0-9._-]+$/.test(slug);
+}
+
 function isSemVer2CoreWithVPrefix(v) {
   return /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(v);
 }
@@ -342,6 +353,7 @@ module.exports = {
   readSig,
   detectPlatform,
   isValidVersion,
+  isValidGeneralVersionForUpload,
   isSemVer2CoreWithVPrefix,
   versionToVdir,
   rebuildLatestUrls,

@@ -72,8 +72,57 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </html>`;
 }
 
+/** 公开「应用 + 版本」页：列出文件，链到单文件落地页 /d/... */
+function renderVersionBrowserHtml(opts) {
+  const { displayLabel, appName, version, files } = opts;
+  const rows = (files || [])
+    .map(
+      f => `<li class="file-row"><a class="file-link" href="${htmlEsc(f.landingHref)}">${htmlEsc(f.name)}</a><span class="sz">${htmlEsc(fmtBytesServer(f.size))}</span></li>`,
+    )
+    .join('');
+  return `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${htmlEsc(displayLabel)} ${htmlEsc(version)} — ReleaseHub</title>
+<style>
+:root { --bg:#0c0b09; --text:#ebe6df; --text2:#9a9288; --accent:#e8a035; --border:rgba(235,230,223,0.08); }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:28px 20px}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.028) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto}
+.brand{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.35em;text-transform:uppercase;margin-bottom:14px;text-align:center}
+h1{font-size:22px;font-weight:800;margin:0 0 8px;text-align:center;line-height:1.25}
+.sub{font-size:14px;color:var(--text2);text-align:center;margin-bottom:24px;line-height:1.5}
+.sub code{color:var(--text);font-size:13px}
+.card{border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:8px 0 4px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
+ul{list-style:none}
+.file-row{display:flex;align-items:center;gap:12px;padding:14px 20px;border-top:1px solid var(--border);font-size:14px}
+.file-row:first-child{border-top:none}
+.file-link{flex:1;min-width:0;word-break:break-all;color:var(--accent);text-decoration:none;font-weight:600}
+.file-link:hover{text-decoration:underline}
+.sz{color:var(--text2);font-size:12px;white-space:nowrap}
+.footer{margin-top:28px;text-align:center;font-size:11px;color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">ReleaseHub</div>
+  <h1>${htmlEsc(displayLabel)}</h1>
+  <p class="sub">版本 <strong>${htmlEsc(version)}</strong> · 包名 <code>${htmlEsc(appName)}</code></p>
+  <div class="card">
+    <ul>${rows || '<li class="file-row" style="color:var(--text2)">暂无文件</li>'}</ul>
+  </div>
+  <p class="footer">Powered by ReleaseHub · 点击文件名进入下载确认页</p>
+</div>
+</body>
+</html>`;
+}
+
 module.exports = {
   htmlEsc,
   renderDownload404Html,
   renderDownloadPageHtml,
+  renderVersionBrowserHtml,
 };

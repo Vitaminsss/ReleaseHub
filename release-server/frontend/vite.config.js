@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
         '/api': { target: 'http://127.0.0.1:3721', changeOrigin: true },
         '/releases': { target: 'http://127.0.0.1:3721', changeOrigin: true },
         '/d': { target: 'http://127.0.0.1:3721', changeOrigin: true },
+        '/app': { target: 'http://127.0.0.1:3721', changeOrigin: true },
         // 本地用 VITE_BASE=/releasehub/ 调试子路径时可走代理
         '/releasehub': { target: 'http://127.0.0.1:3721', changeOrigin: true },
       },

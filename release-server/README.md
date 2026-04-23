@@ -150,13 +150,21 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 
 使用 HTTPS 且默认路径前缀时请将 `BASE_URL` 设为 `https://你的域名/releasehub`（无末尾 `/`，与后台「设置」一致）。
 
+### 公开下载页（分享链接）
+
+- **推荐（短链、不暴露文件名）**：`{BASE_URL}/app/{包名}/{版本目录}`，例如 `https://example.com/releasehub/app/my-app/v1.2.0`。页面列出该版本文件，点击后进入单文件落地页再下载。
+- **单文件落地页（兼容保留）**：`{BASE_URL}/d/{包名}/{版本目录}/{文件名}`，行为与旧版一致。
+- **直链**：`{BASE_URL}/{包名}/{版本目录}/{文件名}`（由静态中间件提供，供 `latest.json` 内 URL 使用）。
+
+后台「对外接口」默认优先展示**版本页**链接；`latest.json`、直链与旧 `/d/...` 地址长期兼容。
+
 ---
 
 ## 使用流程（管理后台）
 
 1. 浏览器打开部署地址，**仅输入密码**登录。
-2. **新建应用** → 填写应用标识（如 `my-tauri-app`）。
-3. **新建版本** → 如 `v1.2.0`。
+2. **新建应用** → 填写**软件名**（可选，用于展示）与**包名**（目录与 URL，如 `my-tauri-app`）。
+3. **新建版本** → Tauri 须 `v1.2.0` 形式 SemVer；**通用**类型可为 `2.0.2`、`v2024-01` 等（将存为以 `v` 开头的目录名）。
 4. **上传** 安装包及对应 `.sig`（Tauri 热更新需要有效签名）。
 5. 填写**更新日志**（草稿保存在服务端 `.notes-cache/`，换浏览器或刷新后仍会加载）→ **发布为最新版本**（Tauri 若缺少 `.sig`，界面会**弹出确认**后仍允许发布；与旧版「强制发布」语义一致）。
 6. **查看接口** 中复制 `latest.json` URL，填入 Tauri 配置。
@@ -232,8 +240,10 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 | GET   | `/api/settings`                       | 是     | 当前 `BASE_URL` 等                                                      |
 | POST  | `/api/base-url`                       | 是     | 更新 `BASE_URL`                                                        |
 | POST  | `/api/change-password`                | 是     | 修改密码（需 `oldPassword`，新密码至少 5 位）                                      |
-| GET   | `/api/apps`                           | 是     | 应用列表                                                                 |
-| POST  | `/api/apps`                           | 是     | 创建应用                                                                 |
+| GET   | `/api/apps`                           | 是     | 应用列表（含 `displayName` / `displayLabel`）                              |
+| POST  | `/api/apps`                           | 是     | 创建应用；body 可选 `displayName`（软件名），`name` 为包名                         |
+| PATCH | `/api/apps/:app/meta`                 | 是     | 更新 `.meta`（如 `displayName`）                                         |
+| GET   | `/api/apps/:app/meta`                | 是     | 读取应用元数据（`repoType`、`displayName` 等）                              |
 | GET   | `/api/apps/:app/versions`             | 是     | 版本与文件                                                                |
 | GET   | `/api/apps/:app/notes-drafts`         | 是     | 各版本「更新日志」草稿（服务端持久化）                                                  |
 | PUT   | `/api/apps/:app/versions/:version/notes`  | 是     | 保存某一版本的更新日志草稿（body: `{ text }`）                                      |
@@ -246,6 +256,7 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 | GET   | `/api/public/:app/latest/download`    | **否** | 最新下载信息 JSON；`?redirect=1` 302 跳转；Tauri 可加 `&platform=windows-x86_64` |
 | GET   | `/api/health`                         | **否** | 健康检查 `{ ok: true }`（部署脚本会探测）                                         |
 | GET   | `/releases/:app/latest.json`          | **否** | Tauri updater                                                        |
+| GET   | `/app/:app/:version`                 | **否** | 公开版本浏览页（文件列表，链到 `/d/...`）                                      |
 
 
 ---
@@ -290,7 +301,7 @@ npm install
 npm run dev
 ```
 
-Vite 默认 **5173**。开发模式下 `VITE_BASE=/`（见 `frontend/.env.development`），已将 `/api`、`/releases`、`/d` 代理到 `http://127.0.0.1:3721`，请先启动后端再开前端。
+Vite 默认 **5173**。开发模式下 `VITE_BASE=/`（见 `frontend/.env.development`），已将 `/api`、`/releases`、`/d`、`/app` 代理到 `http://127.0.0.1:3721`，请先启动后端再开前端。
 
 **子路径与生产构建：**
 

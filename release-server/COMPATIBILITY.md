@@ -6,7 +6,7 @@
 
 - `releases/<app>/v*/` 版本目录
 - `releases/<app>/latest.json` 已发布元数据（Tauri `platforms` / 通用 `files` 形状不变）
-- `.meta/<app>.json` 应用类型（`tauri` / `general`）
+- `.meta/<app>.json` 应用类型（`tauri` / `general`）与可选 **`displayName`**（软件展示名；缺省时界面回退为包名）
 - `.notes-cache/<app>.json` 各版本说明草稿
 - 根目录 `.env`（`BASE_URL`、`JWT_SECRET`、`ADMIN_PASSWORD_HASH` 等）
 
@@ -22,8 +22,9 @@
 | GET | `/api/settings` | 设置 |
 | POST | `/api/base-url` | 更新 BASE_URL |
 | POST | `/api/change-password` | 改密 |
-| GET | `/api/apps` | 应用列表 |
-| POST | `/api/apps` | 创建应用 |
+| GET | `/api/apps` | 应用列表（新增字段 `displayName`、`displayLabel`，旧客户端可忽略） |
+| POST | `/api/apps` | 创建应用（可选 body `displayName`；`name` 仍为包名） |
+| PATCH | `/api/apps/:app/meta` | 更新元数据（如 `displayName`） |
 | DELETE | `/api/apps/:app` | 删除应用 |
 | GET | `/api/apps/:app/meta` | 元数据 |
 | GET | `/api/apps/:app/versions` | 版本列表 |
@@ -37,8 +38,9 @@
 | GET | `/api/apps/:app/latest` | 当前发布（需登录） |
 | GET | `/releases/:app/latest.json` | 对外 `latest.json`（Tauri updater） |
 | GET | `/api/public/:app/latest` | 公开 JSON（与 `latest.json` 同源） |
-| GET | `/d/:app/:version/:filename` | 下载落地页 |
-| GET | `/:app/:v/:filename` | 短链直链（非 api/releases/public） |
+| GET | `/d/:app/:version/:filename` | 下载落地页（保留） |
+| GET | `/app/:app/:version` | **新增** 公开版本浏览页（短链推荐；列表 → `/d/...`） |
+| GET | `/:app/:v/:filename` | 短链直链（非 api/releases/public/d/app） |
 
 ## 新增接口（可选使用，不影响旧客户端）
 
@@ -56,4 +58,5 @@
 
 - 旧版单文件 `public/index.html` 已由 **Vue3 构建产物** 替代。
 - **子路径部署**（默认 Nginx 前缀 `releasehub`）时，浏览器访问形如 `https://域名/releasehub/`，前端资源与 `fetch` 使用同一前缀（如 `/releasehub/api/...`），经反代后 Node 仍收到 `/api/...`。
-- 本地开发：在 `frontend/` 执行 `npm install` && `npm run dev`（默认 `VITE_BASE=/`，Vite 将 `/api` 代理到 `3721`）；生产构建由 `deploy.sh` 根据 `NGINX_PREFIX` 注入 `VITE_BASE`。
+- 本地开发：在 `frontend/` 执行 `npm install` && `npm run dev`（默认 `VITE_BASE=/`，Vite 将 `/api`、`/d`、`/app` 等代理到 `3721`）；生产构建由 `deploy.sh` 根据 `NGINX_PREFIX` 注入 `VITE_BASE`。
+- **通用**类型版本目录仍为 `releases/<app>/v*/`；新建时允许更自由的版本文本，服务端会校验安全字符并统一为 `v` 前缀目录名；**Tauri** 仍为严格 SemVer。
