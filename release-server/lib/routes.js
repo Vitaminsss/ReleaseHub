@@ -411,10 +411,13 @@ function registerRoutes(app) {
     const description = item?.description || '';
     const badge = fileBadgeLabel(filename);
     const downloadHref = itemDownloadUrl(name, filename);
+    const itemVersion =
+      item?.version != null && String(item.version).trim() ? String(item.version).trim() : '';
     res.type('html').send(
       renderResourceItemLandingHtml({
         libraryName: libraryLabel,
         displayTitle,
+        itemVersion,
         filename,
         description,
         size: st.size,

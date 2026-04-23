@@ -74,9 +74,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .hero{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:20px;text-align:center}
 .app-title{font-size:26px;font-weight:800;line-height:1.2;letter-spacing:-.03em;margin:0;max-width:100%}
 .ver-mark{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:13px;font-weight:600;color:var(--text3);letter-spacing:.06em}
-@media (min-width:520px){
-.hero{flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:12px 14px}
-}
 .card{border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:10px;padding:28px 24px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
 .filename{font-size:17px;font-weight:700;word-break:break-all;line-height:1.45;margin-bottom:14px}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:22px;font-size:14px;color:var(--text2)}
@@ -148,9 +145,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .hero{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0 0 18px;text-align:center;max-width:100%}
 .app-title{font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-.035em;margin:0;max-width:100%;color:var(--text)}
 .ver-mark{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:13px;font-weight:600;color:var(--text3);letter-spacing:.07em}
-@media (min-width:520px){
-.hero{flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:12px 14px}
-}
 .intro{width:100%;text-align:center;color:var(--intro);font-size:15px;font-weight:500;line-height:1.75;margin:0 auto 24px;padding:0 10px;max-width:38rem;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif}
 .card{width:100%;text-align:left;border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:10px;padding:8px 0 4px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
 ul{list-style:none}
@@ -194,6 +188,8 @@ function renderResourceLibraryHtml(opts) {
   const cards = list
     .map(it => {
       const title = (it.displayName && String(it.displayName).trim()) || it.fileName;
+      const verRaw = it.version != null && String(it.version).trim() ? String(it.version).trim() : '';
+      const verHtml = verRaw ? `<span class="res-card-ver">${htmlEsc(verRaw)}</span>` : '';
       const descInner =
         it.description && String(it.description).trim()
           ? `<div class="res-card-desc">${formatPlainMultiline(String(it.description).trim())}</div>`
@@ -201,7 +197,10 @@ function renderResourceLibraryHtml(opts) {
       const mainBlock = descInner ? `<div class="res-card-main">${descInner}</div>` : '';
       return `<article class="res-card">
   <header class="res-card-head">
-    <a class="res-card-title" href="${htmlEsc(it.landingHref)}">${htmlEsc(title)}</a>
+    <div class="res-card-title-row">
+      <a class="res-card-title" href="${htmlEsc(it.landingHref)}">${htmlEsc(title)}</a>
+      ${verHtml}
+    </div>
   </header>
   ${mainBlock}
   <footer class="res-card-foot">
@@ -226,7 +225,7 @@ function renderResourceLibraryHtml(opts) {
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,480;0,9..144,560;1,9..144,450&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 <title>${htmlEsc(displayLabel)} — 资源库</title>
 <style>
-:root { --bg:#0a0908; --text:#f0ebe3; --text2:#9a9288; --accent:#e8a035; --border:rgba(235,230,223,0.09); --desc:#e3ddd4; }
+:root { --bg:#0a0908; --text:#f0ebe3; --text2:#9a9288; --text3:#6b6459; --accent:#e8a035; --border:rgba(235,230,223,0.09); --desc:#e3ddd4; }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;margin:0;padding:24px 20px 40px;display:flex;flex-direction:column;align-items:center}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.022) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0}
@@ -238,8 +237,10 @@ h1{font-family:'Manrope',system-ui,sans-serif;font-size:24px;font-weight:800;mar
 .res-card{position:relative;border:1px solid var(--border);background:linear-gradient(168deg,#14110e 0%,#0e0c0a 52%,#12100e 100%);border-radius:12px;padding:0;box-shadow:0 20px 50px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.04);display:flex;flex-direction:column;text-align:left;min-height:100%;overflow:hidden;transition:border-color .22s ease,box-shadow .22s ease,transform .22s ease}
 .res-card:hover,.res-card:focus-within{border-color:rgba(232,160,53,.38);box-shadow:0 26px 56px rgba(0,0,0,.48),0 0 0 1px rgba(232,160,53,.12),inset 0 1px 0 rgba(255,255,255,.06);transform:translateY(-2px)}
 .res-card-head{padding:15px 16px 14px;border-bottom:1px solid var(--border)}
-.res-card-title{display:block;color:var(--accent);text-decoration:none;font-weight:700;font-size:17px;line-height:1.3;word-break:break-word;letter-spacing:-.015em;font-family:'Manrope',system-ui,sans-serif}
+.res-card-title-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 14px}
+.res-card-title{display:block;flex:1;min-width:0;color:var(--accent);text-decoration:none;font-weight:700;font-size:17px;line-height:1.3;word-break:break-word;letter-spacing:-.015em;font-family:'Manrope',system-ui,sans-serif}
 .res-card-title:hover{text-decoration:underline;text-underline-offset:3px}
+.res-card-ver{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;flex-shrink:0}
 .res-card-main{flex:1;min-height:0;display:flex;flex-direction:column}
 .res-card-desc{padding:14px 16px 10px;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-size:15px;font-weight:500;font-style:normal;color:var(--desc);line-height:1.72;letter-spacing:.01em}
 .res-card-foot{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px 12px;border-top:1px solid var(--border);background:rgba(0,0,0,.18)}
@@ -264,7 +265,7 @@ h1{font-family:'Manrope',system-ui,sans-serif;font-size:24px;font-weight:800;mar
 
 /** 资源库单文件落地页 */
 function renderResourceItemLandingHtml(opts) {
-  const { libraryName, displayTitle, filename, description, size, badge, downloadHref } = opts;
+  const { libraryName, displayTitle, itemVersion, filename, description, size, badge, downloadHref } = opts;
   const cls = badge.cls;
   const badgeStyle =
     cls === 'sig'
@@ -280,6 +281,10 @@ function renderResourceItemLandingHtml(opts) {
     description && String(description).trim()
       ? `<div style="margin:0 0 18px;font-size:14px;color:var(--text2);line-height:1.65;text-align:left">${formatPlainMultiline(String(description).trim())}</div>`
       : '';
+  const verRaw = itemVersion != null && String(itemVersion).trim() ? String(itemVersion).trim() : '';
+  const titleRowVer = verRaw
+    ? `<span class="item-ver">${htmlEsc(verRaw)}</span>`
+    : '';
   return `<!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -287,7 +292,7 @@ function renderResourceItemLandingHtml(opts) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${htmlEsc(displayTitle || filename)} — ReleaseHub</title>
 <style>
-:root { --bg:#0c0b09; --text:#ebe6df; --text2:#9a9288; --accent:#e8a035; --border:rgba(235,230,223,0.08); }
+:root { --bg:#0c0b09; --text:#ebe6df; --text2:#9a9288; --text3:#6b6459; --accent:#e8a035; --border:rgba(235,230,223,0.08); }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.028) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
@@ -296,7 +301,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .meta{font-size:14px;color:var(--text2);text-align:center;margin-bottom:22px;line-height:1.5}
 .meta strong{color:var(--text);font-weight:600}
 .card{border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:28px 24px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
-.filename{font-size:17px;font-weight:700;word-break:break-all;line-height:1.45;margin-bottom:14px}
+.title-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 12px;margin-bottom:14px}
+.filename{font-size:17px;font-weight:700;word-break:break-word;line-height:1.45;flex:1;min-width:0}
+.item-ver{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;flex-shrink:0}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:22px;font-size:14px;color:var(--text2)}
 .badge{display:inline-flex;align-items:center;font-size:10px;letter-spacing:.6px;padding:4px 8px;border:1px solid;border-radius:4px;text-transform:uppercase;font-weight:600;${badgeStyle}}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;font-size:15px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;text-decoration:none;border-radius:6px;border:none;cursor:pointer;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s}
@@ -309,7 +316,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   <div class="brand">ReleaseHub · 资源库</div>
   <p class="meta"><strong>${htmlEsc(libraryName)}</strong></p>
   <div class="card">
-    <div class="filename">${htmlEsc(displayTitle || filename)}</div>
+    <div class="title-row">
+      <div class="filename">${htmlEsc(displayTitle || filename)}</div>
+      ${titleRowVer}
+    </div>
     ${descBlock}
     <div class="row">
       <span>文件：<strong style="color:var(--text);font-weight:600;word-break:break-all">${htmlEsc(filename)}</strong></span>

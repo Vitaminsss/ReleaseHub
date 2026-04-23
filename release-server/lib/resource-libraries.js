@@ -79,6 +79,10 @@ function normalizeIndex(name, raw) {
       fileName: String(it.fileName || ''),
       displayName: it.displayName != null ? String(it.displayName) : '',
       description: it.description != null ? String(it.description) : '',
+      version:
+        it.version != null && String(it.version).trim()
+          ? String(it.version).trim().slice(0, 80)
+          : '',
       size: typeof it.size === 'number' && Number.isFinite(it.size) ? it.size : 0,
       updatedAt: it.updatedAt != null ? String(it.updatedAt) : new Date(0).toISOString(),
     }))
@@ -225,6 +229,7 @@ function syncItemsWithDisk(name) {
         fileName,
         displayName: '',
         description: '',
+        version: '',
         size: st.size,
         updatedAt: st.mtime.toISOString(),
       });
@@ -263,6 +268,7 @@ function registerUpload(name, originalname, size) {
         fileName: fn,
         displayName: '',
         description: '',
+        version: '',
         size: st.size,
         updatedAt: st.mtime.toISOString(),
       };
@@ -310,6 +316,7 @@ function registerUploadBatch(name, multerFiles) {
           fileName: fn,
           displayName: '',
           description: '',
+          version: '',
           size: st.size,
           updatedAt: st.mtime.toISOString(),
         };
@@ -337,6 +344,11 @@ function patchItem(name, itemId, body = {}) {
     let t = body.description == null ? '' : String(body.description);
     if (t.length > 6000) return { error: '简介过长（最多 6000 字）', status: 400 };
     it.description = t.trim();
+  }
+  if (body.version !== undefined) {
+    const v = body.version == null ? '' : String(body.version).trim();
+    if (v.length > 80) return { error: '版本号过长（最多 80 字符）', status: 400 };
+    it.version = v;
   }
   idx.items[i] = it;
   writeIndex(name, idx);
@@ -381,6 +393,7 @@ function toPublicPayload(name) {
       fileName: it.fileName,
       displayName: it.displayName || '',
       description: it.description || '',
+      version: it.version || '',
       size: it.size,
       updatedAt: it.updatedAt,
       downloadUrl: itemDownloadUrl(name, it.fileName),

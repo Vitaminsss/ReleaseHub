@@ -102,6 +102,8 @@
         <div class="item-body">
           <label class="lbl">显示名（可选）</label>
           <input v-model="itemEdits[it.id].displayName" class="input sm" :disabled="pageLoading" />
+          <label class="lbl">版本号（可选，公开页显示在名称右侧）</label>
+          <input v-model="itemEdits[it.id].version" class="input sm" :disabled="pageLoading" placeholder="如 v1.2.0" />
           <label class="lbl">简介（可选）</label>
           <textarea v-model="itemEdits[it.id].description" class="textarea sm" rows="2" :disabled="pageLoading" />
         </div>
@@ -204,7 +206,11 @@ function primeItemEdits(list) {
   }
   for (const it of list || []) {
     if (!itemEdits[it.id]) {
-      itemEdits[it.id] = { displayName: it.displayName || '', description: it.description || '' };
+      itemEdits[it.id] = {
+        displayName: it.displayName || '',
+        version: it.version || '',
+        description: it.description || '',
+      };
     }
   }
 }
@@ -317,6 +323,7 @@ async function saveItem(id) {
   try {
     const r = await api('PATCH', `/api/resources/${encodeURIComponent(libraryName.value)}/items/${encodeURIComponent(id)}`, {
       displayName: ed.displayName,
+      version: ed.version,
       description: ed.description,
     });
     const updated = enrichItem(r.item);
@@ -324,6 +331,7 @@ async function saveItem(id) {
     if (i >= 0) items.value[i] = updated;
     itemEdits[id] = {
       displayName: updated.displayName || '',
+      version: updated.version || '',
       description: updated.description || '',
     };
     toast('已保存');
@@ -384,7 +392,11 @@ async function doUpload(files) {
     }
     items.value.sort((a, b) => a.fileName.localeCompare(b.fileName, undefined, { numeric: true }));
     for (const u of uploaded) {
-      itemEdits[u.id] = { displayName: u.displayName || '', description: u.description || '' };
+      itemEdits[u.id] = {
+        displayName: u.displayName || '',
+        version: u.version || '',
+        description: u.description || '',
+      };
     }
     toast(uploaded.length ? `已上传 ${uploaded.length} 个文件` : '上传完成');
   } catch (e) {
@@ -428,7 +440,11 @@ watch(
   arr => {
     for (const it of arr) {
       if (it?.id && !itemEdits[it.id]) {
-        itemEdits[it.id] = { displayName: it.displayName || '', description: it.description || '' };
+        itemEdits[it.id] = {
+          displayName: it.displayName || '',
+          version: it.version || '',
+          description: it.description || '',
+        };
       }
     }
   },
