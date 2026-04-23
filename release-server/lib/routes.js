@@ -266,7 +266,7 @@ function registerRoutes(app) {
 
   /**
    * 公开版本浏览页（短链推荐）：/app/:包名/:版本目录
-   * 列出该版本文件，点击进入 /d/... 落地页
+   * 列出该版本文件；每行直链下载 + 可选 /d/... 详情页
    */
   app.get('/app/:app/:version', (req, res) => {
     const { app, version } = req.params;
@@ -286,6 +286,7 @@ function registerRoutes(app) {
         name: f.name,
         size: f.size,
         landingHref: `${CONFIG.BASE_URL}/d/${[app, version, f.name].map(encodeURIComponent).join('/')}`,
+        directHref: `${CONFIG.BASE_URL}/${[app, version, f.name].map(encodeURIComponent).join('/')}`,
       }));
     res.type('html').send(
       renderVersionBrowserHtml({

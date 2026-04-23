@@ -72,12 +72,19 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </html>`;
 }
 
-/** 公开「应用 + 版本」页：列出文件，链到单文件落地页 /d/... */
+/** 公开「应用 + 版本」页：每行直链下载 + 可选单文件落地页 */
 function renderVersionBrowserHtml(opts) {
   const { displayLabel, appName, version, files } = opts;
   const rows = (files || [])
     .map(
-      f => `<li class="file-row"><a class="file-link" href="${htmlEsc(f.landingHref)}">${htmlEsc(f.name)}</a><span class="sz">${htmlEsc(fmtBytesServer(f.size))}</span></li>`,
+      f => `<li class="file-row">
+  <div class="file-main">
+    <span class="file-name">${htmlEsc(f.name)}</span>
+    <a class="file-landing" href="${htmlEsc(f.landingHref)}">详情页</a>
+  </div>
+  <span class="sz">${htmlEsc(fmtBytesServer(f.size))}</span>
+  <a class="btn-dl" href="${htmlEsc(f.directHref)}" download rel="noopener">⬇ 下载</a>
+</li>`,
     )
     .join('');
   return `<!DOCTYPE html>
@@ -98,12 +105,16 @@ h1{font-size:22px;font-weight:800;margin:0 0 8px;text-align:center;line-height:1
 .sub code{color:var(--text);font-size:13px}
 .card{border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:8px;padding:8px 0 4px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
 ul{list-style:none}
-.file-row{display:flex;align-items:center;gap:12px;padding:14px 20px;border-top:1px solid var(--border);font-size:14px}
+.file-row{display:flex;align-items:center;gap:10px 14px;padding:14px 16px;border-top:1px solid var(--border);font-size:14px}
 .file-row:first-child{border-top:none}
-.file-link{flex:1;min-width:0;word-break:break-all;color:var(--accent);text-decoration:none;font-weight:600}
-.file-link:hover{text-decoration:underline}
-.sz{color:var(--text2);font-size:12px;white-space:nowrap}
-.footer{margin-top:28px;text-align:center;font-size:11px;color:var(--text2)}
+.file-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.file-name{word-break:break-all;font-weight:600;color:var(--text);line-height:1.35}
+.file-landing{font-size:11px;color:var(--text2);text-decoration:none;letter-spacing:.02em}
+.file-landing:hover{color:var(--accent);text-decoration:underline}
+.sz{color:var(--text2);font-size:12px;white-space:nowrap;flex-shrink:0}
+.btn-dl{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;text-decoration:none;border-radius:6px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s}
+.btn-dl:hover{filter:brightness(1.06);box-shadow:0 0 18px rgba(232,160,53,.22)}
+.footer{margin-top:28px;text-align:center;font-size:11px;color:var(--text2);line-height:1.6}
 </style>
 </head>
 <body>
@@ -114,7 +125,7 @@ ul{list-style:none}
   <div class="card">
     <ul>${rows || '<li class="file-row" style="color:var(--text2)">暂无文件</li>'}</ul>
   </div>
-  <p class="footer">Powered by ReleaseHub · 点击文件名进入下载确认页</p>
+  <p class="footer">Powered by ReleaseHub · 右侧「下载」为安装包直链（与单文件页一致）；「详情页」为可选的确认与说明页。</p>
 </div>
 </body>
 </html>`;
