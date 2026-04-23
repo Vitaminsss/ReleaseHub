@@ -53,8 +53,8 @@
         <button type="button" class="btn btn-sm btn-ghost" @click="copy(publishedVersionPageUrl)">复制</button>
       </div>
       <p v-if="latestAppShortcutUrl" class="hint sm no-mt">
-        <code>/app/{{ appName }}/latest</code> 会 302 到当前已发布目录；固定版本链接为 <code>/app/{{ appName }}/&lt;目录名&gt;</code>。版本页每行有<strong>直链下载</strong>（不必进单文件页）；列表不展示
-        <code>.sig</code>；<code>/d/...</code> 仍为可选详情页或签名下载。
+        <code>/app/{{ appName }}/latest</code> 会 302 到当前已发布目录；固定版本链接为 <code>/app/{{ appName }}/&lt;目录名&gt;</code>。版本页：<strong>点击文件名</strong>进入单文件说明页，右侧<strong>下载</strong>为直链；列表不展示
+        <code>.sig</code>。
       </p>
       <div class="link-row">
         <span class="lbl">latest.json</span>
