@@ -90,22 +90,43 @@ export function uploadWithProgress({ method, path: p, formData, onProgress, sign
     };
 
     xhr.onload = () => {
-      try {
-        const data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
-        if (xhr.status === 401) {
-          auth.logout();
-          reject(new Error('未授权'));
-          return;
+      const text = xhr.responseText || '';
+      let data = null;
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { raw: text };
         }
-        if (xhr.status >= 400) {
-          reject(new Error(data?.error || `HTTP ${xhr.status}`));
-          return;
-        }
-        if (typeof onProgress === 'function') onProgress(100);
-        resolve(data);
-      } catch (e) {
-        reject(e);
       }
+      if (xhr.status === 401) {
+        auth.logout();
+        reject(new Error('未授权'));
+        return;
+      }
+      if (xhr.status >= 400) {
+        const msg =
+          data && typeof data === 'object' && !data.raw
+            ? data.error || data.message
+            : null;
+        const hint =
+          data?.raw && String(data.raw).trim().startsWith('<')
+            ? '（响应为 HTML，多为代理未转发到后端或路径前缀不匹配）'
+            : '';
+        reject(new Error(msg ? `${msg}${hint}` : `HTTP ${xhr.status}${hint}`));
+        return;
+      }
+      if (data && typeof data === 'object' && data.raw != null && !('uploaded' in data)) {
+        const snippet = String(data.raw).slice(0, 120).replace(/\s+/g, ' ');
+        reject(
+          new Error(
+            `服务器返回非 JSON（可能是前端路由回退页）: ${snippet}${snippet.length >= 120 ? '…' : ''}`,
+          ),
+        );
+        return;
+      }
+      if (typeof onProgress === 'function') onProgress(100);
+      resolve(data);
     };
 
     xhr.onerror = () => reject(new Error('网络错误'));

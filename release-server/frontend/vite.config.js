@@ -28,8 +28,39 @@ export default defineConfig(({ mode }) => {
         '/releases': { target: 'http://127.0.0.1:3721', changeOrigin: true },
         '/d': { target: 'http://127.0.0.1:3721', changeOrigin: true },
         '/app': { target: 'http://127.0.0.1:3721', changeOrigin: true },
-        // 本地用 VITE_BASE=/releasehub/ 调试子路径时可走代理
-        '/releasehub': { target: 'http://127.0.0.1:3721', changeOrigin: true },
+        '/r': { target: 'http://127.0.0.1:3721', changeOrigin: true },
+        '/rd': { target: 'http://127.0.0.1:3721', changeOrigin: true },
+        // 子路径部署：apiUrl 为 /releasehub/api/... 时需剥掉前缀再转发到后端
+        '^/releasehub/api': {
+          target: 'http://127.0.0.1:3721',
+          changeOrigin: true,
+          rewrite: p => p.replace(/^\/releasehub/, ''),
+        },
+        '^/releasehub/releases': {
+          target: 'http://127.0.0.1:3721',
+          changeOrigin: true,
+          rewrite: p => p.replace(/^\/releasehub/, ''),
+        },
+        '^/releasehub/app': {
+          target: 'http://127.0.0.1:3721',
+          changeOrigin: true,
+          rewrite: p => p.replace(/^\/releasehub/, ''),
+        },
+        '^/releasehub/d': {
+          target: 'http://127.0.0.1:3721',
+          changeOrigin: true,
+          rewrite: p => p.replace(/^\/releasehub/, ''),
+        },
+        '^/releasehub/r': {
+          target: 'http://127.0.0.1:3721',
+          changeOrigin: true,
+          rewrite: p => p.replace(/^\/releasehub/, ''),
+        },
+        '^/releasehub/rd': {
+          target: 'http://127.0.0.1:3721',
+          changeOrigin: true,
+          rewrite: p => p.replace(/^\/releasehub/, ''),
+        },
       },
     },
   };

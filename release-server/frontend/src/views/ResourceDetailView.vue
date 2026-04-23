@@ -4,7 +4,10 @@
       <button type="button" class="btn btn-ghost" @click="router.push('/resources')">← 资源库列表</button>
       <div class="title-block">
         <div class="titles">
-          <h1>{{ displayLabel }}</h1>
+          <h1>
+            {{ displayLabel }}
+            <span v-if="pageLoading" class="loading-pill">载入中…</span>
+          </h1>
           <p class="pkg-sub">标识 <code>{{ libraryName }}</code></p>
         </div>
         <span class="badge-type">resource</span>
@@ -15,48 +18,71 @@
       </div>
     </header>
 
-    <section class="card meta-block">
+    <section class="card meta-block" :class="{ 'section-dim': pageLoading }">
       <h2>资源库信息</h2>
       <label class="lbl">标识（修改后公开 URL 中的路径段会变化）</label>
       <div class="row-input">
-        <input v-model="idEdit" class="input code" spellcheck="false" :placeholder="libraryName" />
+        <input
+          v-model="idEdit"
+          class="input code"
+          spellcheck="false"
+          :placeholder="libraryName"
+          :disabled="pageLoading"
+        />
         <button
           type="button"
           class="btn btn-primary btn-sm"
-          :disabled="savingId || idEdit.trim() === libraryName || !idEdit.trim()"
+          :disabled="savingId || pageLoading || idEdit.trim() === libraryName || !idEdit.trim()"
           @click="saveRename"
         >
           保存标识
         </button>
       </div>
       <label class="lbl">展示名（可选）</label>
-      <input v-model="displayNameEdit" class="input" :placeholder="libraryName" />
+      <input v-model="displayNameEdit" class="input" :placeholder="libraryName" :disabled="pageLoading" />
       <label class="lbl">资源库简介（可选，显示在公开下载页顶部）</label>
-      <textarea v-model="descriptionEdit" class="textarea" rows="4" placeholder="支持换行" />
+      <textarea
+        v-model="descriptionEdit"
+        class="textarea"
+        rows="4"
+        placeholder="支持换行"
+        :disabled="pageLoading"
+      />
       <div class="row-btns">
-        <button type="button" class="btn btn-primary" :disabled="savingMeta" @click="saveMeta">保存名称与简介</button>
+        <button type="button" class="btn btn-primary" :disabled="savingMeta || pageLoading" @click="saveMeta">
+          保存名称与简介
+        </button>
       </div>
     </section>
 
-    <section v-if="publicBase" class="card api-block">
+    <section v-if="publicBase" class="card api-block" :class="{ 'section-dim': pageLoading }">
       <h2>对外链接</h2>
       <ShareLinkRow v-if="publicPageUrl" label="公开下载页" :url="publicPageUrl" />
       <ShareLinkRow v-if="publicJsonUrl" label="JSON" :url="publicJsonUrl" />
-      <p class="hint sm no-mt">访客打开公开页可浏览列表；每项可点进单文件说明页再下载。</p>
+      <p class="hint sm no-mt">访客打开公开页可浏览资源卡片并下载。</p>
     </section>
 
-    <section class="card upload-block">
+    <section class="card upload-block" :class="{ 'section-dim': pageLoading }">
       <h2>上传安装包</h2>
       <div
         class="drop-zone"
-        :class="{ drag: dragActive }"
-        @dragover.prevent="dragActive = true"
+        :class="{ drag: dragActive, disabled: pageLoading || uploading }"
+        @dragover.prevent="!pageLoading && (dragActive = true)"
         @dragleave="dragActive = false"
         @drop.prevent="onDrop"
-        @click="fileInputRef?.click()"
+        @click="!pageLoading && !uploading && fileInputRef?.click()"
       >
-        <input ref="fileInputRef" type="file" multiple class="hidden-input" @change="onFileChange" />
-        <span>拖拽文件到此处或点击上传（同文件名会覆盖并保留元数据）</span>
+        <input
+          ref="fileInputRef"
+          type="file"
+          multiple
+          class="hidden-input"
+          :disabled="pageLoading || uploading"
+          @change="onFileChange"
+        />
+        <span>{{
+          uploading ? '正在上传…' : '拖拽文件到此处或点击上传（同文件名会覆盖并保留元数据）'
+        }}</span>
       </div>
       <div v-if="uploadPct != null && uploadPct >= 0" class="prog">
         <div class="prog-bar">
@@ -64,40 +90,44 @@
         </div>
         <span class="prog-txt">{{ uploadPct }}%</span>
       </div>
-      <div v-else-if="uploadPct === -1" class="prog indet">上传中…</div>
+      <div v-else-if="uploadPct === -1" class="prog indet">上传中（无法计算进度）…</div>
     </section>
 
-    <div v-if="loading" class="muted">加载中…</div>
-    <div v-else class="items">
+    <transition-group name="res-card" tag="div" class="items-grid">
       <article v-for="it in items" :key="it.id" class="card item-card">
         <header class="item-head">
           <span class="fn">{{ it.fileName }}</span>
           <span class="sz">{{ fmtSize(it.size) }}</span>
         </header>
-        <label class="lbl">显示名（可选）</label>
-        <input
-          class="input sm"
-          :modelValue="editFor(it).displayName"
-          @update:modelValue="v => { editFor(it).displayName = v }"
-        />
-        <label class="lbl">简介（可选）</label>
-        <textarea
-          class="textarea sm"
-          rows="2"
-          :modelValue="editFor(it).description"
-          @update:modelValue="v => { editFor(it).description = v }"
-        />
-        <div class="row-btns">
-          <button type="button" class="btn btn-primary btn-sm" :disabled="savingItem === it.id" @click="saveItem(it.id)">
+        <div class="item-body">
+          <label class="lbl">显示名（可选）</label>
+          <input v-model="itemEdits[it.id].displayName" class="input sm" :disabled="pageLoading" />
+          <label class="lbl">简介（可选）</label>
+          <textarea v-model="itemEdits[it.id].description" class="textarea sm" rows="2" :disabled="pageLoading" />
+        </div>
+        <div class="item-actions">
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            :disabled="savingItem === it.id || deletingItem === it.id || pageLoading"
+            @click="saveItem(it.id)"
+          >
             保存此项
           </button>
           <button type="button" class="btn btn-sm btn-ghost" @click="copy(itemLanding(it))">复制说明页</button>
           <button type="button" class="btn btn-sm btn-ghost" @click="copy(itemDirect(it))">复制直链</button>
-          <button type="button" class="btn btn-sm btn-ghost danger" @click="confirmDeleteItem(it)">删除</button>
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost danger"
+            :disabled="deletingItem === it.id || savingItem === it.id || pageLoading"
+            @click="confirmDeleteItem(it)"
+          >
+            删除
+          </button>
         </div>
       </article>
-      <p v-if="!items.length" class="muted empty-hint">暂无文件，请上传。</p>
-    </div>
+    </transition-group>
+    <p v-if="!pageLoading && !items.length" class="muted empty-hint">暂无文件，请上传。</p>
   </div>
 </template>
 
@@ -113,7 +143,7 @@ const router = useRouter();
 const { toast } = useToast();
 
 const libraryName = computed(() => decodeURIComponent(route.params.name || ''));
-const loading = ref(true);
+const pageLoading = ref(true);
 const publicBase = ref('');
 const displayNameEdit = ref('');
 const descriptionEdit = ref('');
@@ -121,7 +151,10 @@ const idEdit = ref('');
 const savingMeta = ref(false);
 const savingId = ref(false);
 const savingItem = ref(null);
+const deletingItem = ref(null);
+const uploading = ref(false);
 const items = ref([]);
+/** 每项编辑草稿；键与 items[].id 对齐，模板 v-model 依赖此对象已存在 */
 const itemEdits = reactive({});
 const dragActive = ref(false);
 const fileInputRef = ref(null);
@@ -154,7 +187,17 @@ async function loadSettingsBase() {
   }
 }
 
-function syncItemEdits(list) {
+function enrichItem(it) {
+  const name = libraryName.value;
+  const base = publicBase.value;
+  return {
+    ...it,
+    landingHref: `${base}/rd/${encodeURIComponent(name)}/${encodeURIComponent(it.fileName)}`,
+    downloadUrl: `${base}/r/${encodeURIComponent(name)}/files/${encodeURIComponent(it.fileName)}`,
+  };
+}
+
+function primeItemEdits(list) {
   const ids = new Set((list || []).map(x => x.id));
   for (const k of Object.keys(itemEdits)) {
     if (!ids.has(k)) delete itemEdits[k];
@@ -166,33 +209,27 @@ function syncItemEdits(list) {
   }
 }
 
-/** 渲染前保证 itemEdits[id] 存在，避免 v-model 访问 undefined */
-function editFor(it) {
-  const id = it?.id;
-  if (!id) return { displayName: '', description: '' };
-  if (!itemEdits[id]) {
-    itemEdits[id] = { displayName: it.displayName || '', description: it.description || '' };
-  }
-  return itemEdits[id];
+function applyDetail(d) {
+  displayNameEdit.value = d.displayName != null ? String(d.displayName) : '';
+  descriptionEdit.value = d.description != null ? String(d.description) : '';
+  idEdit.value = libraryName.value;
+  const raw = d.items || [];
+  items.value = raw.map(enrichItem);
+  primeItemEdits(raw);
 }
 
-async function loadDetail() {
-  loading.value = true;
+async function loadPage() {
+  pageLoading.value = true;
   try {
     await loadSettingsBase();
     const d = await api('GET', `/api/resources/${encodeURIComponent(libraryName.value)}`);
-    displayNameEdit.value = d.displayName != null ? String(d.displayName) : '';
-    descriptionEdit.value = d.description != null ? String(d.description) : '';
-    idEdit.value = libraryName.value;
-    const rawItems = d.items || [];
-    syncItemEdits(rawItems);
-    items.value = rawItems;
+    applyDetail(d);
   } catch (e) {
     toast(e.message, 'error');
-    syncItemEdits([]);
     items.value = [];
+    for (const k of Object.keys(itemEdits)) delete itemEdits[k];
   } finally {
-    loading.value = false;
+    pageLoading.value = false;
   }
 }
 
@@ -203,10 +240,16 @@ function fmtSize(b) {
 }
 
 function itemLanding(it) {
-  return it.landingHref || `${publicBase.value}/rd/${encodeURIComponent(libraryName.value)}/${encodeURIComponent(it.fileName)}`;
+  return (
+    it.landingHref ||
+    `${publicBase.value}/rd/${encodeURIComponent(libraryName.value)}/${encodeURIComponent(it.fileName)}`
+  );
 }
 function itemDirect(it) {
-  return it.downloadUrl || `${publicBase.value}/r/${encodeURIComponent(libraryName.value)}/files/${encodeURIComponent(it.fileName)}`;
+  return (
+    it.downloadUrl ||
+    `${publicBase.value}/r/${encodeURIComponent(libraryName.value)}/files/${encodeURIComponent(it.fileName)}`
+  );
 }
 
 function copy(text) {
@@ -224,12 +267,13 @@ async function saveMeta() {
   }
   savingMeta.value = true;
   try {
-    await api('PATCH', `/api/resources/${encodeURIComponent(libraryName.value)}`, {
+    const idx = await api('PATCH', `/api/resources/${encodeURIComponent(libraryName.value)}`, {
       displayName: displayNameEdit.value.trim(),
       description: descriptionEdit.value.trim(),
     });
+    displayNameEdit.value = idx.displayName != null ? String(idx.displayName) : '';
+    descriptionEdit.value = idx.description != null ? String(idx.description) : '';
     toast('已保存');
-    await loadDetail();
   } catch (e) {
     toast(e.message, 'error');
   } finally {
@@ -271,12 +315,18 @@ async function saveItem(id) {
   }
   savingItem.value = id;
   try {
-    await api('PATCH', `/api/resources/${encodeURIComponent(libraryName.value)}/items/${encodeURIComponent(id)}`, {
+    const r = await api('PATCH', `/api/resources/${encodeURIComponent(libraryName.value)}/items/${encodeURIComponent(id)}`, {
       displayName: ed.displayName,
       description: ed.description,
     });
+    const updated = enrichItem(r.item);
+    const i = items.value.findIndex(x => x.id === updated.id);
+    if (i >= 0) items.value[i] = updated;
+    itemEdits[id] = {
+      displayName: updated.displayName || '',
+      description: updated.description || '',
+    };
     toast('已保存');
-    await loadDetail();
   } catch (e) {
     toast(e.message, 'error');
   } finally {
@@ -286,12 +336,16 @@ async function saveItem(id) {
 
 async function confirmDeleteItem(it) {
   if (!window.confirm(`删除文件「${it.fileName}」？磁盘文件与列表项都会删除。`)) return;
+  deletingItem.value = it.id;
   try {
     await api('DELETE', `/api/resources/${encodeURIComponent(libraryName.value)}/items/${encodeURIComponent(it.id)}`);
+    items.value = items.value.filter(x => x.id !== it.id);
+    delete itemEdits[it.id];
     toast('已删除');
-    await loadDetail();
   } catch (e) {
     toast(e.message, 'error');
+  } finally {
+    deletingItem.value = null;
   }
 }
 
@@ -307,12 +361,13 @@ async function confirmDeleteLibrary() {
 }
 
 async function doUpload(files) {
-  if (!files?.length) return;
+  if (!files?.length || pageLoading.value) return;
+  uploading.value = true;
   const fd = new FormData();
   for (const f of files) fd.append('files', f);
   uploadPct.value = 0;
   try {
-    await uploadWithProgress({
+    const data = await uploadWithProgress({
       method: 'POST',
       path: `/api/resources/${encodeURIComponent(libraryName.value)}/upload`,
       formData: fd,
@@ -320,11 +375,22 @@ async function doUpload(files) {
         uploadPct.value = pct < 0 ? -1 : pct;
       },
     });
-    toast('上传完成');
-    await loadDetail();
+    const uploaded = data?.uploaded || [];
+    for (const u of uploaded) {
+      const e = enrichItem(u);
+      const ix = items.value.findIndex(x => x.fileName === e.fileName);
+      if (ix >= 0) items.value.splice(ix, 1);
+      items.value.push(e);
+    }
+    items.value.sort((a, b) => a.fileName.localeCompare(b.fileName, undefined, { numeric: true }));
+    for (const u of uploaded) {
+      itemEdits[u.id] = { displayName: u.displayName || '', description: u.description || '' };
+    }
+    toast(uploaded.length ? `已上传 ${uploaded.length} 个文件` : '上传完成');
   } catch (e) {
     toast(e.message || '上传失败', 'error');
   } finally {
+    uploading.value = false;
     uploadPct.value = null;
     dragActive.value = false;
   }
@@ -343,10 +409,30 @@ function onFileChange(e) {
 
 watch(
   () => route.params.name,
-  () => {
-    loadDetail();
+  (name, oldName) => {
+    if (oldName !== undefined && name !== oldName) {
+      items.value = [];
+      for (const k of Object.keys(itemEdits)) delete itemEdits[k];
+      displayNameEdit.value = '';
+      descriptionEdit.value = '';
+      idEdit.value = decodeURIComponent(name || '');
+    }
+    loadPage();
   },
   { immediate: true },
+);
+
+/** 防止异步或边界情况下 v-model 读到未初始化的 id */
+watch(
+  items,
+  arr => {
+    for (const it of arr) {
+      if (it?.id && !itemEdits[it.id]) {
+        itemEdits[it.id] = { displayName: it.displayName || '', description: it.description || '' };
+      }
+    }
+  },
+  { deep: true },
 );
 </script>
 
@@ -368,6 +454,19 @@ watch(
 h1 {
   margin: 0;
   font-size: 24px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.loading-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid rgba(232, 160, 53, 0.35);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
 }
 .pkg-sub {
   margin: 6px 0 0;
@@ -396,6 +495,10 @@ h1 {
 .upload-block {
   padding: 20px;
   margin-bottom: 20px;
+}
+.section-dim {
+  opacity: 0.55;
+  pointer-events: none;
 }
 .meta-block h2,
 .api-block h2,
@@ -464,10 +567,15 @@ h1 {
   cursor: pointer;
   font-size: 13px;
   color: var(--text2);
+  transition: background 0.2s, border-color 0.2s, opacity 0.2s;
 }
 .drop-zone.drag {
   background: rgba(232, 160, 53, 0.08);
   border-color: var(--accent);
+}
+.drop-zone.disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 .hidden-input {
   display: none;
@@ -495,32 +603,49 @@ h1 {
   color: var(--text3);
   margin-top: 8px;
 }
-.items {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
 }
 .item-card {
-  padding: 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 .item-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 12px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 10px;
 }
 .fn {
   font-weight: 700;
   word-break: break-all;
   flex: 1;
   min-width: 0;
+  font-size: 15px;
 }
 .sz {
   font-size: 12px;
   color: var(--text3);
+  flex-shrink: 0;
+}
+.item-body {
+  padding: 12px 16px;
+  flex: 1;
+}
+.item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
 }
 .muted {
   color: var(--text2);
@@ -528,5 +653,23 @@ h1 {
 .empty-hint {
   padding: 24px;
   text-align: center;
+}
+
+.res-card-enter-active,
+.res-card-leave-active {
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+.res-card-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.res-card-leave-to {
+  opacity: 0;
+  transform: scale(0.98);
+}
+.res-card-move {
+  transition: transform 0.22s ease;
 }
 </style>

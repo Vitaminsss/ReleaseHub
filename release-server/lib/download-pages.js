@@ -186,7 +186,6 @@ function renderResourceLibraryHtml(opts) {
   </div>
   ${desc}
   <div class="res-card-actions">
-    <a class="link-landing" href="${htmlEsc(it.landingHref)}">说明页</a>
     <a class="btn-dl" href="${htmlEsc(it.directHref)}" download rel="noopener">⬇ 下载</a>
   </div>
 </article>`;
@@ -222,8 +221,6 @@ h1{font-size:22px;font-weight:800;margin:0 0 14px;text-align:center;line-height:
 .sz{white-space:nowrap;flex-shrink:0}
 .res-card-desc{padding:0 16px 12px;font-size:13px;color:var(--text2);line-height:1.65;flex:1}
 .res-card-actions{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px;padding:12px 16px;border-top:1px solid var(--border)}
-.link-landing{font-size:12px;color:var(--text2);text-decoration:none}
-.link-landing:hover{color:var(--accent);text-decoration:underline}
 .btn-dl{display:inline-flex;align-items:center;justify-content:center;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;text-decoration:none;border-radius:6px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s}
 .btn-dl:hover{filter:brightness(1.06);box-shadow:0 0 18px rgba(232,160,53,.22)}
 .res-empty{width:100%;text-align:center;color:var(--text2);font-size:14px;padding:32px 16px;border:1px dashed var(--border);border-radius:8px}
