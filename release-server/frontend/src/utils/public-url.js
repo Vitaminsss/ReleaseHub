@@ -17,39 +17,47 @@ export function mapAssetUrlToPublicBase(absolute, newBase) {
     return absolute;
   }
 
-  let bu;
+  let B;
   try {
-    bu = new URL(b + '/');
+    B = new URL(b + '/');
   } catch {
     return absolute;
   }
 
-  const bOrigin = bu.origin;
-  const pre =
-    bu.pathname.length > 1 && !bu.pathname.endsWith('/')
-      ? bu.pathname + '/'
-      : bu.pathname;
-
-  if (u.origin !== bu.origin) {
+  if (u.origin !== B.origin) {
     return b + u.pathname + u.search + u.hash;
   }
 
+  let P = B.pathname.replace(/\/$/, '') || '';
   let path = u.pathname;
-  if (pre.length > 1) {
-    const firstSeg = pre
-      .replace(/^\/+/, '')
-      .replace(/\/+$/, '')
-      .split('/')
-      .filter(Boolean)
-      .pop();
-    if (firstSeg) {
-      const dupBlock = pre + firstSeg + '/';
-      while (path.startsWith(dupBlock)) {
-        path = pre + path.slice(dupBlock.length);
+
+  if (P.length > 0) {
+    const pre = B.pathname.length > 1 && !B.pathname.endsWith('/')
+      ? B.pathname + '/'
+      : B.pathname;
+    if (pre.length > 1) {
+      const firstSeg = pre
+        .replace(/^\/+/, '')
+        .replace(/\/+$/, '')
+        .split('/')
+        .filter(Boolean)
+        .pop();
+      if (firstSeg) {
+        const dupBlock = pre + firstSeg + '/';
+        while (path.startsWith(dupBlock)) {
+          path = pre + path.slice(dupBlock.length);
+        }
       }
     }
   }
-  return bOrigin + path + u.search + u.hash;
+
+  if (!P) {
+    return u.origin + path + u.search + u.hash;
+  }
+  if (path === P || path.startsWith(`${P}/`)) {
+    return u.origin + path + u.search + u.hash;
+  }
+  return b + path + u.search + u.hash;
 }
 
 /**

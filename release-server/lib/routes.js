@@ -4,6 +4,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const CONFIG = require('./config');
+const { normalizeBaseUrl } = require('./base-url');
 const { MIN_PASSWORD_LENGTH } = require('./admin-password-defaults');
 const { auth } = require('./auth-middleware');
 const { upload, validateVersionForUpload, resourceLibraryUpload } = require('./multer-upload');
@@ -599,7 +600,7 @@ function registerRoutes(app) {
   app.post('/api/base-url', auth, (req, res) => {
     let { baseUrl } = req.body;
     if (!baseUrl) return res.status(400).json({ error: '请提供 baseUrl' });
-    baseUrl = baseUrl.trim().replace(/\/$/, '');
+    baseUrl = normalizeBaseUrl(baseUrl.trim().replace(/\/$/, ''));
     if (!/^https?:\/\/.+/i.test(baseUrl)) return res.status(400).json({ error: 'BASE_URL 必须以 http:// 或 https:// 开头' });
     const ep = path.join(__dirname, '..', '.env');
     let ec = fs.existsSync(ep) ? fs.readFileSync(ep, 'utf-8') : '';

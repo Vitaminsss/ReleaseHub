@@ -3,6 +3,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 const path = require('path');
 const fs = require('fs');
 const { defaultAdminPasswordHash } = require('./admin-password-defaults');
+const { normalizeBaseUrl } = require('./base-url');
 
 const RELEASES_DIR = process.env.RELEASES_DIR || path.join(__dirname, '..', 'releases');
 const RESOURCE_LIBRARIES_DIR =
@@ -13,7 +14,7 @@ const CONFIG = {
   ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH || defaultAdminPasswordHash(),
   RELEASES_DIR,
   RESOURCE_LIBRARIES_DIR,
-  BASE_URL: process.env.BASE_URL || 'http://localhost:3721',
+  BASE_URL: normalizeBaseUrl(process.env.BASE_URL || 'http://localhost:3721'),
 };
 
 if (!fs.existsSync(CONFIG.RELEASES_DIR)) {
