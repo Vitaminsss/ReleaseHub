@@ -25,15 +25,19 @@
           <div class="lib-tile-header">
             <div class="lib-title-block">
               <span class="name">{{ a.displayLabel || a.name }}</span>
-              <span v-if="a.displayName" class="pkg-id">{{ a.name }}</span>
+              <span v-if="a.displayName" class="pkg-id" aria-label="包名">{{ a.name }}</span>
             </div>
             <span class="lib-count">{{ a.versionCount }} 个版本</span>
           </div>
-          <div class="lib-mid">
-            <span v-if="a.latestVersion" class="ver">最新 {{ a.latestVersion }}</span>
-            <span v-else class="ver muted2">尚未发布</span>
-          </div>
+          <div class="lib-growth" aria-hidden="true" />
           <div class="lib-footer">
+            <div class="lib-footer-left">
+              <span v-if="a.latestVersion" class="ver">
+                <span class="ver-label">最新</span>
+                <strong>{{ a.latestVersion }}</strong>
+              </span>
+              <span v-else class="ver muted2">尚未发布</span>
+            </div>
             <span
               class="lib-pill"
               :class="a.repoType === 'tauri' ? 'lib-pill--tauri' : 'lib-pill--general'"

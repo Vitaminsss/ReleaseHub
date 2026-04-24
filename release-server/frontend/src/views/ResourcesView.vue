@@ -29,7 +29,8 @@
             </div>
             <span class="lib-count">{{ r.itemCount }} 个文件</span>
           </div>
-          <div class="lib-footer">
+          <div class="lib-growth" aria-hidden="true" />
+          <div class="lib-footer lib-footer--pillOnly">
             <span class="lib-pill lib-pill--resource">资源库</span>
           </div>
         </button>
