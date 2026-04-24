@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const CONFIG = require('./config');
 const { readAppMeta } = require('./meta-notes');
+const { joinReleaseArtifactUrl } = require('./base-url');
 
 function getApps() {
   if (!fs.existsSync(CONFIG.RELEASES_DIR)) return [];
@@ -73,7 +74,7 @@ function getVersions(appName) {
 }
 
 function fileUrl(appName, version, filename) {
-  return `${CONFIG.BASE_URL}/${appName}/${version}/${filename}`;
+  return joinReleaseArtifactUrl(CONFIG.BASE_URL, appName, version, filename);
 }
 
 function getFiles(appName, version) {
@@ -357,12 +358,16 @@ function previewReleasePayload(app, version) {
       const plat = detectPlatform(f.name);
       if (!plat) return;
       const sig = readSig(app, version, `${f.name}.sig`);
-      platforms[plat] = { url: f.url, signature: sig || '(未找到 .sig 文件)' };
+      platforms[plat] = {
+        url: f.url,
+        signature: sig || '(未找到 .sig 文件)',
+        fileName: f.name,
+      };
     });
-    return { version: ver, notes, pub_date: new Date().toISOString(), platforms };
+    return { version: ver, vdir: version, notes, pub_date: new Date().toISOString(), platforms };
   }
   const fileList = files.filter(f => f.name !== '.gitkeep').map(f => ({ name: f.name, url: f.url, size: f.size }));
-  return { version: ver, notes, pub_date: new Date().toISOString(), files: fileList };
+  return { version: ver, vdir: version, notes, pub_date: new Date().toISOString(), files: fileList };
 }
 
 function publishFromBody(app, body) {

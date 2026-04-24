@@ -219,7 +219,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { api, uploadWithProgress } from '@/api/client';
 import { useToast } from '@/composables/useToast';
 import ShareLinkRow from '@/components/ShareLinkRow.vue';
-import { mapAssetUrlToPublicBase, suggestedPublicBaseFromVite } from '@/utils/public-url';
+import { joinReleaseArtifactUrl, suggestedPublicBaseFromVite } from '@/utils/public-url';
 
 const route = useRoute();
 const router = useRouter();
@@ -283,14 +283,17 @@ function suggestedBase() {
 
 function rewritePreviewUrls(preview, base) {
   const b = base.replace(/\/$/, '');
+  if (!b || !preview.vdir) return;
+  const vdir = preview.vdir;
+  const app = appName.value;
   if (preview.platforms) {
     for (const p of Object.values(preview.platforms)) {
-      if (p?.url) p.url = mapAssetUrlToPublicBase(p.url, b);
+      if (p?.fileName) p.url = joinReleaseArtifactUrl(b, app, vdir, p.fileName);
     }
   }
   if (preview.files) {
     for (const f of preview.files) {
-      if (f?.url) f.url = mapAssetUrlToPublicBase(f.url, b);
+      if (f?.name) f.url = joinReleaseArtifactUrl(b, app, vdir, f.name);
     }
   }
 }

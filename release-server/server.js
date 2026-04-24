@@ -14,6 +14,9 @@ const PORT = parseInt(process.env.PORT, 10) || 3721;
 app.use(cors());
 app.use(express.json());
 
+/** 先注册含 GET /releases/:app/latest.json 的 API/路由，再挂 /releases 静态，否则 latest.json 会直出磁盘、无法按 BASE_URL 重灌 */
+registerRoutes(app);
+
 app.use('/releases', express.static(CONFIG.RELEASES_DIR));
 
 app.use((req, res, next) => {
@@ -31,8 +34,6 @@ app.use((req, res, next) => {
   }
   res.sendFile(filePath);
 });
-
-registerRoutes(app);
 
 app.use(express.static(path.join(__dirname, 'public')));
 

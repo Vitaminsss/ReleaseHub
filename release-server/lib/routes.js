@@ -527,15 +527,19 @@ function registerRoutes(app) {
   });
 
   app.get('/releases/:app/latest.json', (req, res) => {
-    const d = readLatest(req.params.app);
-    if (d) res.json(d);
-    else res.status(204).send();
+    const { app } = req.params;
+    const d = readLatest(app);
+    if (!d) return res.status(204).send();
+    const re = rebuildLatestUrls(app, 'merge');
+    res.json(re != null ? re : d);
   });
 
   app.get('/api/public/:app/latest', (req, res) => {
-    const d = readLatest(req.params.app);
-    if (d) res.json(d);
-    else res.status(204).send();
+    const { app } = req.params;
+    const d = readLatest(app);
+    if (!d) return res.status(204).send();
+    const re = rebuildLatestUrls(app, 'merge');
+    res.json(re != null ? re : d);
   });
 
   /**

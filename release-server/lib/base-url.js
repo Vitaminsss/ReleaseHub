@@ -17,4 +17,15 @@ function normalizeBaseUrl(href) {
   }
 }
 
-module.exports = { normalizeBaseUrl };
+/**
+ * 安装包/制品直链：唯一规则 BASE + /{包名}/{版本目录}/{文件名}，各段 encodeURIComponent。
+ */
+function joinReleaseArtifactUrl(baseUrl, app, versionDir, fileName) {
+  const b = normalizeBaseUrl(String(baseUrl || '').trim()).replace(/\/$/, '');
+  const a = String(app);
+  const v = String(versionDir);
+  const f = String(fileName);
+  return `${b}/${[a, v, f].map(encodeURIComponent).join('/')}`;
+}
+
+module.exports = { normalizeBaseUrl, joinReleaseArtifactUrl };
