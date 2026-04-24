@@ -139,6 +139,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { api, uploadWithProgress } from '@/api/client';
 import { useToast } from '@/composables/useToast';
 import ShareLinkRow from '@/components/ShareLinkRow.vue';
+import { suggestedPublicBaseFromVite } from '@/utils/public-url';
 
 const route = useRoute();
 const router = useRouter();
@@ -174,10 +175,7 @@ const publicJsonUrl = computed(() =>
 );
 
 function suggestedBase() {
-  let p = window.location.pathname.replace(/\/index\.html$/i, '');
-  p = p.replace(/\/$/, '') || '';
-  const basePath = p && p !== '/' ? p : '';
-  return `${window.location.origin}${basePath}`.replace(/\/$/, '');
+  return suggestedPublicBaseFromVite();
 }
 
 async function loadSettingsBase() {

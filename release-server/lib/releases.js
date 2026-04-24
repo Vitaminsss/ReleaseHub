@@ -372,11 +372,26 @@ function publishFromBody(app, body) {
   let data;
   if (meta.repoType === 'tauri') {
     if (!platforms) return { error: '缺少 platforms 字段', status: 400 };
+    const vdir = resolveDiskDirForLogicalVersion(app, version);
+    if (!vdir) return { error: '找不到对应版本目录', status: 400 };
+    const fromDisk = buildPlatformsFromDisk(app, vdir);
+    const prev = platforms && typeof platforms === 'object' && !Array.isArray(platforms) ? { ...platforms } : {};
+    const merged = { ...prev };
+    for (const [plat, diskEntry] of Object.entries(fromDisk)) {
+      const old = merged[plat];
+      const oldObj = old && typeof old === 'object' && !Array.isArray(old) ? { ...old } : {};
+      const hasRealSig = diskEntry.signature && diskEntry.signature !== '(未找到 .sig 文件)';
+      merged[plat] = {
+        ...oldObj,
+        url: diskEntry.url,
+        signature: hasRealSig ? diskEntry.signature : oldObj.signature ?? diskEntry.signature,
+      };
+    }
     data = {
       version: version.replace(/^v/, ''),
       notes: notes || '',
       pub_date: pub_date || new Date().toISOString(),
-      platforms,
+      platforms: merged,
     };
   } else {
     const vdir = resolveDiskDirForLogicalVersion(app, version);

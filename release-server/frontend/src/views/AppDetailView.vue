@@ -219,6 +219,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { api, uploadWithProgress } from '@/api/client';
 import { useToast } from '@/composables/useToast';
 import ShareLinkRow from '@/components/ShareLinkRow.vue';
+import { mapAssetUrlToPublicBase, suggestedPublicBaseFromVite } from '@/utils/public-url';
 
 const route = useRoute();
 const router = useRouter();
@@ -277,29 +278,21 @@ const downloadRedirectUrl = computed(
 );
 
 function suggestedBase() {
-  let p = window.location.pathname.replace(/\/index\.html$/i, '');
-  p = p.replace(/\/$/, '') || '';
-  const basePath = p && p !== '/' ? p : '';
-  return `${window.location.origin}${basePath}`.replace(/\/$/, '');
+  return suggestedPublicBaseFromVite();
 }
 
 function rewritePreviewUrls(preview, base) {
   const b = base.replace(/\/$/, '');
-  const fix = url => {
-    if (!url || !/^https?:\/\//i.test(url)) return url;
-    try {
-      const u = new URL(url);
-      return b + u.pathname + u.search + u.hash;
-    } catch {
-      return url;
-    }
-  };
   if (preview.platforms) {
-    Object.values(preview.platforms).forEach(p => {
-      if (p?.url) p.url = fix(p.url);
-    });
+    for (const p of Object.values(preview.platforms)) {
+      if (p?.url) p.url = mapAssetUrlToPublicBase(p.url, b);
+    }
   }
-  if (preview.files) preview.files.forEach(f => { if (f.url) f.url = fix(f.url); });
+  if (preview.files) {
+    for (const f of preview.files) {
+      if (f?.url) f.url = mapAssetUrlToPublicBase(f.url, b);
+    }
+  }
 }
 
 function isSemVer2CoreWithVPrefix(v) {
