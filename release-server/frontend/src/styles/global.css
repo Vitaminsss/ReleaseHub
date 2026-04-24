@@ -126,6 +126,101 @@ a {
   padding: 28px 20px 48px;
 }
 
+/* 应用/资源库列表卡：结构统一，标题用强调色；右上角数量、右下类型胶囊 */
+.app-tile.lib-card,
+button.app-tile.lib-card {
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  min-height: 128px;
+  text-align: left;
+}
+.app-tile .lib-tile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 14px;
+}
+.app-tile .lib-title-block {
+  min-width: 0;
+  flex: 1;
+}
+.app-tile .name {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 750;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+  margin: 0 0 4px;
+}
+.app-tile .pkg-id {
+  display: block;
+  font-size: 12px;
+  color: var(--text3);
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+.app-tile .lib-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  white-space: nowrap;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+.app-tile .lib-mid {
+  flex: 1;
+  min-height: 6px;
+  margin-top: 2px;
+}
+.app-tile .lib-mid .ver {
+  display: block;
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.4;
+}
+.app-tile .lib-mid .ver.muted2 {
+  color: var(--text3);
+  font-size: 12px;
+}
+.app-tile .lib-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 8px;
+}
+.app-tile .lib-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 9999px;
+  border: 1px solid rgba(232, 160, 53, 0.35);
+  background: rgba(232, 160, 53, 0.1);
+  color: var(--accent);
+  line-height: 1.2;
+}
+.app-tile .lib-pill--tauri {
+  border-color: rgba(120, 180, 255, 0.4);
+  background: rgba(100, 160, 255, 0.1);
+  color: #8fc4ff;
+}
+.app-tile .lib-pill--general {
+  border-color: rgba(232, 160, 53, 0.35);
+  background: rgba(232, 160, 53, 0.1);
+  color: var(--accent);
+}
+.app-tile .lib-pill--resource {
+  border-color: rgba(82, 212, 138, 0.35);
+  background: rgba(82, 212, 138, 0.1);
+  color: var(--ok);
+}
+
 .slide-up-enter-active,
 .slide-up-leave-active {
   transition: all 0.25s ease;

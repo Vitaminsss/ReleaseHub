@@ -19,12 +19,19 @@
           v-for="r in libraries"
           :key="r.name"
           type="button"
-          class="app-tile card"
+          class="app-tile card lib-card"
           @click="router.push(`/resources/${encodeURIComponent(r.name)}`)"
         >
-          <span class="name">{{ r.displayLabel || r.name }}</span>
-          <span v-if="r.displayName" class="pkg-id">{{ r.name }}</span>
-          <span class="meta">{{ r.itemCount }} 个文件</span>
+          <div class="lib-tile-header">
+            <div class="lib-title-block">
+              <span class="name">{{ r.displayLabel || r.name }}</span>
+              <span v-if="r.displayName" class="pkg-id">{{ r.name }}</span>
+            </div>
+            <span class="lib-count">{{ r.itemCount }} 个文件</span>
+          </div>
+          <div class="lib-footer">
+            <span class="lib-pill lib-pill--resource">资源库</span>
+          </div>
         </button>
       </transition-group>
     </div>
@@ -139,34 +146,17 @@ h1 {
   gap: 16px;
 }
 .app-tile {
-  text-align: left;
   cursor: pointer;
-  padding: 18px;
+  padding: 20px;
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: linear-gradient(165deg, var(--surface) 0%, var(--surface2) 100%);
   border-radius: var(--radius);
-  transition: border-color 0.2s, transform 0.15s;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 .app-tile:hover {
   border-color: rgba(232, 160, 53, 0.4);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
   transform: translateY(-2px);
-}
-.name {
-  display: block;
-  font-weight: 700;
-  font-size: 17px;
-  margin-bottom: 6px;
-}
-.pkg-id {
-  display: block;
-  font-size: 12px;
-  color: var(--text3);
-  font-family: ui-monospace, monospace;
-  margin-bottom: 8px;
-}
-.meta {
-  font-size: 13px;
-  color: var(--text2);
 }
 .muted {
   color: var(--text2);

@@ -19,14 +19,26 @@
           v-for="a in apps"
           :key="a.name"
           type="button"
-          class="app-tile card"
+          class="app-tile card lib-card"
           @click="router.push(`/app/${encodeURIComponent(a.name)}`)"
         >
-          <span class="name">{{ a.displayLabel || a.name }}</span>
-          <span v-if="a.displayName" class="pkg-id">{{ a.name }}</span>
-          <span class="meta">{{ a.repoType }} · {{ a.versionCount }} 个版本</span>
-          <span v-if="a.latestVersion" class="ver">最新 {{ a.latestVersion }}</span>
-          <span v-else class="ver muted2">尚未发布</span>
+          <div class="lib-tile-header">
+            <div class="lib-title-block">
+              <span class="name">{{ a.displayLabel || a.name }}</span>
+              <span v-if="a.displayName" class="pkg-id">{{ a.name }}</span>
+            </div>
+            <span class="lib-count">{{ a.versionCount }} 个版本</span>
+          </div>
+          <div class="lib-mid">
+            <span v-if="a.latestVersion" class="ver">最新 {{ a.latestVersion }}</span>
+            <span v-else class="ver muted2">尚未发布</span>
+          </div>
+          <div class="lib-footer">
+            <span
+              class="lib-pill"
+              :class="a.repoType === 'tauri' ? 'lib-pill--tauri' : 'lib-pill--general'"
+            >{{ a.repoType === 'tauri' ? 'Tauri' : '通用' }}</span>
+          </div>
         </button>
       </transition-group>
     </div>
@@ -137,7 +149,6 @@ h1 {
   gap: 16px;
 }
 .app-tile {
-  text-align: left;
   padding: 20px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -149,37 +160,8 @@ h1 {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   transform: translateY(-2px);
 }
-.name {
-  display: block;
-  font-weight: 700;
-  font-size: 17px;
-  margin-bottom: 6px;
-}
-.pkg-id {
-  display: block;
-  font-size: 12px;
-  color: var(--text3);
-  font-family: ui-monospace, monospace;
-  margin-bottom: 4px;
-}
-.meta {
-  display: block;
-  font-size: 12px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.ver {
-  display: block;
-  margin-top: 12px;
-  font-size: 13px;
-  color: var(--accent);
-}
 .muted {
   color: var(--text2);
-}
-.muted2 {
-  color: var(--text3);
 }
 .modal-back {
   position: fixed;
