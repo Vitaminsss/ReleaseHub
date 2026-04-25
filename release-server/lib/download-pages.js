@@ -363,10 +363,10 @@ const countdownScript = `<script>
 })();<\/script>`;
 
 /**
- * 临时传输 · 信息页（资源库单文件落地页同款气质 + 剩余时间）
+ * 临时传输 · 单页（对齐资源库单文件落地：留白、Fraunces 说明、单主按钮）
  */
 function renderTempTransferInfoPageHtml(opts) {
-  const { filename, displayTitle, size, badge, directDownloadHref, downloadPageHref, expireAtMs } = opts;
+  const { filename, displayTitle, size, badge, directDownloadHref, expireAtMs } = opts;
   const cls = badge.cls;
   const badgeStyle =
     cls === 'sig'
@@ -389,135 +389,55 @@ function renderTempTransferInfoPageHtml(opts) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
-:root { --bg:#0a0908; --text:#f0ebe3; --text2:#9a9288; --text3:#6b6459; --accent:#e8a035; --border:rgba(235,230,223,0.09); }
+:root { --bg:#0a0908; --text:#f0ebe3; --text2:#9a9288; --text3:#6b6459; --accent:#e8a035; --border:rgba(235,230,223,0.1); }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
+body{font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.02) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0}
-.wrap{position:relative;z-index:1;width:100%;max-width:500px}
-.brand{font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:10px;text-align:center;color:var(--accent)}
-.subbrand{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);text-align:center;margin-bottom:20px}
-.timer-box{border:1px solid rgba(232,160,53,.32);background:linear-gradient(135deg,rgba(232,160,53,.1) 0%,rgba(0,0,0,.25) 100%);border-radius:10px;padding:12px 16px;margin-bottom:20px;text-align:center}
-.timer-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
-.timer-val{font-size:1.15rem;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:.04em}
-.card{border:1px solid var(--border);background:linear-gradient(168deg,#14110e 0%,#0e0c0a 100%);border-radius:12px;padding:28px 24px;box-shadow:0 24px 50px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.04)}
-.title-row{margin-bottom:14px}
-.filename{font-size:18px;font-weight:800;word-break:break-word;line-height:1.4;letter-spacing:-.02em}
-.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:18px;font-size:14px;color:var(--text2)}
-.badge{display:inline-flex;align-items:center;font-size:10px;letter-spacing:.6px;padding:4px 8px;border:1px solid;border-radius:4px;text-transform:uppercase;font-weight:600;${badgeStyle}}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;font-size:14px;font-weight:800;letter-spacing:.4px;text-decoration:none;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s;box-shadow:0 0 0 1px rgba(0,0,0,.2)}
-.btn:hover{filter:brightness(1.06);box-shadow:0 0 24px rgba(232,160,53,.3)}
-.sub-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
-.sub-actions a{color:var(--text2);font-size:13px;text-decoration:none;transition:color .15s}
-.sub-actions a:hover{color:var(--accent);text-decoration:underline}
-.hint-s{font-family:'Fraunces','Noto Serif SC',serif;font-size:14px;font-weight:450;color:var(--text2);line-height:1.65;margin-bottom:16px}
-.footer{margin-top:24px;text-align:center;font-size:11px;color:var(--text2)}
+.shell{position:relative;z-index:1;width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 24px 56px;max-width:560px;margin:0 auto;box-sizing:border-box}
+.kicker{text-align:center;font-size:10px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+.kicker2{text-align:center;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin:0 0 28px}
+.timer-card{width:100%;border:1px solid rgba(232,160,53,.3);background:linear-gradient(145deg,rgba(232,160,53,.1) 0%,rgba(0,0,0,.28) 100%);border-radius:12px;padding:20px 24px 22px;margin-bottom:28px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.timer-lbl{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);text-align:center;margin-bottom:8px}
+.timer-val{text-align:center;font-size:1.35rem;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.main-card{width:100%;border:1px solid var(--border);background:linear-gradient(168deg,#14110e 0%,#0e0c0a 100%);border-radius:12px;padding:32px 28px 32px;box-shadow:0 20px 56px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05)}
+.fname{font-size:1.2rem;font-weight:800;word-break:break-word;line-height:1.35;letter-spacing:-.02em;margin:0 0 18px}
+.hint-t{font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-size:15px;font-weight:500;color:var(--text2);line-height:1.75;margin:0 0 22px}
+.meta-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin:0 0 26px;font-size:14px;color:var(--text2);padding-bottom:22px;border-bottom:1px solid var(--border)}
+.badge-wrap{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge-d{font-size:10px;letter-spacing:.6px;padding:4px 9px;border:1px solid;border-radius:4px;text-transform:uppercase;font-weight:600;${badgeStyle}}
+.btn-cta{display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;padding:16px 24px;font-size:14px;font-weight:800;letter-spacing:.5px;text-align:center;text-decoration:none;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .2s,transform .12s;box-shadow:0 0 0 1px rgba(0,0,0,.2)}
+.btn-cta:hover{filter:brightness(1.06);box-shadow:0 0 28px rgba(232,160,53,.3)}
+.btn-cta:active{transform:scale(.99)}
+#countdown-box{display:block}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="brand">ReleaseHub</div>
-  <p class="subbrand">临时传输 · 信息</p>
-  <div class="timer-box">
-    <div class="timer-label">剩余可用时间</div>
-    <div id="countdown-box" class="timer-val" data-expire-ms="${String(Math.floor(expireAtMs))}">—</div>
+<div class="shell">
+  <p class="kicker">临时传输</p>
+  <p class="kicker2">单文件 · 到期删除</p>
+  <div class="timer-card">
+    <p class="timer-lbl">剩余可用时间</p>
+    <p id="countdown-box" class="timer-val" data-expire-ms="${String(Math.floor(expireAtMs))}">—</p>
   </div>
-  <div class="card">
-    <div class="title-row">
-      <div class="filename">${htmlEsc(t)}</div>
+  <div class="main-card">
+    <h1 class="fname">${htmlEsc(t)}</h1>
+    <p class="hint-t">此链接在到期后失效，文件将从服务器上移除。你可将本页完整链接分享给需要下载的人。</p>
+    <div class="meta-row">
+      <span>大小 <strong style="color:var(--text);font-weight:600">${htmlEsc(fmtBytesServer(size))}</strong></span>
+      <span class="badge-wrap"><span class="badge-d">${htmlEsc(badge.label)}</span></span>
     </div>
-    <p class="hint-s">此链接在到期后将无法下载，文件从服务器上删除。你可先分享本页，或使用下方仅下载页、直链。</p>
-    <div class="row">
-      <span>大小 <strong style="color:var(--text)">${htmlEsc(fmtBytesServer(size))}</strong></span>
-      <span class="badge">${htmlEsc(badge.label)}</span>
-    </div>
-    <a class="btn" href="${htmlEsc(directDownloadHref)}" rel="noopener">⬇ 直接下载文件</a>
-    <div class="sub-actions">
-      <a href="${htmlEsc(downloadPageHref)}">仅下载页（大按钮、适合转发）</a>
-    </div>
+    <a class="btn-cta" href="${htmlEsc(directDownloadHref)}" rel="noopener">下载文件</a>
   </div>
-  <p class="footer">Powered by ReleaseHub</p>
 </div>
 ${countdownScript}
 </body>
 </html>`;
-}
-
-/**
- * 临时传输 · 仅下载页（对齐 /d/ 与 renderDownloadPageHtml 风格）
- */
-function renderTempTransferDownloadPageHtml(opts) {
-  const { displayTitle, filename, size, badge, directDownloadHref, expireAtMs } = opts;
-  const cls = badge.cls;
-  const badgeStyle =
-    cls === 'sig'
-      ? 'background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.4);color:#a78bfa'
-      : cls === 'win'
-        ? 'background:rgba(110,181,255,.1);border-color:rgba(110,181,255,.35);color:#6eb5ff'
-        : cls === 'linux'
-          ? 'background:rgba(82,212,138,.1);border-color:rgba(82,212,138,.35);color:#52d48a'
-          : cls === 'mac'
-            ? 'background:rgba(232,160,53,.12);border-color:rgba(232,160,53,.35);color:#e8a035'
-            : 'background:rgba(235,230,223,.06);border-color:rgba(235,230,223,.12);color:#9a9288';
-  const pageTitle = `${String(displayLabelForTitle(displayTitle, filename))} — 临时下载`;
-  return `<!DOCTYPE html>
-<html lang="zh">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-<title>${htmlEsc(pageTitle)}</title>
-<style>
-:root { --bg:#0c0b09; --text:#ebe6df; --text2:#9a9288; --text3:#6b6459; --accent:#e8a035; --border:rgba(235,230,223,0.08); }
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.028) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
-.wrap{position:relative;z-index:1;width:100%;max-width:480px}
-.brand{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.35em;text-transform:uppercase;margin-bottom:8px;text-align:center}
-.brand2{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);text-align:center;margin-bottom:12px}
-.timer-inline{text-align:center;font-size:13px;color:var(--text2);margin-bottom:18px}
-.timer-inline strong{color:var(--accent);font-weight:800}
-.hero{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:16px;text-align:center}
-.app-title{font-size:24px;font-weight:800;line-height:1.2;letter-spacing:-.03em;margin:0;max-width:100%}
-.expire-mono{font-family:ui-monospace,monospace;font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.04em}
-.card{border:1px solid var(--border);background:linear-gradient(165deg,#12100e 0%,#1a1714 100%);border-radius:10px;padding:28px 24px;box-shadow:0 24px 48px rgba(0,0,0,.35)}
-.filename{font-size:17px;font-weight:700;word-break:break-all;line-height:1.45;margin-bottom:14px}
-.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:22px;font-size:14px;color:var(--text2)}
-.badge{display:inline-flex;align-items:center;font-size:10px;letter-spacing:.6px;padding:4px 8px;border:1px solid;border-radius:4px;text-transform:uppercase;font-weight:600;${badgeStyle}}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;font-size:15px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;text-decoration:none;border-radius:6px;border:none;cursor:pointer;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s}
-.btn:hover{filter:brightness(1.06);box-shadow:0 0 24px rgba(232,160,53,.25)}
-.footer{margin-top:28px;text-align:center;font-size:11px;color:var(--text2)}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="brand">ReleaseHub</div>
-  <div class="brand2">临时传输 · 下载</div>
-  <p class="timer-inline">剩余 <strong id="countdown-box" data-expire-ms="${String(Math.floor(expireAtMs))}">—</strong></p>
-  <div class="hero">
-    <h1 class="app-title">${htmlEsc(String(displayTitle || filename))}</h1>
-    <span class="expire-mono">单文件 · 到期后删除</span>
-  </div>
-  <div class="card">
-    <div class="filename">${htmlEsc(filename)}</div>
-    <div class="row">
-      <span>大小：<strong style="color:var(--text)">${htmlEsc(fmtBytesServer(size))}</strong></span>
-      <span class="badge">${htmlEsc(badge.label)}</span>
-    </div>
-    <a class="btn" href="${htmlEsc(directDownloadHref)}" download rel="noopener">⬇ 立即下载</a>
-  </div>
-  <p class="footer">Powered by ReleaseHub</p>
-</div>
-${countdownScript}
-</body>
-</html>`;
-}
-
-function displayLabelForTitle(displayTitle, filename) {
-  return displayTitle || filename;
 }
 
 function renderTempTransferGoneHtml() {
-  return `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>链接已失效 — 临时传输</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0c0b09;color:#9a9288;font-family:system-ui,sans-serif;padding:24px;text-align:center}strong{color:#e8a035;display:block;font-size:18px;margin-bottom:8px;color:#ebe6df}</style></head><body><div><strong>文件已删除或已过期</strong><p>临时传输链接已失效。</p><p style="font-size:12px;margin-top:16px;opacity:.7">ReleaseHub</p></div></body></html>`;
+  return `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>链接已失效</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0c0b09;color:#9a9288;font-family:system-ui,sans-serif;padding:32px 24px;text-align:center;box-sizing:border-box}h1{margin:0 0 10px;font-size:1.1rem;font-weight:800;color:#ebe6df;letter-spacing:.04em}p{margin:0;font-size:14px;line-height:1.6}</style></head>
+<body><div style="max-width:28rem"><h1>文件已删除或已过期</h1><p>此临时链接已无法使用。</p></div></body></html>`;
 }
 
 module.exports = {
@@ -528,6 +448,5 @@ module.exports = {
   renderResourceLibraryHtml,
   renderResourceItemLandingHtml,
   renderTempTransferInfoPageHtml,
-  renderTempTransferDownloadPageHtml,
   renderTempTransferGoneHtml,
 };

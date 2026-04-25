@@ -34,14 +34,13 @@
 
     <section v-if="item && publicBase" class="card api-block" :class="{ 'section-dim': pageLoading }">
       <h2>对外链接</h2>
-      <p class="hint sm no-mt">访客打开「信息页」可看到与公开资源库类似的说明；「仅下载页」适合只转发大按钮。直链为文件流。</p>
-      <ShareLinkRow v-if="item.landingUrl" label="信息页" :url="item.landingUrl" />
-      <ShareLinkRow v-if="item.downloadPageUrl" label="仅下载页" :url="item.downloadPageUrl" />
+      <p class="hint sm no-mt">「分享页」为访客落地页，含剩余时间与下载；直链为文件流。JSON 供脚本查询。</p>
+      <ShareLinkRow v-if="item.landingUrl" label="分享页" :url="item.landingUrl" />
       <ShareLinkRow v-if="item.downloadUrl" label="直链（下载）" :url="item.downloadUrl" />
       <ShareLinkRow v-if="item.metaUrl" label="JSON 元信息" :url="item.metaUrl" />
     </section>
 
-    <section v-if="item" class="card block">
+    <section v-if="item" class="card block meta-panel">
       <h2>文件信息</h2>
       <ul class="meta-list">
         <li><span class="k">大小</span><span class="v mono">{{ fmtSize(item.size) }}</span></li>
@@ -174,17 +173,107 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 与资源库详情同结构：顶栏、区块 padding、标题尺寸 */
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.title-block {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.titles {
+  min-width: 0;
+  flex: 1;
+}
+h1 {
+  margin: 0;
+  font-size: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.loading-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid rgba(232, 160, 53, 0.35);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+.pkg-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.45;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.danger {
+  color: #ff9a8b;
+}
 .temp-pill {
-  background: linear-gradient(135deg, rgba(232, 160, 53, 0.2) 0%, rgba(120, 90, 40, 0.35) 100%);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: #f0c978;
   border: 1px solid rgba(232, 160, 53, 0.35);
-  letter-spacing: 0.12em;
+  background: linear-gradient(135deg, rgba(232, 160, 53, 0.12) 0%, rgba(0, 0, 0, 0.2) 100%);
+  padding: 4px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 .err-c {
+  padding: 20px;
+  margin-bottom: 20px;
   color: var(--danger, #e85d4c);
   font-size: 14px;
   line-height: 1.5;
-  margin-bottom: 16px;
+  box-sizing: border-box;
+}
+.timer-card,
+.api-block,
+.meta-panel {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.timer-card h2,
+.api-block h2,
+.meta-panel h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.section-dim {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.hint {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+.hint.sm {
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+.hint.no-mt {
+  margin-top: 0;
 }
 .timer-card {
   border-color: rgba(232, 160, 53, 0.22) !important;
@@ -199,9 +288,6 @@ onUnmounted(() => {
 .timer-val {
   color: var(--accent, #e8a035);
   font-weight: 700;
-}
-.hint.no-mt {
-  margin-top: 0;
 }
 .meta-list {
   list-style: none;

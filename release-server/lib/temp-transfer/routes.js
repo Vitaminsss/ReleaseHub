@@ -8,7 +8,6 @@ const { fileBadgeLabel } = require('../download-utils');
 const {
   renderDownload404Html,
   renderTempTransferInfoPageHtml,
-  renderTempTransferDownloadPageHtml,
   renderTempTransferGoneHtml,
 } = require('../download-pages');
 const { getTempTransferStore } = require('./instance');
@@ -27,7 +26,6 @@ function enrichRecordPublic(rec) {
   const t = encodeURIComponent(rec.token);
   return {
     landingUrl: `${base}/tt/p/${t}`,
-    downloadPageUrl: `${base}/tt/d/${t}`,
     downloadUrl: `${base}/tt/${t}`,
   };
 }
@@ -84,10 +82,7 @@ function registerTempTransferRoutes(app) {
     limits: { fileSize: cfg.maxFileSizeBytes },
   });
 
-  /**
-   * @param {'info' | 'download'} which
-   */
-  async function handleTempPublicHtml(req, res, which) {
+  async function handleTempPublicHtml(req, res) {
     const store = getTempTransferStore();
     if (!store) return res.status(404).type('html').send(renderDownload404Html());
     const { token } = req.params;
@@ -113,26 +108,12 @@ function registerTempTransferRoutes(app) {
       const b = publicBase();
       const enc = encodeURIComponent(rec.token);
       const direct = `${b}/tt/${enc}`;
-      const dpage = `${b}/tt/d/${enc}`;
       const expMs = new Date(rec.expireAt).getTime();
       const name = rec.originalName || 'file';
-      if (which === 'info') {
-        return res.type('html').send(
-          renderTempTransferInfoPageHtml({
-            filename: name,
-            displayTitle: name,
-            size: rec.size,
-            badge,
-            directDownloadHref: direct,
-            downloadPageHref: dpage,
-            expireAtMs: expMs,
-          }),
-        );
-      }
       return res.type('html').send(
-        renderTempTransferDownloadPageHtml({
-          displayTitle: name,
+        renderTempTransferInfoPageHtml({
           filename: name,
+          displayTitle: name,
           size: rec.size,
           badge,
           directDownloadHref: direct,
@@ -391,14 +372,8 @@ function registerTempTransferRoutes(app) {
   app.get('/api/temp-transfer/:token/meta', metaHandler);
 
   app.get('/tt/p/:token', (req, res) => {
-    handleTempPublicHtml(req, res, 'info').catch(err => {
+    handleTempPublicHtml(req, res).catch(err => {
       console.error('[temp-transfer] tt/p', err);
-      if (!res.headersSent) res.status(500).type('html').send(renderDownload404Html());
-    });
-  });
-  app.get('/tt/d/:token', (req, res) => {
-    handleTempPublicHtml(req, res, 'download').catch(err => {
-      console.error('[temp-transfer] tt/d', err);
       if (!res.headersSent) res.status(500).type('html').send(renderDownload404Html());
     });
   });

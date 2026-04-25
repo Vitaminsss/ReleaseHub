@@ -166,8 +166,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 | 说明 | 路径 / 方法 |
 | ---- | ------------- |
 | 上传 | `POST /api/temp-transfer/upload`，`multipart/form-data`：`file`（必填）、`ttlMinutes`（可选，须在允许列表中） |
-| 公开 · 信息页 | `GET /tt/p/{token}`（说明 + 直链、链到仅下载页；过期/删除 `410` HTML） |
-| 公开 · 仅下载页 | `GET /tt/d/{token}`（大按钮、与 `/d/` 同气质；**剩余时间** 倒计时） |
+| 公开 · 分享页 | `GET /tt/p/{token}`（说明、剩余时间、下载按钮；过期/删除 `410` HTML） |
 | 直链（文件流） | `GET /tt/{token}`（成功 `200`；`413` / `422` 等见接口错误码） |
 | 元信息 JSON | `GET /api/temp-transfer/{token}/meta` |
 | 允许 TTL 与默认 | `GET /api/temp-transfer/allowed-ttls` |
