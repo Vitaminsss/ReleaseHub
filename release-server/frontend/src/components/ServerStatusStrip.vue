@@ -1,48 +1,61 @@
 <template>
-  <aside class="disk-rail" aria-label="Releases 所在磁盘容量">
-    <RouterLink to="/" class="rail-brand" title="返回应用列表">ReleaseHub</RouterLink>
-    <p class="rail-scope">releases 卷</p>
+  <aside class="disk-rail" aria-label="Releases 所在磁盘与导航">
+    <div class="rail-top">
+      <RouterLink to="/" class="rail-brand" title="返回总览">ReleaseHub</RouterLink>
+      <p class="rail-scope">releases 卷</p>
 
-    <div v-if="error" class="state err mono">{{ error }}</div>
+      <div v-if="error" class="state err mono">{{ error }}</div>
 
-    <template v-else-if="disk">
-      <div class="rail-block">
-        <span class="hero-label">剩余</span>
-        <span class="hero-val mono">{{ formatBytes(disk.free) }}</span>
-      </div>
-
-      <div
-        class="meter"
-        role="img"
-        :aria-label="`已用 ${usedPct}%，剩余 ${formatBytes(disk.free)}`"
-      >
-        <div class="meter-fill" :style="{ width: `${usedPct}%` }" />
-      </div>
-
-      <p class="pct-line mono">{{ usedPct }}% 已用</p>
-
-      <div class="sub-grid mono">
-        <div class="sub-item">
-          <span class="sub-k">已用</span>
-          <span class="sub-v">{{ formatBytes(disk.used) }}</span>
+      <template v-else-if="disk">
+        <div class="rail-block">
+          <span class="hero-label">剩余</span>
+          <span class="hero-val mono">{{ formatBytes(disk.free) }}</span>
         </div>
-        <div class="sub-item">
-          <span class="sub-k">容量</span>
-          <span class="sub-v">{{ formatBytes(disk.total) }}</span>
-        </div>
-      </div>
-    </template>
 
-    <div v-else-if="loaded" class="state muted mono">无法读取该卷磁盘统计</div>
-    <div v-else class="state muted mono">读取中…</div>
+        <div
+          class="meter"
+          role="img"
+          :aria-label="`已用 ${usedPct}%，剩余 ${formatBytes(disk.free)}`"
+        >
+          <div class="meter-fill" :style="{ width: `${usedPct}%` }" />
+        </div>
+
+        <p class="pct-line mono">{{ usedPct }}% 已用</p>
+
+        <div class="sub-grid mono">
+          <div class="sub-item">
+            <span class="sub-k">已用</span>
+            <span class="sub-v">{{ formatBytes(disk.used) }}</span>
+          </div>
+          <div class="sub-item">
+            <span class="sub-k">容量</span>
+            <span class="sub-v">{{ formatBytes(disk.total) }}</span>
+          </div>
+        </div>
+      </template>
+
+      <div v-else-if="loaded" class="state muted mono">无法读取该卷磁盘统计</div>
+      <div v-else class="state muted mono">读取中…</div>
+    </div>
+
+    <nav class="rail-foot" aria-label="系统">
+      <RouterLink
+        to="/settings"
+        class="rail-link"
+        :class="{ 'rail-link--active': isSettings }"
+      >设置</RouterLink>
+    </nav>
   </aside>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { RouterLink } from 'vue-router';
+import { useRoute, RouterLink } from 'vue-router';
 import { api } from '@/api/client';
 import { formatBytes } from '@/utils/format-bytes';
+
+const route = useRoute();
+const isSettings = computed(() => route.name === 'settings');
 
 const disk = ref(null);
 const error = ref('');
@@ -87,6 +100,8 @@ onUnmounted(() => {
   --rail-accent-dim: var(--accent-dim, #c98728);
   --rail-border: var(--border, rgba(235, 230, 223, 0.08));
 
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
   width: 240px;
   min-height: 100vh;
@@ -99,6 +114,38 @@ onUnmounted(() => {
   background: linear-gradient(180deg, #0e0c0a 0%, var(--surface, #12100e) 38%, #0c0b09 100%);
   border-right: 1px solid var(--rail-border);
   box-sizing: border-box;
+}
+
+.rail-top {
+  flex: 0 0 auto;
+}
+
+.rail-foot {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--rail-border);
+}
+
+.rail-link {
+  display: block;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text2, #9a9288);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.rail-link:hover {
+  color: var(--text, #ebe6df);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.rail-link--active {
+  color: var(--rail-accent);
+  background: rgba(232, 160, 53, 0.1);
 }
 
 .rail-brand {
