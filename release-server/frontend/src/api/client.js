@@ -20,6 +20,24 @@ function apiUrl(p) {
   return `${appBase()}${rel}`;
 }
 
+/**
+ * 开发时上传、下载类大体量请求直连后端，避免经 Vite dev proxy 时出现 413/HTML 等代理层问题；生产仍走与页面一致的 baseUrl。
+ * 可通过 VITE_DEV_UPLOAD_ORIGIN 覆盖（默认 http://127.0.0.1:3721，与 server 默认 PORT 一致）。
+ */
+function uploadXhrUrl(p) {
+  if (p.startsWith('http')) return p;
+  let path = p.startsWith('/') ? p : `/${p}`;
+  if (import.meta.env.DEV) {
+    const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '';
+    if (basePath && path.startsWith(`${basePath}/`)) {
+      path = path.slice(basePath.length) || '/';
+    }
+    const o = (import.meta.env.VITE_DEV_UPLOAD_ORIGIN || 'http://127.0.0.1:3721').replace(/\/$/, '');
+    return `${o}${path}`;
+  }
+  return apiUrl(p);
+}
+
 export async function api(method, path, body = null, options = {}) {
   const auth = useAuthStore();
   const headers = { ...options.headers };
@@ -73,7 +91,7 @@ export function uploadWithProgress({ method, path: p, formData, onProgress, sign
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const auth = useAuthStore();
-    xhr.open(method, apiUrl(p), true);
+    xhr.open(method, uploadXhrUrl(p), true);
     if (auth.token) xhr.setRequestHeader('Authorization', `Bearer ${auth.token}`);
 
     if (signal) {

@@ -12,6 +12,7 @@ const {
 } = require('../download-pages');
 const { getTempTransferStore } = require('./instance');
 const { contentDispositionAttachment } = require('./content-disposition');
+const { multerFixOriginalNameFileFilter } = require('../fix-multipart-filename');
 
 function getTt() {
   return CONFIG.TEMP_TRANSFER;
@@ -79,6 +80,7 @@ function registerTempTransferRoutes(app) {
   });
   const upload = multer({
     storage,
+    fileFilter: multerFixOriginalNameFileFilter(),
     limits: { fileSize: cfg.maxFileSizeBytes },
   });
 
