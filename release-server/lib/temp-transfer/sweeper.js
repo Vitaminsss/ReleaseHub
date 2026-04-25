@@ -11,12 +11,18 @@ function startTempTransferSweeper() {
     const store = getTempTransferStore();
     if (!store) return;
     store
-      .sweepExpired()
-      .then(({ removed, errors }) => {
-        if (removed > 0 || (errors && errors.length)) {
-          console.log(
-            `[temp-transfer] sweeper: removed ${removed}` + (errors && errors.length ? ` errors=${errors.length}` : ''),
-          );
+      .runFullSweep()
+      .then(({ removed, pendingRemoved, legacyTokensRemoved, errors, lastSweep }) => {
+        const hasWork =
+          removed > 0 || pendingRemoved > 0 || legacyTokensRemoved > 0 || (errors && errors.length);
+        if (hasWork) {
+          const parts = [
+            `expired/records=${removed}`,
+            `pending=${pendingRemoved}`,
+            `legacyTomb=${legacyTokensRemoved}`,
+            lastSweep ? ` ${lastSweep.durationMs}ms` : '',
+          ];
+          console.log(`[temp-transfer] sweeper: ${parts.join(', ')}` + (errors && errors.length ? ` errors=${errors.length}` : ''));
           if (errors && errors.length) console.warn('[temp-transfer] sweeper errors', errors);
         }
       })

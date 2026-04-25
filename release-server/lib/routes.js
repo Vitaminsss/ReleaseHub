@@ -65,6 +65,7 @@ const {
 } = require('./resource-libraries');
 const { fileBadgeLabel } = require('./download-utils');
 const { registerTempTransferRoutes } = require('./temp-transfer/routes');
+const { getTempTransferStore } = require('./temp-transfer/instance');
 
 function registerRoutes(app) {
   app.get('/api/health', (req, res) => {
@@ -597,7 +598,31 @@ function registerRoutes(app) {
     }
   });
 
-  app.get('/api/settings', auth, (req, res) =>
+  app.get('/api/settings', auth, async (req, res) => {
+    let tempStats = null;
+    /** @type {null | { at: string, removed: number, pendingRemoved: number, legacyTokensRemoved: number, errorCount: number, durationMs: number }} */
+    let lastSweep = null;
+    if (CONFIG.TEMP_TRANSFER?.enabled) {
+      const tStore = getTempTransferStore();
+      if (tStore) {
+        try {
+          tempStats = await tStore.getDirectoryStats();
+          const s = tStore.getLastSweepSummary();
+          if (s) {
+            lastSweep = {
+              at: s.at,
+              removed: s.removed,
+              pendingRemoved: s.pendingRemoved,
+              legacyTokensRemoved: s.legacyTokensRemoved,
+              errorCount: s.errorCount,
+              durationMs: s.durationMs,
+            };
+          }
+        } catch (e) {
+          console.error('[api/settings] temp-transfer stats', e);
+        }
+      }
+    }
     res.json({
       baseUrl: CONFIG.BASE_URL,
       releasesDir: CONFIG.RELEASES_DIR,
@@ -609,10 +634,24 @@ function registerRoutes(app) {
             defaultTtlMinutes: CONFIG.TEMP_TRANSFER.defaultTtlMinutes,
             allowedTtlsMinutes: CONFIG.TEMP_TRANSFER.allowedTtlsMinutes,
             maxFileSizeMb: Math.floor(CONFIG.TEMP_TRANSFER.maxFileSizeBytes / (1024 * 1024)),
+            sweepIntervalSeconds: Math.floor(CONFIG.TEMP_TRANSFER.sweepIntervalMs / 1000),
+            pendingMaxAgeMinutes: Math.floor(CONFIG.TEMP_TRANSFER.pendingMaxAgeMs / 60000),
+            subdirs: tempStats
+              ? {
+                  pending: tempStats.pendingDir,
+                  blobs: tempStats.blobsDir,
+                  meta: tempStats.metaDir,
+                  tokenIndex: tempStats.tokenIndexDir,
+                }
+              : undefined,
+            fileCounts: tempStats?.fileCounts,
+            lastSweep,
+            note:
+              '临时文件实体在 blobs/ 下，文件名为 {id}.bin，非原始文件名；上传中在 pending/，元数据在 meta/，分享索引在 token-index/',
           }
         : null,
-    }),
-  );
+    });
+  });
 
   app.post('/api/base-url', auth, (req, res) => {
     let { baseUrl } = req.body;

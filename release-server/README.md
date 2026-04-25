@@ -161,7 +161,16 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 
 ### 临时传输（可与发布系统独立使用）
 
-上传后按 **TTL** 自动失效，文件存于本机 `temp-transfers/`（可通过 `TEMP_TRANSFER_DIR` 指定）。对外链接与 `BASE_URL` 一致。管理员登录后，Vue 总览中可查看进行中的文件并**取消**；以下 HTML 为访客公开页，风格与资源库单文件落地页一致，并**显示剩余时间**（页面内实时倒计时）。
+上传后按 **TTL** 自动失效。默认与 `releases/`、`resource-libraries/` **同级**目录：本机 **`temp-transfers/`**（可通过环境变量 `TEMP_TRANSFER_DIR` 改为绝对路径）。**不要**在仓库里找名为 `temp-transfer` 的目录，默认名为 **`temp-transfers`**（复数）。
+
+磁盘结构（均在 `TEMP_TRANSFER` 根目录下，管理后台「设置」页会显示绝对路径与各子目录文件数）：
+
+- `pending/`：上传中的临时分片（`*.part`），超过一定时间未完成的会被自动清理
+- `blobs/`：已接收的临时文件实体，文件名为 `{16位hex id}.bin`，**不是**原始文件名
+- `meta/`：每条传输的 JSON 元数据
+- `token-index/`：分享 token 到 id 的索引小文件
+
+到期或手动取消时，会**硬删除**上述相关文件（不再长期保留 `EXPIRED`/`GONE` 墓碑文件；旧版本遗留的墓碑会在清扫时删除）。对外链接与 `BASE_URL` 一致。管理员登录后，Vue 总览中可查看进行中的文件并**取消**；以下 HTML 为访客公开页，风格与资源库单文件落地页一致，并**显示剩余时间**（页面内实时倒计时）。
 
 | 说明 | 路径 / 方法 |
 | ---- | ------------- |
@@ -174,7 +183,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 | 管理 · 单条 | `GET /api/temp-transfer/item/{id}`（需登录） |
 | 管理 · 取消 | `DELETE /api/temp-transfer/item/{id}`（需登录，立即删除文件与链） |
 
-环境变量（可选，未设时有默认值）：`TEMP_TRANSFER_ENABLED`、`TEMP_TRANSFER_DIR`、`TEMP_TRANSFER_DEFAULT_TTL_MINUTES`、`TEMP_TRANSFER_ALLOWED_TTLS`（逗号分隔，如 `30,60,180,360,720,1440`）、`TEMP_TRANSFER_MAX_FILE_SIZE_MB`（未设时默认 **100**，与全站单文件、Nginx 建议上限一致）、`TEMP_TRANSFER_SWEEP_INTERVAL_SECONDS`。
+环境变量（可选，未设时有默认值）：`TEMP_TRANSFER_ENABLED`、`TEMP_TRANSFER_DIR`、`TEMP_TRANSFER_DEFAULT_TTL_MINUTES`、`TEMP_TRANSFER_ALLOWED_TTLS`（逗号分隔，如 `30,60,180,360,720,1440`）、`TEMP_TRANSFER_MAX_FILE_SIZE_MB`（未设时默认 **100**，与全站单文件、Nginx 建议上限一致）、`TEMP_TRANSFER_SWEEP_INTERVAL_SECONDS`、`TEMP_TRANSFER_PENDING_MAX_AGE_MINUTES`（`pending/*.part` 超过该分钟数视为孤儿并删除，默认 **1440** 即 24 小时）。
 
 ---
 
@@ -238,6 +247,8 @@ release-server/          # 或你 clone 后的目录名，与 deploy.sh 同级
 ├── public/              # 静态资源（含 Vue 构建产物 index.html + assets/）
 │   ├── index.html
 │   └── assets/
+├── resource-libraries/  # 资源库数据（与 releases 同级；可选，首次上传时也会自动创建）
+├── temp-transfers/      # 临时单文件分享（与 releases 同级；pending/ blobs/ meta/ token-index/）
 ├── COMPATIBILITY.md     # 向后兼容说明
 └── releases/
     └── my-app/

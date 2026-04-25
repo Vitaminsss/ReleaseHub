@@ -67,9 +67,14 @@ app.listen(PORT, () => {
       const store = getTempTransferStore();
       store
         .sweepOnStartup()
-        .then(({ removed, errors }) => {
-          if (removed > 0) console.log(`[temp-transfer] startup sweep removed ${removed}`);
-          if (errors && errors.length) console.warn('[temp-transfer] startup sweep', errors);
+        .then(({ removed, pendingRemoved, legacyTokensRemoved, errors, lastSweep }) => {
+          if (removed > 0 || pendingRemoved > 0 || legacyTokensRemoved > 0) {
+            console.log(
+              `[temp-transfer] startup sweep: records=${removed}, pending=${pendingRemoved}, legacyTomb=${legacyTokensRemoved}` +
+                (lastSweep ? ` ${lastSweep.durationMs}ms` : ''),
+            );
+          }
+          if (errors && errors.length) console.warn('[temp-transfer] startup sweep errors', errors);
         })
         .catch(e => console.error('[temp-transfer] startup sweep', e));
     } catch (e) {

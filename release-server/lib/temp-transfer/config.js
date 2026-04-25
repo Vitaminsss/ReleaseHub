@@ -11,6 +11,7 @@ const { MAX_UPLOAD_MB } = require('../upload-limits');
  * @property {number} maxTtlMinutes
  * @property {number} maxFileSizeBytes
  * @property {number} sweepIntervalMs
+ * @property {number} pendingMaxAgeMs pending 中 .part 超过该时长视为孤儿（可删）
  */
 
 function parseIntList(s, fallback) {
@@ -44,6 +45,10 @@ function loadTempTransferConfig(rootDir) {
   const rawEnabled = process.env.TEMP_TRANSFER_ENABLED;
   const enabled = rawEnabled === undefined || rawEnabled === '' ? true : rawEnabled === 'true' || rawEnabled === '1';
 
+  const pendingMin = parseInt(process.env.TEMP_TRANSFER_PENDING_MAX_AGE_MINUTES, 10);
+  const pendingMaxAgeMs =
+    Number.isFinite(pendingMin) && pendingMin > 0 ? pendingMin * 60 * 1000 : 24 * 60 * 60 * 1000;
+
   return {
     enabled,
     rootDir: path.resolve(rootDir),
@@ -52,6 +57,7 @@ function loadTempTransferConfig(rootDir) {
     maxTtlMinutes: maxTtl,
     maxFileSizeBytes,
     sweepIntervalMs,
+    pendingMaxAgeMs,
   };
 }
 

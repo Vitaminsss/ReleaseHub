@@ -263,6 +263,8 @@ fi
 echo "▸ 准备目录 $INSTALL_DIR ..."
 mkdir -p "$INSTALL_DIR/public"
 mkdir -p "$INSTALL_DIR/releases"
+mkdir -p "$INSTALL_DIR/resource-libraries"
+mkdir -p "$INSTALL_DIR/temp-transfers"
 
 if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
   cp -f "$SCRIPT_DIR/server.js" "$INSTALL_DIR/"

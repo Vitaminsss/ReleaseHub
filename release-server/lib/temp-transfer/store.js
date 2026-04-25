@@ -19,6 +19,17 @@ const { LocalStorageProvider } = require('./local-storage');
  * @property {number} [downloadCount]
  */
 
+/**
+ * @typedef {object} TempTransferSweepSummary
+ * @property {string} at ISO 时间
+ * @property {number} removed 过期/残留 meta 已硬删除的条数
+ * @property {number} pendingRemoved 清掉的 orphan .part 数
+ * @property {number} legacyTokensRemoved 旧版 EXPIRED/GONE 墓碑文件数
+ * @property {number} errorCount
+ * @property {number} durationMs
+ * @property {string[]} [errors] 全量（供日志；API 可裁剪）
+ */
+
 function randomId() {
   return crypto.randomBytes(8).toString('hex');
 }
@@ -31,19 +42,28 @@ class TempTransferStore {
   /**
    * @param {object} opts
    * @param {string} opts.rootDir 根目录
+   * @param {number} [opts.pendingMaxAgeMs] pending 中 .part 视为孤儿的时间阈值
    */
   constructor(opts) {
     this.rootDir = path.resolve(opts.rootDir);
     this.metaDir = path.join(this.rootDir, 'meta');
     this.tokenDir = path.join(this.rootDir, 'token-index');
     this.blobsDir = path.join(this.rootDir, 'blobs');
+    this.pendingDir = path.join(this.rootDir, 'pending');
     this.storage = new LocalStorageProvider(this.blobsDir);
+    this.pendingMaxAgeMs = opts.pendingMaxAgeMs != null && opts.pendingMaxAgeMs > 0 ? opts.pendingMaxAgeMs : 24 * 60 * 60 * 1000;
+
+    /** @type {string | null} */
+    this._lastSweepAt = null;
+    /** @type {TempTransferSweepSummary | null} */
+    this._lastSweepSummary = null;
   }
 
   initDirs() {
     fs.mkdirSync(this.metaDir, { recursive: true });
     fs.mkdirSync(this.tokenDir, { recursive: true });
     fs.mkdirSync(this.blobsDir, { recursive: true });
+    fs.mkdirSync(this.pendingDir, { recursive: true });
   }
 
   /** @param {string} id */
@@ -125,7 +145,7 @@ class TempTransferStore {
   }
 
   /**
-   * 过期/删除后 token 文件可写为 EXPIRED，便于返回 410 而非 404
+   * 兼容：旧版在 token 文件写过 EXPIRED / GONE；新逻辑不再写入，但读取仍识别直至被清扫删掉
    * @param {string} token
    * @returns {Promise<TransferRecord|null|{ __tomb: true, reason: string }>}
    */
@@ -165,56 +185,119 @@ class TempTransferStore {
   }
 
   /**
-   * @param {string} id
+   * 硬删除：先 blob（可重试），再 token，再 meta。避免元数据已删而 blob 残留。
+   * @param {TransferRecord} rec
    */
-  async removePhysical(id) {
-    const rec = await this.readRecord(id);
-    if (!rec) {
-      const tip = this._guessTokenFileForId(id);
-      for (const t of tip) {
-        try {
-          await fsp.unlink(t);
-        } catch {}
-      }
-      await this.storage.delete(id);
-      return;
-    }
+  async hardDeleteTransfer(rec) {
+    const id = rec.id;
+    await this.storage.deleteWithRetry(id);
     const tip = this.tokenIndexPath(rec.token);
-    try {
-      if (tip) await fsp.writeFile(tip, 'GONE', 'utf-8');
-    } catch (e) {
-      if (e && e.code !== 'ENOENT') throw e;
+    if (tip) {
+      try {
+        await fsp.unlink(tip);
+      } catch (e) {
+        if (e && e.code !== 'ENOENT') throw e;
+      }
     }
     try {
       await fsp.unlink(this.metaPath(id));
     } catch (e) {
       if (e && e.code !== 'ENOENT') throw e;
     }
-    await this.storage.delete(id);
-  }
-
-  /** 孤儿恢复：不扫描全 token 时仅删 blob+meta；token 可尝试按 meta 再删。 */
-  _guessTokenFileForId() {
-    return [];
   }
 
   /**
-   * 标记为已清理（文件可能已删）
+   * 管理删除或补删：有记录则整链硬删；无记录则尽量删 blob（无 meta 时无法定位 token 文件）
    * @param {string} id
-   * @param {string} [reason]
    */
-  async markDeleted(id, reason) {
+  async removePhysical(id) {
     const rec = await this.readRecord(id);
-    if (!rec) return;
-    rec.status = 'deleted';
-    if (reason) rec.deletedReason = reason;
-    try {
-      await this.writeRecord(rec);
-    } catch {}
+    if (!rec) {
+      try {
+        await this.storage.deleteWithRetry(id);
+      } catch (e) {
+        if (e && e.code !== 'ENOENT') throw e;
+      }
+      return;
+    }
+    await this.hardDeleteTransfer(rec);
   }
 
   /**
-   * 扫描所有 meta，清理过期
+   * 旧版在 token-index 中遗留的纯文本墓碑，直接删除小文件
+   * @returns {Promise<{ removed: number, errors: string[] }>}
+   */
+  async sweepLegacyTombstoneTokens() {
+    this.initDirs();
+    let removed = 0;
+    const errors = [];
+    let names;
+    try {
+      names = await fsp.readdir(this.tokenDir);
+    } catch (e) {
+      errors.push(String(e && e.message));
+      return { removed, errors };
+    }
+    for (const name of names) {
+      const p = path.join(this.tokenDir, name);
+      let raw;
+      try {
+        const st = await fsp.stat(p);
+        if (!st.isFile()) continue;
+        raw = (await fsp.readFile(p, 'utf-8')).trim();
+      } catch (e) {
+        errors.push(`${name}: ${e && e.message}`);
+        continue;
+      }
+      if (raw === 'EXPIRED' || raw === 'GONE') {
+        try {
+          await fsp.unlink(p);
+          removed += 1;
+        } catch (e) {
+          if (e && e.code !== 'ENOENT') errors.push(`${name}: ${e && e.message}`);
+        }
+      }
+    }
+    return { removed, errors };
+  }
+
+  /**
+   * 删除过旧的 pending .part（上传中断/进程崩溃）
+   * @returns {Promise<{ removed: number, errors: string[] }>}
+   */
+  async sweepStalePending() {
+    this.initDirs();
+    let removed = 0;
+    const errors = [];
+    const now = Date.now();
+    const maxAge = this.pendingMaxAgeMs;
+    let names;
+    try {
+      names = await fsp.readdir(this.pendingDir);
+    } catch (e) {
+      errors.push(String(e && e.message));
+      return { removed, errors };
+    }
+    for (const name of names) {
+      if (!name.endsWith('.part')) continue;
+      const p = path.join(this.pendingDir, name);
+      try {
+        const st = await fsp.stat(p);
+        if (!st.isFile()) continue;
+        if (now - st.mtimeMs > maxAge) {
+          await fsp.unlink(p);
+          removed += 1;
+        }
+      } catch (e) {
+        if (e && e.code === 'ENOENT') continue;
+        errors.push(`${name}: ${e && e.message}`);
+      }
+    }
+    return { removed, errors };
+  }
+
+  /**
+   * 扫描 meta：过期或状态需收尾的记录一次硬删
    * @returns {Promise<{ removed: number, errors: string[] }>}
    */
   async sweepExpired() {
@@ -239,49 +322,121 @@ class TempTransferStore {
         errors.push(`${id}: ${e && e.message}`);
         continue;
       }
-      const expired = new Date(rec.expireAt).getTime() <= Date.now();
-      if (!expired) continue;
-      if (rec.status === 'deleted') {
-        // 元信息残留，再删一次索引与 blob
-        try {
-          await this.removePhysical(id);
-          removed += 1;
-        } catch (e) {
-          errors.push(`${id}: ${e && e.message}`);
-        }
-        continue;
-      }
-      rec.status = 'expired';
+      const timeExpired = new Date(rec.expireAt).getTime() <= Date.now();
+      const staleStatus = rec.status === 'deleted' || rec.status === 'expired';
+      if (!timeExpired && !staleStatus) continue;
       try {
-        await this.writeRecord(rec);
-      } catch (e) {
-        errors.push(`${id} meta: ${e && e.message}`);
-      }
-      try {
-        const tip = this.tokenIndexPath(rec.token);
-        if (tip) await fsp.writeFile(tip, 'EXPIRED', 'utf-8');
-      } catch (e) {
-        if (e && e.code !== 'ENOENT') errors.push(`${id} token: ${e.message}`);
-      }
-      try {
-        await this.storage.delete(id);
+        await this.hardDeleteTransfer(rec);
         removed += 1;
       } catch (e) {
-        errors.push(`${id} blob: ${e && e.message}`);
+        errors.push(`${id}: ${e && e.message}`);
       }
-      rec.status = 'deleted';
-      try {
-        await this.writeRecord(rec);
-      } catch {}
     }
     return { removed, errors };
   }
 
   /**
-   * 服务启动时：补偿删除已明确过期但残留的文件
+   * 一次完整清扫：旧墓碑 token → 过期 meta 硬删 → 孤儿 pending
+   * @returns {Promise<{ removed: number, pendingRemoved: number, legacyTokensRemoved: number, errors: string[], lastSweep: TempTransferSweepSummary }>}
+   */
+  async runFullSweep() {
+    const t0 = Date.now();
+    const allErrors = [];
+
+    const leg = await this.sweepLegacyTombstoneTokens();
+    allErrors.push(...leg.errors);
+
+    const exp = await this.sweepExpired();
+    allErrors.push(...exp.errors);
+
+    const pend = await this.sweepStalePending();
+    allErrors.push(...pend.errors);
+
+    const removed = exp.removed;
+    const pendingRemoved = pend.removed;
+    const legacyTokensRemoved = leg.removed;
+    const errorCount = allErrors.length;
+
+    /** @type {TempTransferSweepSummary} */
+    const lastSweep = {
+      at: new Date().toISOString(),
+      removed,
+      pendingRemoved,
+      legacyTokensRemoved,
+      errorCount,
+      durationMs: Date.now() - t0,
+      errors: allErrors,
+    };
+    this._lastSweepAt = lastSweep.at;
+    this._lastSweepSummary = lastSweep;
+
+    return {
+      removed,
+      pendingRemoved,
+      legacyTokensRemoved,
+      errors: allErrors,
+      lastSweep,
+    };
+  }
+
+  /**
+   * 服务启动/定时器：全量清扫
    */
   async sweepOnStartup() {
-    return this.sweepExpired();
+    return this.runFullSweep();
+  }
+
+  /**
+   * 各子目录文件数，便于在设置中展示
+   * @returns {Promise<{ rootDir: string, pendingDir: string, blobsDir: string, metaDir: string, tokenIndexDir: string, fileCounts: { pending: number, blobs: number, meta: number, tokenIndex: number } }>}
+   */
+  async getDirectoryStats() {
+    this.initDirs();
+    const countFiles = async dir => {
+      let n = 0;
+      try {
+        const list = await fsp.readdir(dir);
+        for (const name of list) {
+          const p = path.join(dir, name);
+          try {
+            const s = await fsp.stat(p);
+            if (s.isFile()) n += 1;
+          } catch {
+            // skip
+          }
+        }
+      } catch {
+        return 0;
+      }
+      return n;
+    };
+    return {
+      rootDir: this.rootDir,
+      pendingDir: this.pendingDir,
+      blobsDir: this.blobsDir,
+      metaDir: this.metaDir,
+      tokenIndexDir: this.tokenDir,
+      fileCounts: {
+        pending: await countFiles(this.pendingDir),
+        blobs: await countFiles(this.blobsDir),
+        meta: await countFiles(this.metaDir),
+        tokenIndex: await countFiles(this.tokenDir),
+      },
+    };
+  }
+
+  /**
+   * @returns {TempTransferSweepSummary | null}
+   */
+  getLastSweepSummary() {
+    return this._lastSweepSummary;
+  }
+
+  /**
+   * @returns {string | null}
+   */
+  getLastSweepAt() {
+    return this._lastSweepAt;
   }
 
   /**

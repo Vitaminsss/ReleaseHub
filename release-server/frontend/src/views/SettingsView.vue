@@ -14,6 +14,27 @@
       <p v-if="resourceLibrariesDir" class="mono-path">
         <span class="lbl-inline">资源库</span>{{ resourceLibrariesDir }}
       </p>
+      <template v-if="tempTransferEnabled && tempRoot">
+        <p class="mono-path">
+          <span class="lbl-inline">临时传输根目录</span>{{ tempRoot }}
+        </p>
+        <p class="hint sm path-hint">
+          与「应用 / 资源库」同级，默认名为 <code>temp-transfers</code>。实体文件在 <code>blobs/</code> 内，文件名为
+          <code>{id}.bin</code> 而非原始名；上传中在 <code>pending/</code>；元数据 <code>meta/</code>；分享索引
+          <code>token-index/</code>。
+        </p>
+        <p v-for="(p, k) in tempSubdirs" :key="k" class="mono-path sub-indent">
+          <span class="lbl-inline">{{ k }}</span>{{ p }}
+        </p>
+        <p v-if="tempFileCounts" class="file-counts">
+          <span>文件数 — pending {{ tempFileCounts.pending }} · blobs {{ tempFileCounts.blobs }} · meta {{ tempFileCounts.meta }} · token-index {{ tempFileCounts.tokenIndex }}</span>
+        </p>
+        <p v-if="tempSweep" class="muted sm">
+          最近清扫：{{ tempSweep.at }} · 已删记录 {{ tempSweep.removed }} · 已清 pending
+          {{ tempSweep.pendingRemoved }} · 旧墓碑 {{ tempSweep.legacyTokensRemoved }} · 错误
+          {{ tempSweep.errorCount }} · {{ tempSweep.durationMs }}ms（定时约每 {{ tempSweepIntervalSec }}s）
+        </p>
+      </template>
     </section>
 
     <section class="card block">
@@ -67,6 +88,12 @@ const { toast } = useToast();
 const baseUrl = ref('');
 const releasesDir = ref('');
 const resourceLibrariesDir = ref('');
+const tempTransferEnabled = ref(false);
+const tempRoot = ref('');
+const tempSubdirs = ref(/** @type {Record<string, string>} */ ({}));
+const tempFileCounts = ref(/** @type {null | { pending: number, blobs: number, meta: number, tokenIndex: number }} */ (null));
+const tempSweep = ref(/** @type {null | { at: string, removed: number, pendingRemoved: number, legacyTokensRemoved: number, errorCount: number, durationMs: number }} */ (null));
+const tempSweepIntervalSec = ref(60);
 const savingBase = ref(false);
 const disk = ref(null);
 const diskError = ref('');
@@ -81,6 +108,21 @@ async function load() {
     baseUrl.value = s.baseUrl || '';
     releasesDir.value = s.releasesDir || '';
     resourceLibrariesDir.value = s.resourceLibrariesDir || '';
+    const tt = s.tempTransfer;
+    if (tt && tt.enabled) {
+      tempTransferEnabled.value = true;
+      tempRoot.value = tt.rootDir || '';
+      tempSubdirs.value = tt.subdirs || {};
+      tempFileCounts.value = tt.fileCounts || null;
+      tempSweep.value = tt.lastSweep || null;
+      if (tt.sweepIntervalSeconds != null) tempSweepIntervalSec.value = tt.sweepIntervalSeconds;
+    } else {
+      tempTransferEnabled.value = false;
+      tempRoot.value = '';
+      tempSubdirs.value = {};
+      tempFileCounts.value = null;
+      tempSweep.value = null;
+    }
   } catch (e) {
     toast(e.message, 'error');
   }
@@ -158,6 +200,24 @@ onMounted(load);
   margin: 0 0 14px;
   font-size: 13px;
   color: var(--text2);
+  line-height: 1.5;
+}
+.path-hint {
+  margin-top: 4px;
+}
+.sub-indent {
+  padding-left: 8px;
+  border-left: 2px solid rgba(232, 160, 53, 0.25);
+  margin-left: 2px;
+}
+.file-counts {
+  font-size: 12px;
+  color: var(--text2);
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+.sm {
+  font-size: 12px;
   line-height: 1.5;
 }
 .mono-path {
