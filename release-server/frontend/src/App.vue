@@ -14,21 +14,11 @@
           Release Hub
         </div>
         <nav class="app-sidenav-nav" aria-label="页面">
-          <RouterLink
-            to="/"
-            class="sidenav-link"
-            :class="{ 'sidenav-link--active': isHomeRoute }"
-            >总览</RouterLink
-          >
+          <RouterLink to="/" class="sidenav-link" :class="{ 'sidenav-link--active': isHomeRoute }">总览</RouterLink>
         </nav>
         <div class="app-sidenav-spacer" />
         <nav class="app-sidenav-bottom" aria-label="系统">
-          <RouterLink
-            to="/settings"
-            class="sidenav-link"
-            :class="{ 'sidenav-link--active': isSettings }"
-            >设置</RouterLink
-          >
+          <RouterLink to="/settings" class="sidenav-link" :class="{ 'sidenav-link--active': isSettings }">设置</RouterLink>
         </nav>
       </aside>
       <main class="app-main">
@@ -77,9 +67,6 @@ function goHome() {
   flex-direction: column;
   align-items: stretch;
 }
-.app-root--shelled {
-  min-height: 0;
-}
 .app-shelled-body {
   display: flex;
   flex: 1;
@@ -93,6 +80,7 @@ function goHome() {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  align-self: stretch;
   padding: 20px 14px 18px;
   border-right: 1px solid var(--border, rgba(235, 230, 223, 0.08));
   background: linear-gradient(180deg, #14110d 0%, #0d0b09 100%);
@@ -151,6 +139,7 @@ function goHome() {
   flex: 1;
   min-width: 0;
   min-height: 0;
+  overflow: auto;
 }
 .app-main--auth {
   width: 100%;
@@ -165,29 +154,31 @@ function goHome() {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-    padding: 12px 14px;
+    padding: 10px 12px;
     border-right: none;
     border-bottom: 1px solid var(--border, rgba(235, 230, 223, 0.08));
   }
   .app-sidenav-brand {
-    margin: 0 12px 0 0;
+    margin: 0 10px 0 0;
   }
   .app-sidenav-nav {
+    display: flex;
     flex: 1;
     flex-direction: row;
     min-width: 0;
+    gap: 4px;
   }
   .app-sidenav-spacer {
     display: none;
   }
   .app-sidenav-bottom {
-    width: 100%;
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    margin-left: auto;
     border-top: none;
     border-left: 1px solid var(--border, rgba(235, 230, 223, 0.08));
     padding: 0 0 0 8px;
-    margin-left: 8px;
-    flex: 0 0 auto;
-    flex-direction: row;
   }
   .sidenav-link {
     padding: 8px 10px;

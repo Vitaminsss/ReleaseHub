@@ -4,7 +4,7 @@
       <button
         type="button"
         class="btn btn-ghost"
-        @click="router.push({ path: '/', hash: '#section-resources' })"
+        @click="router.push({ path: '/', hash: '#library-grid' })"
       >← 总览</button>
       <div class="title-block">
         <div class="titles">
@@ -363,7 +363,7 @@ async function confirmDeleteLibrary() {
   try {
     await api('DELETE', `/api/resources/${encodeURIComponent(libraryName.value)}`);
     toast('已删除资源库');
-    router.push({ path: '/', hash: '#section-resources' });
+    router.push({ path: '/', hash: '#library-grid' });
   } catch (e) {
     toast(e.message, 'error');
   }

@@ -1,90 +1,71 @@
 <template>
-  <div class="layout-max home">
+  <div class="layout-max home" id="library-grid">
     <header class="page-head">
       <h1>总览</h1>
-      <p class="sub">管理应用发布与无版本资源库，卡片均可点击进入</p>
+      <p class="sub">Tauri、通用与资源库为同级「库」，仅路径与能力不同，点击卡片进入对应管理页</p>
     </header>
 
     <p v-if="loading" class="muted">加载中…</p>
 
     <template v-else>
-      <section id="section-apps" class="section block-apps">
-        <div class="section-bar">
-          <div class="section-title">
-            <h2>应用</h2>
-            <p class="section-hint">多版本、发布、Tauri 或通用</p>
-          </div>
+      <div class="toolbar">
+        <div class="toolbar-text">
+          <h2 class="toolbar-title">所有库</h2>
+        </div>
+        <div class="toolbar-actions">
           <button type="button" class="btn btn-primary" @click="showCreateApp = true">新建应用</button>
-        </div>
-        <div class="grid">
-          <transition-group name="slide-up">
-            <button
-              v-for="a in apps"
-              :key="'app-' + a.name"
-              type="button"
-              class="app-tile card lib-card"
-              @click="router.push(`/app/${encodeURIComponent(a.name)}`)"
-            >
-              <div class="lib-tile-header">
-                <div class="lib-title-block">
-                  <span class="name">{{ a.displayLabel || a.name }}</span>
-                  <span v-if="a.displayName" class="pkg-id" aria-label="包名">{{ a.name }}</span>
-                </div>
-                <span class="lib-count">{{ a.versionCount }} 个版本</span>
-              </div>
-              <div class="lib-growth" aria-hidden="true" />
-              <div class="lib-footer">
-                <div class="lib-footer-left">
-                  <span v-if="a.latestVersion" class="ver">
-                    <span class="ver-label">最新</span>
-                    <strong>{{ a.latestVersion }}</strong>
-                  </span>
-                  <span v-else class="ver muted2">尚未发布</span>
-                </div>
-                <span
-                  class="lib-pill"
-                  :class="a.repoType === 'tauri' ? 'lib-pill--tauri' : 'lib-pill--general'"
-                >{{ a.repoType === 'tauri' ? 'Tauri' : '通用' }}</span>
-              </div>
-            </button>
-          </transition-group>
-        </div>
-        <p v-if="!apps.length" class="empty-hint">暂无应用，可点击「新建应用」</p>
-      </section>
-
-      <section id="section-resources" class="section block-resources">
-        <div class="section-bar">
-          <div class="section-title">
-            <h2>资源库</h2>
-            <p class="section-hint">无版本线，多文件一页展示、可为每项写简介</p>
-          </div>
           <button type="button" class="btn btn-primary" @click="showCreateResource = true">新建资源库</button>
         </div>
-        <div class="grid">
-          <transition-group name="slide-up">
-            <button
-              v-for="r in libraries"
-              :key="'res-' + r.name"
-              type="button"
-              class="app-tile card lib-card"
-              @click="router.push(`/resources/${encodeURIComponent(r.name)}`)"
-            >
-              <div class="lib-tile-header">
-                <div class="lib-title-block">
-                  <span class="name">{{ r.displayLabel || r.name }}</span>
-                  <span v-if="r.displayName" class="pkg-id">{{ r.name }}</span>
-                </div>
-                <span class="lib-count">{{ r.itemCount }} 个文件</span>
+      </div>
+
+      <p v-if="!allItems.length" class="empty-hint">暂无库。可新建「应用」（多版本发版）或「资源库」（多文件无版本线）</p>
+
+      <TransitionGroup v-else name="slide-up" tag="div" class="grid">
+        <button
+          v-for="it in allItems"
+          :key="it.key"
+          type="button"
+          class="app-tile card lib-card"
+          @click="goItem(it)"
+        >
+          <template v-if="it.kind === 'app'">
+            <div class="lib-tile-header">
+              <div class="lib-title-block">
+                <span class="name">{{ it.displayLabel || it.name }}</span>
+                <span v-if="it.displayName" class="pkg-id" aria-label="包名">{{ it.name }}</span>
               </div>
-              <div class="lib-growth" aria-hidden="true" />
-              <div class="lib-footer lib-footer--pillOnly">
-                <span class="lib-pill lib-pill--resource">资源库</span>
+              <span class="lib-count">{{ it.versionCount }} 个版本</span>
+            </div>
+            <div class="lib-growth" aria-hidden="true" />
+            <div class="lib-footer">
+              <div class="lib-footer-left">
+                <span v-if="it.latestVersion" class="ver">
+                  <span class="ver-label">最新</span>
+                  <strong>{{ it.latestVersion }}</strong>
+                </span>
+                <span v-else class="ver muted2">尚未发布</span>
               </div>
-            </button>
-          </transition-group>
-        </div>
-        <p v-if="!libraries.length" class="empty-hint">暂无资源库，可点击「新建资源库」</p>
-      </section>
+              <span
+                class="lib-pill"
+                :class="it.repoType === 'tauri' ? 'lib-pill--tauri' : 'lib-pill--general'"
+              >{{ it.repoType === 'tauri' ? 'Tauri' : '通用' }}</span>
+            </div>
+          </template>
+          <template v-else>
+            <div class="lib-tile-header">
+              <div class="lib-title-block">
+                <span class="name">{{ it.displayLabel || it.name }}</span>
+                <span v-if="it.displayName" class="pkg-id">{{ it.name }}</span>
+              </div>
+              <span class="lib-count">{{ it.itemCount }} 个文件</span>
+            </div>
+            <div class="lib-growth" aria-hidden="true" />
+            <div class="lib-footer lib-footer--pillOnly">
+              <span class="lib-pill lib-pill--resource">资源库</span>
+            </div>
+          </template>
+        </button>
+      </TransitionGroup>
     </template>
 
     <teleport to="body">
@@ -129,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '@/api/client';
 import { useToast } from '@/composables/useToast';
@@ -149,6 +130,20 @@ const newResName = ref('');
 const newResDisplayName = ref('');
 const newResDescription = ref('');
 const creatingRes = ref(false);
+
+const allItems = computed(() => {
+  const a = apps.value.map(x => ({ kind: 'app', key: `app:${x.name}`, ...x }));
+  const r = libraries.value.map(x => ({ kind: 'resource', key: `res:${x.name}`, ...x }));
+  return [...a, ...r];
+});
+
+function goItem(it) {
+  if (it.kind === 'app') {
+    router.push(`/app/${encodeURIComponent(it.name)}`);
+  } else {
+    router.push(`/resources/${encodeURIComponent(it.name)}`);
+  }
+}
 
 async function load() {
   loading.value = true;
@@ -222,10 +217,9 @@ async function createLibrary() {
 
 onMounted(async () => {
   await load();
-  const hash = window.location.hash;
-  if (hash === '#section-resources') {
+  if (window.location.hash === '#section-resources' || window.location.hash === '#library-grid') {
     requestAnimationFrame(() => {
-      document.getElementById('section-resources')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('library-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
 });
@@ -236,7 +230,7 @@ onMounted(async () => {
   padding-bottom: 32px;
 }
 .page-head {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 h1 {
   margin: 0;
@@ -251,40 +245,29 @@ h1 {
   max-width: 40rem;
   line-height: 1.5;
 }
-.section {
-  margin-top: 32px;
-}
-.section:first-of-type {
-  margin-top: 8px;
-}
-.section-bar {
+.toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px 16px;
   margin-bottom: 16px;
 }
-.section-title {
-  min-width: 0;
-  flex: 1;
-}
-.section-bar h2 {
+.toolbar-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.03em;
+  color: var(--text2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
-.section-hint {
-  margin: 6px 0 0;
-  font-size: 13px;
-  color: var(--text3);
-  line-height: 1.45;
-  max-width: 36rem;
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .empty-hint {
-  margin: 0;
+  margin: 0 0 12px;
   font-size: 14px;
   color: var(--text3);
 }
@@ -292,6 +275,8 @@ h1 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
+  align-content: start;
+  min-height: 0;
 }
 .app-tile {
   padding: 20px;

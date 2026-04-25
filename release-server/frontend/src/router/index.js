@@ -13,7 +13,7 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView, meta: { guest: true } },
     { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true } },
     { path: '/app/:name', name: 'app-detail', component: AppDetailView, meta: { requiresAuth: true } },
-    { path: '/resources', redirect: { path: '/', hash: '#section-resources' } },
+    { path: '/resources', redirect: { path: '/', hash: '#library-grid' } },
     { path: '/resources/:name', name: 'resource-detail', component: ResourceDetailView, meta: { requiresAuth: true } },
     { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
