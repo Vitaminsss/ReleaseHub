@@ -56,7 +56,7 @@ export async function api(method, path, body = null, options = {}) {
     const msg = data?.error || data?.message || `HTTP ${res.status}`;
     const err = new Error(msg);
     err.status = res.status;
-    err.data = data;
+    if (data != null) err.data = data;
     throw err;
   }
 
@@ -123,7 +123,10 @@ export function uploadWithProgress({ method, path: p, formData, onProgress, sign
           data?.raw && String(data.raw).trim().startsWith('<')
             ? '（响应为 HTML，多为代理未转发到后端或路径前缀不匹配）'
             : '';
-        reject(new Error(msg ? `${msg}${hint}` : `HTTP ${xhr.status}${hint}`));
+        const e = new Error(msg ? `${msg}${hint}` : `HTTP ${xhr.status}${hint}`);
+        e.status = xhr.status;
+        if (data && typeof data === 'object' && !data.raw) e.data = data;
+        reject(e);
         return;
       }
       if (data && typeof data === 'object' && data.raw != null && !('uploaded' in data)) {

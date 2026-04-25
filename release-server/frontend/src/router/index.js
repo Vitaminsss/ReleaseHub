@@ -16,6 +16,12 @@ const router = createRouter({
     { path: '/resources', redirect: { path: '/', hash: '#library-grid' } },
     { path: '/resources/:name', name: 'resource-detail', component: ResourceDetailView, meta: { requiresAuth: true } },
     { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
+    {
+      path: '/temp-transfer',
+      name: 'temp-transfer',
+      component: () => import('@/views/TempTransferView.vue'),
+      meta: { requiresAuth: true },
+    },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 });

@@ -159,6 +159,19 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 
 `GET /api/public/{包名}/latest/download?redirect=1` **302** 到当前已发布主安装包直链（按**磁盘**与当前 **BASE_URL** 计算，不依赖 JSON 内旧 URL）。
 
+### 临时传输（可与发布系统独立使用）
+
+上传后按 **TTL** 自动失效，文件存于本机 `temp-transfers/`（可通过 `TEMP_TRANSFER_DIR` 指定）。下载地址与 `BASE_URL` 一致。
+
+| 说明 | 路径 / 方法 |
+| ---- | ------------- |
+| 上传 | `POST /api/temp-transfer/upload`，`multipart/form-data`：`file`（必填）、`ttlMinutes`（可选，须在允许列表中） |
+| 下载 | `GET /tt/{token}`（成功 `200`，过大 `413`，无效 TTL `422`，已过期 `410`） |
+| 元信息 | `GET /api/temp-transfer/{token}/meta` |
+| 允许 TTL 与默认 | `GET /api/temp-transfer/allowed-ttls` |
+
+环境变量（可选，未设时有默认值）：`TEMP_TRANSFER_ENABLED`、`TEMP_TRANSFER_DIR`、`TEMP_TRANSFER_DEFAULT_TTL_MINUTES`、`TEMP_TRANSFER_ALLOWED_TTLS`（逗号分隔，如 `30,60,180,360,720,1440`）、`TEMP_TRANSFER_MAX_FILE_SIZE_MB`、`TEMP_TRANSFER_SWEEP_INTERVAL_SECONDS`。
+
 ---
 
 ## 使用流程（管理后台）

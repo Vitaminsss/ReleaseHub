@@ -63,11 +63,14 @@ const {
   readIndex,
 } = require('./resource-libraries');
 const { fileBadgeLabel } = require('./download-utils');
+const { registerTempTransferRoutes } = require('./temp-transfer/routes');
 
 function registerRoutes(app) {
   app.get('/api/health', (req, res) => {
     res.json({ ok: true, service: 'release-hub' });
   });
+
+  registerTempTransferRoutes(app);
 
   app.post('/api/login', async (req, res) => {
     if (!(await bcrypt.compare(req.body.password || '', CONFIG.ADMIN_PASSWORD_HASH)))
@@ -598,6 +601,15 @@ function registerRoutes(app) {
       baseUrl: CONFIG.BASE_URL,
       releasesDir: CONFIG.RELEASES_DIR,
       resourceLibrariesDir: CONFIG.RESOURCE_LIBRARIES_DIR,
+      tempTransfer: CONFIG.TEMP_TRANSFER
+        ? {
+            enabled: CONFIG.TEMP_TRANSFER.enabled,
+            rootDir: CONFIG.TEMP_TRANSFER.rootDir,
+            defaultTtlMinutes: CONFIG.TEMP_TRANSFER.defaultTtlMinutes,
+            allowedTtlsMinutes: CONFIG.TEMP_TRANSFER.allowedTtlsMinutes,
+            maxFileSizeMb: Math.floor(CONFIG.TEMP_TRANSFER.maxFileSizeBytes / (1024 * 1024)),
+          }
+        : null,
     }),
   );
 

@@ -1,5 +1,6 @@
 .env
 .notes-cache/
+temp-transfers/
 node_modules/
 
 # 前端构建产物（在 release-server 目录执行 npm run build 生成）

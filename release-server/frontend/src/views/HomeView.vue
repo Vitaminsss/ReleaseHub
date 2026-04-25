@@ -13,6 +13,7 @@
           <h2 class="toolbar-title">所有库</h2>
         </div>
         <div class="toolbar-actions">
+          <button type="button" class="btn btn-ghost" @click="router.push('/temp-transfer')">临时传输</button>
           <button type="button" class="btn btn-primary" @click="showCreateApp = true">新建应用</button>
           <button type="button" class="btn btn-primary" @click="showCreateResource = true">新建资源库</button>
         </div>

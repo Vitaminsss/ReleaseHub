@@ -40,6 +40,11 @@
 
     <nav class="rail-foot" aria-label="系统">
       <RouterLink
+        to="/temp-transfer"
+        class="rail-link"
+        :class="{ 'rail-link--active': isTempTransfer }"
+      >临时传输</RouterLink>
+      <RouterLink
         to="/settings"
         class="rail-link"
         :class="{ 'rail-link--active': isSettings }"
@@ -56,6 +61,7 @@ import { formatBytes } from '@/utils/format-bytes';
 
 const route = useRoute();
 const isSettings = computed(() => route.name === 'settings');
+const isTempTransfer = computed(() => route.name === 'temp-transfer');
 
 const disk = ref(null);
 const error = ref('');
@@ -136,6 +142,9 @@ onUnmounted(() => {
   text-decoration: none;
   border-radius: 6px;
   transition: color 0.15s, background 0.15s;
+}
+.rail-link + .rail-link {
+  margin-top: 4px;
 }
 
 .rail-link:hover {
