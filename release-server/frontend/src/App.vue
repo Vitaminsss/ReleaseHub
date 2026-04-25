@@ -1,8 +1,9 @@
 <template>
   <ToastStack />
   <div class="app-root" :class="{ 'app-root--shelled': shelled }">
-    <ServerStatusStrip v-if="showServerStrip" />
-    <div v-if="shelled" class="app-shelled-body">
+    <div v-if="shelled" class="app-shelled-wrap">
+      <ServerStatusStrip v-if="showServerStrip" />
+      <div class="app-shelled-body">
       <aside class="app-sidenav" aria-label="主导航">
         <div
           class="app-sidenav-brand"
@@ -28,6 +29,7 @@
           </transition>
         </router-view>
       </main>
+    </div>
     </div>
     <main v-else class="app-main app-main--auth">
       <router-view v-slot="{ Component }">
@@ -67,9 +69,17 @@ function goHome() {
   flex-direction: column;
   align-items: stretch;
 }
+.app-shelled-wrap {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  align-items: stretch;
+}
 .app-shelled-body {
   display: flex;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   width: 100%;
   align-items: stretch;
@@ -145,6 +155,11 @@ function goHome() {
   width: 100%;
 }
 
+@media (max-width: 768px) {
+  .app-shelled-wrap {
+    flex-direction: column;
+  }
+}
 @media (max-width: 700px) {
   .app-shelled-body {
     flex-direction: column;
