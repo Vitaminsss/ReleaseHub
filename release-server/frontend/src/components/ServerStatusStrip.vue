@@ -61,7 +61,9 @@ import { formatBytes } from '@/utils/format-bytes';
 
 const route = useRoute();
 const isSettings = computed(() => route.name === 'settings');
-const isTempTransfer = computed(() => route.name === 'temp-transfer');
+const isTempTransfer = computed(
+  () => route.name === 'temp-transfer' || route.name === 'temp-item',
+);
 
 const disk = ref(null);
 const error = ref('');

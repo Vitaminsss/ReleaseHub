@@ -283,6 +283,42 @@ class TempTransferStore {
   async sweepOnStartup() {
     return this.sweepExpired();
   }
+
+  /**
+   * 管理总览：未过期且仍为 active 的临时文件（按创建时间新到旧）
+   * @returns {Promise<Array<{ id: string, token: string, originalName: string, size: number, mimeType: string|null, createdAt: string, expireAt: string, downloadCount: number, secondsRemaining: number }>>}
+   */
+  async listActiveForAdmin() {
+    this.initDirs();
+    let names;
+    try {
+      names = await fsp.readdir(this.metaDir);
+    } catch {
+      return [];
+    }
+    const now = Date.now();
+    const out = [];
+    for (const name of names) {
+      if (!name.endsWith('.json')) continue;
+      const id = name.replace(/\.json$/, '');
+      const rec = await this.readRecord(id);
+      if (!rec || rec.status !== 'active') continue;
+      if (new Date(rec.expireAt).getTime() <= now) continue;
+      out.push({
+        id: rec.id,
+        token: rec.token,
+        originalName: rec.originalName,
+        size: rec.size,
+        mimeType: rec.mimeType || null,
+        createdAt: rec.createdAt,
+        expireAt: rec.expireAt,
+        downloadCount: rec.downloadCount || 0,
+        secondsRemaining: Math.max(0, Math.floor((new Date(rec.expireAt).getTime() - now) / 1000)),
+      });
+    }
+    out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return out;
+  }
 }
 
 module.exports = {

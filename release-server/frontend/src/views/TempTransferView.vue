@@ -1,69 +1,64 @@
 <template>
-  <div class="layout-max">
+  <div class="layout-max temp-upload">
     <header class="top">
-      <button type="button" class="btn btn-ghost" @click="router.push('/')">← 总览</button>
+      <button type="button" class="btn btn-ghost" @click="router.push({ path: '/', hash: '#temp-hub' })">← 总览</button>
       <div class="title-block">
         <div class="titles">
-          <h1>临时传输</h1>
-          <p class="pkg-sub">上传后生成短链，到期自动删除。链接依赖设置中的 <code>BASE_URL</code>。</p>
+          <h1>新的临时文件</h1>
+          <p class="pkg-sub">拖拽或选择文件，指定有效期。上传后可在总览中管理。对外链接与 <code>BASE_URL</code> 一致。</p>
         </div>
-        <span class="badge-type badge--tool">工具</span>
+        <span class="badge-nova">+</span>
       </div>
     </header>
 
     <p v-if="loadError" class="card err-banner">{{ loadError }}</p>
 
-    <section v-else class="card block">
-      <h2>选择文件与有效期</h2>
-      <p class="hint">单文件大小上限为 {{ maxFileSizeMb }} MB。有效期需在服务器允许列表内。</p>
+    <section v-else class="card block upload-hero" :class="{ 'is-busy': uploading }">
+      <h2>上传</h2>
+      <p class="hint">最大 {{ maxFileSizeMb }} MB。可选有效期为服务端允许范围。</p>
 
-      <input
-        ref="fileInput"
-        type="file"
-        class="file-input"
-        :disabled="uploading"
-        @change="onFileChange"
-      />
-      <div class="row-pick">
-        <button
-          type="button"
-          class="btn btn-ghost"
+      <div
+        class="drop-zone"
+        :class="{ drag: dragActive, disabled: uploading }"
+        @dragover.prevent="!uploading && (dragActive = true)"
+        @dragleave="dragActive = false"
+        @drop.prevent="onDrop"
+        @click="!uploading && fileInputRef?.click()"
+      >
+        <input
+          ref="fileInputRef"
+          type="file"
+          class="hidden-input"
           :disabled="uploading"
-          @click="fileInput?.click()"
-        >选择文件</button>
-        <span class="file-name" :class="{ muted2: !pickedName }">{{ pickedName || '未选择' }}</span>
+          @change="onFileChange"
+        />
+        <div class="dz-inner">
+          <span class="dz-orbit" aria-hidden="true" />
+          <p class="dz-line1">{{ uploading ? '正在上传…' : '将文件拖入此处' }}</p>
+          <p class="dz-line2">或点击从本机选择</p>
+        </div>
       </div>
 
-      <label class="lbl">有效期</label>
-      <select v-model="ttlMinutes" class="input" :disabled="uploading || !allowedTtls.length">
-        <option v-for="m in allowedTtls" :key="m" :value="m">
-          {{ formatTtl(m) }}（{{ m }} 分钟）
-        </option>
-      </select>
-
-      <div v-if="uploading" class="progress-line">
-        <div class="progress-fill" :style="{ width: progressPct < 0 ? '40%' : `${progressPct}%` }" />
-        <span class="progress-txt">
-          {{ progressPct < 0 ? '上传中…' : `${progressPct}%` }}
-        </span>
+      <div class="ttl-row">
+        <label class="lbl">有效期</label>
+        <select v-model="ttlMinutes" class="input ttl-select" :disabled="uploading || !allowedTtls.length">
+          <option v-for="m in allowedTtls" :key="m" :value="m">
+            {{ formatTtl(m) }}（{{ m }} 分钟）
+          </option>
+        </select>
       </div>
 
-      <div class="row-btns" style="margin-top: 16px">
-        <button
-          type="button"
-          class="btn btn-primary"
-          :disabled="!file || uploading || !allowedTtls.length"
-          @click="startUpload"
-        >上传并生成链接</button>
-        <button v-if="result" type="button" class="btn btn-ghost" @click="resetResult">清除结果</button>
-      </div>
-    </section>
+      <p v-if="pickedName" class="pick-name">
+        已选 <strong>{{ pickedName }}</strong>
+      </p>
 
-    <section v-if="result" class="card block">
-      <h2>分享链接</h2>
-      <p class="hint">截止 {{ result.expireAtLabel }}（已上传 {{ result.originalName || '文件' }}）</p>
-      <ShareLinkRow label="下载" :url="result.downloadUrl" />
-      <ShareLinkRow label="元信息" :url="result.metaUrl" />
+      <div v-if="uploadPct != null && uploadPct >= 0" class="prog">
+        <div class="prog-bar">
+          <div class="prog-fill" :style="{ width: uploadPct + '%' }" />
+        </div>
+        <span class="prog-txt mono">{{ uploadPct }}%</span>
+      </div>
+      <div v-else-if="uploadPct === -1" class="prog indet">上传中（无法计算进度）…</div>
     </section>
   </div>
 </template>
@@ -73,23 +68,21 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, uploadWithProgress } from '@/api/client';
 import { useToast } from '@/composables/useToast';
-import ShareLinkRow from '@/components/ShareLinkRow.vue';
 
 const router = useRouter();
 const { toast } = useToast();
 
-const fileInput = ref(null);
+const fileInputRef = ref(null);
 const file = ref(null);
 const pickedName = ref('');
 const allowedTtls = ref([]);
-const defaultTtl = ref(1440);
 const maxFileSizeMb = ref(500);
 const loadError = ref('');
 
 const ttlMinutes = ref(1440);
 const uploading = ref(false);
-const progressPct = ref(0);
-const result = ref(null);
+const uploadPct = ref(/** @type {number | null} */ (null));
+const dragActive = ref(false);
 
 function formatTtl(m) {
   if (m === 1440) return '24 小时';
@@ -98,18 +91,28 @@ function formatTtl(m) {
   return `${m} 分钟`;
 }
 
-function onFileChange(e) {
-  const f = e?.target?.files?.[0];
-  file.value = f || null;
-  pickedName.value = f ? f.name : '';
-  result.value = null;
+function pickFile(f) {
+  if (!f) return;
+  file.value = f;
+  pickedName.value = f.name;
 }
 
-function resetResult() {
-  result.value = null;
-  if (fileInput.value) fileInput.value.value = '';
-  file.value = null;
-  pickedName.value = '';
+function onFileChange(e) {
+  const f = e?.target?.files?.[0];
+  if (f) {
+    pickFile(f);
+    doUpload();
+  }
+}
+
+function onDrop(e) {
+  dragActive.value = false;
+  if (uploading.value) return;
+  const f = e.dataTransfer?.files?.[0];
+  if (f) {
+    pickFile(f);
+    doUpload();
+  }
 }
 
 async function loadAllowed() {
@@ -117,68 +120,52 @@ async function loadAllowed() {
   try {
     const d = await api('GET', '/api/temp-transfer/allowed-ttls');
     allowedTtls.value = d.allowedTtlsMinutes || [];
-    if (d.defaultTtlMinutes != null) {
-      defaultTtl.value = d.defaultTtlMinutes;
-      if (allowedTtls.value.includes(d.defaultTtlMinutes)) {
-        ttlMinutes.value = d.defaultTtlMinutes;
-      } else {
-        ttlMinutes.value = allowedTtls.value[0] ?? 1440;
-      }
+    if (d.defaultTtlMinutes != null && allowedTtls.value.includes(d.defaultTtlMinutes)) {
+      ttlMinutes.value = d.defaultTtlMinutes;
     } else {
       ttlMinutes.value = allowedTtls.value[0] ?? 1440;
     }
     if (d.maxFileSizeMb != null) maxFileSizeMb.value = d.maxFileSizeMb;
   } catch (e) {
     if (e.status === 404) {
-      loadError.value = '本服务器未启用「临时传输」，或该功能已关闭。可在服务端设置 TEMP_TRANSFER_ENABLED。';
+      loadError.value = '本服务器未启用「临时传输」。可在 .env 中设置 TEMP_TRANSFER_ENABLED。';
     } else {
-      loadError.value = e.message || '无法读取临时传输配置';
+      loadError.value = e.message || '无法读取配置';
     }
   }
 }
 
-function expireLabel(iso) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString();
-  } catch {
-    return iso;
-  }
-}
-
-async function startUpload() {
-  if (!file.value) {
-    toast('请选择文件', 'error');
-    return;
-  }
+async function doUpload() {
+  if (!file.value) return;
+  if (loadError.value) return;
   const fd = new FormData();
   fd.append('file', file.value);
   fd.append('ttlMinutes', String(ttlMinutes.value));
   uploading.value = true;
-  progressPct.value = 0;
-  result.value = null;
+  uploadPct.value = 0;
   try {
     const data = await uploadWithProgress({
       method: 'POST',
       path: '/api/temp-transfer/upload',
       formData: fd,
-      onProgress: (n) => {
-        progressPct.value = n;
+      onProgress: n => {
+        uploadPct.value = n;
       },
     });
-    const expireAt = data.expireAt || '';
-    result.value = {
-      downloadUrl: data.downloadUrl || '',
-      metaUrl: data.metaUrl || '',
-      originalName: data.originalName,
-      expireAtLabel: expireLabel(expireAt),
-    };
-    toast('已生成链接');
+    toast('已创建临时文件');
+    if (data?.id) {
+      router.push(`/temp-transfer/${encodeURIComponent(data.id)}`);
+    } else {
+      router.push({ path: '/', hash: '#temp-hub' });
+    }
   } catch (e) {
     toast(e.message || '上传失败', 'error');
   } finally {
     uploading.value = false;
-    progressPct.value = 0;
+    uploadPct.value = null;
+    if (fileInputRef.value) fileInputRef.value.value = '';
+    file.value = null;
+    pickedName.value = '';
   }
 }
 
@@ -188,49 +175,22 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.file-input {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
+.temp-upload {
+  padding-bottom: 40px;
 }
-.row-pick {
+.badge-nova {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.file-name {
-  font-size: 14px;
-  word-break: break-all;
-}
-.muted2 {
-  color: var(--text3);
-}
-.progress-line {
-  position: relative;
-  margin-top: 16px;
-  height: 10px;
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent-dim, #c98728) 0%, var(--accent, #e8a035) 100%);
-  transition: width 0.2s ease;
-}
-.progress-txt {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 10px;
-  color: var(--text2);
-  text-shadow: 0 0 4px #000;
+  justify-content: center;
+  min-width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(145deg, #f0b24a 0%, #c98728 100%);
+  color: #1a1208;
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 8px 24px rgba(232, 160, 53, 0.25);
 }
 .err-banner {
   color: var(--danger, #e85d4c);
@@ -238,8 +198,140 @@ onMounted(() => {
   line-height: 1.5;
   margin-bottom: 16px;
 }
-.badge--tool {
-  background: rgba(100, 180, 200, 0.15);
-  color: #9ad4e0;
+.upload-hero {
+  position: relative;
+  overflow: hidden;
+}
+.upload-hero::after {
+  content: '';
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232, 160, 53, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.upload-hero.is-busy {
+  opacity: 0.95;
+  pointer-events: none;
+}
+.hidden-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.drop-zone {
+  position: relative;
+  border: 1.5px dashed rgba(232, 160, 53, 0.35);
+  background: linear-gradient(165deg, rgba(18, 16, 14, 0.95) 0%, rgba(10, 9, 8, 0.98) 100%);
+  border-radius: 12px;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.drop-zone:hover,
+.drop-zone.drag {
+  border-color: rgba(232, 160, 53, 0.6);
+  box-shadow: 0 0 0 1px rgba(232, 160, 53, 0.15), 0 12px 40px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(165deg, rgba(30, 26, 22, 0.98) 0%, rgba(12, 11, 9, 1) 100%);
+}
+.drop-zone.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.dz-inner {
+  text-align: center;
+  padding: 24px 20px;
+  position: relative;
+  z-index: 1;
+}
+.dz-orbit {
+  display: block;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 12px;
+  border: 2px solid rgba(232, 160, 53, 0.45);
+  border-top-color: transparent;
+  animation: spin 1.1s linear infinite;
+  opacity: 0.85;
+}
+.upload-hero:not(.is-busy) .dz-orbit {
+  animation: none;
+  border: 2px solid rgba(232, 160, 53, 0.25);
+  border-top-color: rgba(232, 160, 53, 0.55);
+}
+.dz-line1 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 6px;
+  letter-spacing: 0.02em;
+}
+.dz-line2 {
+  font-size: 13px;
+  color: var(--text3);
+  margin: 0;
+}
+.ttl-row {
+  margin-top: 20px;
+  max-width: 320px;
+}
+.ttl-select {
+  margin-top: 6px;
+}
+.pick-name {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text2);
+  word-break: break-all;
+}
+.prog {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.prog-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.prog-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #c98728 0%, #e8a035 100%);
+  transition: width 0.15s ease;
+}
+.prog-txt {
+  font-size: 12px;
+  color: var(--text2);
+  min-width: 2.5rem;
+  text-align: right;
+}
+.prog.indet {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 8px;
+}
+.mono {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

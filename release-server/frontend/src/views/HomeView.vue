@@ -2,18 +2,53 @@
   <div class="layout-max home" id="library-grid">
     <header class="page-head">
       <h1>总览</h1>
-      <p class="sub">Tauri、通用与资源库为同级「库」，仅路径与能力不同，点击卡片进入对应管理页</p>
+      <p class="sub">Tauri、通用、资源库与「临时文件」在此并列；点击卡片进入对应管理页。临时文件为单份、可定时删除的分享链。</p>
     </header>
 
     <p v-if="loading" class="muted">加载中…</p>
 
     <template v-else>
+      <section id="temp-hub" class="section-temp" aria-label="临时传输">
+        <div class="toolbar">
+          <div class="toolbar-text">
+            <h2 class="toolbar-title">临时文件</h2>
+            <p v-if="!tempItems.length" class="section-sub">无进行中的文件。可新建一条并对外分享，到期自动删除。</p>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" class="btn btn-primary" @click="router.push('/temp-transfer')">新的临时文件</button>
+          </div>
+        </div>
+
+        <div v-if="tempItems.length" class="grid temp-grid">
+          <button
+            v-for="it in tempItems"
+            :key="it.id"
+            type="button"
+            class="app-tile card temp-tile"
+            @click="goTemp(it)"
+          >
+            <div class="lib-tile-header">
+              <div class="lib-title-block">
+                <span class="name temp-filename">{{ it.originalName || '未命名' }}</span>
+                <span class="pkg-id temp-id" :title="it.id">#{{ it.id.slice(0, 8) }}</span>
+              </div>
+              <span class="lib-count temp-remain mono">{{ remLabel(it) }}</span>
+            </div>
+            <div class="lib-growth temp-sheen" aria-hidden="true" />
+            <div class="lib-footer lib-footer--pillOnly">
+              <span class="lib-pill lib-pill--temp">临时 · 单文件</span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <div class="section-gutter" role="separator" aria-hidden="true" />
+
       <div class="toolbar">
         <div class="toolbar-text">
           <h2 class="toolbar-title">所有库</h2>
         </div>
         <div class="toolbar-actions">
-          <button type="button" class="btn btn-ghost" @click="router.push('/temp-transfer')">临时传输</button>
           <button type="button" class="btn btn-primary" @click="showCreateApp = true">新建应用</button>
           <button type="button" class="btn btn-primary" @click="showCreateResource = true">新建资源库</button>
         </div>
@@ -111,16 +146,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '@/api/client';
 import { useToast } from '@/composables/useToast';
+import { formatRemainingSec } from '@/utils/format-remaining';
 
 const router = useRouter();
 const { toast } = useToast();
 const apps = ref([]);
 const libraries = ref([]);
+const tempItems = ref([]);
 const loading = ref(true);
+const tempTick = ref(0);
+let tempListTimer = null;
+let tempTickTimer = null;
 const showCreateApp = ref(false);
 const showCreateResource = ref(false);
 const newAppName = ref('');
@@ -146,6 +186,27 @@ function goItem(it) {
   }
 }
 
+function goTemp(it) {
+  router.push(`/temp-transfer/${encodeURIComponent(it.id)}`);
+}
+
+function remLabel(it) {
+  void tempTick.value;
+  const exp = it.expireAt ? new Date(it.expireAt).getTime() : 0;
+  const sec = Math.max(0, Math.floor((exp - Date.now()) / 1000));
+  if (!exp) return formatRemainingSec(it.secondsRemaining || 0);
+  return `剩余 ${formatRemainingSec(sec)}`;
+}
+
+async function loadTempList() {
+  try {
+    const t = await api('GET', '/api/temp-transfer/list');
+    tempItems.value = t?.items || [];
+  } catch {
+    tempItems.value = [];
+  }
+}
+
 async function load() {
   loading.value = true;
   try {
@@ -157,6 +218,7 @@ async function load() {
   } finally {
     loading.value = false;
   }
+  await loadTempList();
 }
 
 async function createApp() {
@@ -218,11 +280,27 @@ async function createLibrary() {
 
 onMounted(async () => {
   await load();
-  if (window.location.hash === '#section-resources' || window.location.hash === '#library-grid') {
+  tempTickTimer = setInterval(() => {
+    tempTick.value += 1;
+  }, 1000);
+  tempListTimer = setInterval(() => {
+    loadTempList();
+  }, 40000);
+  if (
+    window.location.hash === '#section-resources' ||
+    window.location.hash === '#library-grid' ||
+    window.location.hash === '#temp-hub'
+  ) {
+    const id = window.location.hash === '#temp-hub' ? 'temp-hub' : 'library-grid';
     requestAnimationFrame(() => {
-      document.getElementById('library-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
+});
+
+onUnmounted(() => {
+  if (tempListTimer) clearInterval(tempListTimer);
+  if (tempTickTimer) clearInterval(tempTickTimer);
 });
 </script>
 
@@ -345,5 +423,72 @@ h1 {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+}
+.section-temp {
+  margin-bottom: 8px;
+}
+.section-temp .toolbar {
+  margin-bottom: 14px;
+}
+.section-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text3);
+  line-height: 1.5;
+  max-width: 36rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+.temp-grid {
+  margin-top: 4px;
+}
+.temp-tile {
+  text-align: left;
+  background: linear-gradient(168deg, rgba(20, 17, 14, 0.98) 0%, rgba(8, 7, 6, 0.99) 100%);
+  border-color: rgba(232, 160, 53, 0.22) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+.temp-tile:hover {
+  border-color: rgba(232, 160, 53, 0.45) !important;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(232, 160, 53, 0.12);
+}
+.temp-filename {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+.temp-id {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+}
+.temp-remain {
+  font-size: 12px;
+  color: #e8a035;
+  max-width: 8.5rem;
+  text-align: right;
+  line-height: 1.3;
+}
+.lib-pill--temp {
+  background: linear-gradient(90deg, rgba(232, 160, 53, 0.18) 0%, rgba(60, 45, 20, 0.5) 100%);
+  color: #f0c978;
+  border: 1px solid rgba(232, 160, 53, 0.25);
+}
+.temp-sheen {
+  background: linear-gradient(105deg, transparent 0%, rgba(232, 160, 53, 0.04) 40%, transparent 80%);
+  min-height: 6px;
+  margin: 4px 0 8px;
+  border-radius: 4px;
+}
+.section-gutter {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 22px 0 20px;
+  opacity: 0.85;
+}
+.mono {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
 }
 </style>

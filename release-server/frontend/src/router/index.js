@@ -22,6 +22,12 @@ const router = createRouter({
       component: () => import('@/views/TempTransferView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/temp-transfer/:id',
+      name: 'temp-item',
+      component: () => import('@/views/TempItemDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 });
