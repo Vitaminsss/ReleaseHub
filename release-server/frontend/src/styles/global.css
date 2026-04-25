@@ -13,7 +13,7 @@
   --radius: 10px;
   --radius-sm: 6px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  /* index.html 已预载 */
+  /* index.html 已预载 Google Fonts */
   --font-display: 'Outfit', var(--font);
   --font-mono-anno: 'Share Tech Mono', ui-monospace, 'Cascadia Code', monospace;
 }

@@ -1,7 +1,6 @@
 <template>
   <div class="layout-max">
-    <header class="top">
-      <button type="button" class="btn btn-ghost" @click="router.push('/')">← 返回</button>
+    <header class="top top-settings">
       <h1>设置</h1>
     </header>
 

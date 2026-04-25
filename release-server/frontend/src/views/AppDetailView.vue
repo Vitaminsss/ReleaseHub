@@ -1,7 +1,7 @@
 <template>
   <div class="layout-max">
     <header class="top">
-      <button type="button" class="btn btn-ghost" @click="router.push('/')">← 应用列表</button>
+      <button type="button" class="btn btn-ghost" @click="router.push('/')">← 总览</button>
       <div class="title-block">
         <div class="titles">
           <h1>{{ displayLabel }}</h1>
@@ -10,7 +10,6 @@
         <span class="badge-type">{{ repoType }}</span>
       </div>
       <div class="actions">
-        <button type="button" class="btn btn-ghost" @click="router.push('/settings')">设置</button>
         <button type="button" class="btn btn-ghost danger" @click="confirmDeleteApp">删除应用</button>
         <button type="button" class="btn btn-primary" @click="showNewVer = true">新建版本</button>
       </div>

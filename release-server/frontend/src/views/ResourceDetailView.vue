@@ -1,7 +1,11 @@
 <template>
   <div class="layout-max">
     <header class="top">
-      <button type="button" class="btn btn-ghost" @click="router.push('/resources')">← 资源库列表</button>
+      <button
+        type="button"
+        class="btn btn-ghost"
+        @click="router.push({ path: '/', hash: '#section-resources' })"
+      >← 总览</button>
       <div class="title-block">
         <div class="titles">
           <h1>
@@ -13,7 +17,6 @@
         <span class="badge-type">resource</span>
       </div>
       <div class="actions">
-        <button type="button" class="btn btn-ghost" @click="router.push('/settings')">设置</button>
         <button type="button" class="btn btn-ghost danger" @click="confirmDeleteLibrary">删除资源库</button>
       </div>
     </header>
@@ -360,7 +363,7 @@ async function confirmDeleteLibrary() {
   try {
     await api('DELETE', `/api/resources/${encodeURIComponent(libraryName.value)}`);
     toast('已删除资源库');
-    router.push('/resources');
+    router.push({ path: '/', hash: '#section-resources' });
   } catch (e) {
     toast(e.message, 'error');
   }
