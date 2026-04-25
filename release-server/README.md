@@ -174,7 +174,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 | 管理 · 单条 | `GET /api/temp-transfer/item/{id}`（需登录） |
 | 管理 · 取消 | `DELETE /api/temp-transfer/item/{id}`（需登录，立即删除文件与链） |
 
-环境变量（可选，未设时有默认值）：`TEMP_TRANSFER_ENABLED`、`TEMP_TRANSFER_DIR`、`TEMP_TRANSFER_DEFAULT_TTL_MINUTES`、`TEMP_TRANSFER_ALLOWED_TTLS`（逗号分隔，如 `30,60,180,360,720,1440`）、`TEMP_TRANSFER_MAX_FILE_SIZE_MB`、`TEMP_TRANSFER_SWEEP_INTERVAL_SECONDS`。
+环境变量（可选，未设时有默认值）：`TEMP_TRANSFER_ENABLED`、`TEMP_TRANSFER_DIR`、`TEMP_TRANSFER_DEFAULT_TTL_MINUTES`、`TEMP_TRANSFER_ALLOWED_TTLS`（逗号分隔，如 `30,60,180,360,720,1440`）、`TEMP_TRANSFER_MAX_FILE_SIZE_MB`（未设时默认 **100**，与全站单文件、Nginx 建议上限一致）、`TEMP_TRANSFER_SWEEP_INTERVAL_SECONDS`。
 
 ---
 

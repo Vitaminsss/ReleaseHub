@@ -127,7 +127,7 @@ server {
 ${listen_directive}
     server_name ${sn};
 
-    client_max_body_size 500M;
+    client_max_body_size 100M;
     client_body_timeout 300s;
 
     include /etc/nginx/conf.d/locations/*.conf;
@@ -141,7 +141,10 @@ write_release_hub_location() {
   if [ -n "$NGINX_PREFIX_SLUG" ]; then
     sudo tee "$loc_path" > /dev/null <<NGX
 # Release Hub — 由 deploy.sh 管理
+# 必须在本 location 内限制：若主 server 由其他站点(如 HomePortal)创建且未设 client_max_body_size，会继承 http 的 1m 导致大文件 413
 location /${NGINX_PREFIX_SLUG}/ {
+    client_max_body_size 100M;
+    client_body_timeout 300s;
     proxy_pass http://localhost:${PORT}/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
@@ -157,7 +160,10 @@ NGX
   else
     sudo tee "$loc_path" > /dev/null <<NGX
 # Release Hub — 由 deploy.sh 管理（整站根路径）
+# 同上，避免主 server 未设 body 大小时默认 1m
 location / {
+    client_max_body_size 100M;
+    client_body_timeout 300s;
     proxy_pass http://localhost:${PORT};
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
@@ -201,7 +207,7 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-    client_max_body_size 500M;
+    client_max_body_size 100M;
     client_body_timeout 300s;
 
     include /etc/nginx/conf.d/locations/*.conf;

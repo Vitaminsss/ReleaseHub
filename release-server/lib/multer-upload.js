@@ -5,6 +5,7 @@ const CONFIG = require('./config');
 const { readAppMeta } = require('./meta-notes');
 const { isSemVer2CoreWithVPrefix, isValidGeneralVersionForUpload } = require('./releases');
 const { multerFixOriginalNameFileFilter } = require('./fix-multipart-filename');
+const { MAX_UPLOAD_BYTES } = require('./upload-limits');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -18,7 +19,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   fileFilter: multerFixOriginalNameFileFilter(),
-  limits: { fileSize: 500 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES },
 });
 
 const { libraryFilesDir, ensureLibraryFilesDir } = require('./resource-libraries');
@@ -35,7 +36,7 @@ const resourceLibraryStorage = multer.diskStorage({
 const resourceLibraryUpload = multer({
   storage: resourceLibraryStorage,
   fileFilter: multerFixOriginalNameFileFilter(),
-  limits: { fileSize: 500 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES },
 });
 
 function validateVersionForUpload(req, res, next) {

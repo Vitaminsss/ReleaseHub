@@ -8,6 +8,7 @@ const { normalizeBaseUrl } = require('./base-url');
 const { MIN_PASSWORD_LENGTH } = require('./admin-password-defaults');
 const { auth } = require('./auth-middleware');
 const { upload, validateVersionForUpload, resourceLibraryUpload } = require('./multer-upload');
+const { MAX_UPLOAD_MB } = require('./upload-limits');
 const {
   readAppMeta,
   writeAppMeta,
@@ -218,7 +219,7 @@ function registerRoutes(app) {
       upload.array('files', 20)(req, res, err => {
         if (!err) return next();
         if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(413).json({ error: '单个文件超过 500MB 限制', code: 'FILE_TOO_LARGE' });
+          return res.status(413).json({ error: `单个文件超过 ${MAX_UPLOAD_MB}MB 限制`, code: 'FILE_TOO_LARGE' });
         }
         return res.status(400).json({ error: err.message || '上传失败', code: 'UPLOAD_ERROR' });
       });
@@ -353,7 +354,7 @@ function registerRoutes(app) {
       resourceLibraryUpload.array('files', 20)(req, res, err => {
         if (!err) return next();
         if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(413).json({ error: '单个文件超过 500MB 限制', code: 'FILE_TOO_LARGE' });
+          return res.status(413).json({ error: `单个文件超过 ${MAX_UPLOAD_MB}MB 限制`, code: 'FILE_TOO_LARGE' });
         }
         return res.status(400).json({ error: err.message || '上传失败', code: 'UPLOAD_ERROR' });
       });

@@ -21,21 +21,39 @@ function apiUrl(p) {
 }
 
 /**
- * 开发时上传、下载类大体量请求直连后端，避免经 Vite dev proxy 时出现 413/HTML 等代理层问题；生产仍走与页面一致的 baseUrl。
- * 可通过 VITE_DEV_UPLOAD_ORIGIN 覆盖（默认 http://127.0.0.1:3721，与 server 默认 PORT 一致）。
+ * 大文件 XHR 的目标 URL。
+ *
+ * 为何不用「始终同源」的 apiUrl：
+ * - `npm run build` 后 `import.meta.env.DEV` 为 false，若经 Vite 预览(4173) 或反代/ CDN，体积分支常见为 1MB(Nginx 默认) 或 100MB(部分 CDN)，会在到达 Node 前 413。
+ * - 在本地 5173/4173 时直连 Node（与 server 默认 PORT 一致），可绕过前端的 dev/preview 代理体积分支。
+ * - 自托管若需绕过某层反代，可设 `VITE_UPLOAD_API_ORIGIN` 指向能直达 Node 的根地址（如 `https://同域名:3721` 或内网地址）。
  */
 function uploadXhrUrl(p) {
   if (p.startsWith('http')) return p;
   let path = p.startsWith('/') ? p : `/${p}`;
-  if (import.meta.env.DEV) {
-    const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '';
-    if (basePath && path.startsWith(`${basePath}/`)) {
-      path = path.slice(basePath.length) || '/';
-    }
-    const o = (import.meta.env.VITE_DEV_UPLOAD_ORIGIN || 'http://127.0.0.1:3721').replace(/\/$/, '');
-    return `${o}${path}`;
+  const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '';
+  if (basePath && path.startsWith(`${basePath}/`)) {
+    path = path.slice(basePath.length) || '/';
   }
-  return apiUrl(p);
+  if (import.meta.env.VITE_UPLOAD_SAME_ORIGIN === '1') {
+    return apiUrl(path);
+  }
+  const explicit = String(import.meta.env.VITE_UPLOAD_API_ORIGIN || '').trim().replace(/\/$/, '');
+  if (explicit) {
+    return `${explicit}${path.startsWith('/') ? path : `/${path}`}`;
+  }
+  const localPorts = (import.meta.env.VITE_BYPASS_PROXY_UPLOAD_PORTS || '5173,4173')
+    .split(/[,;]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  const isLocal = typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  const isBypassPort =
+    typeof location !== 'undefined' && location.port && localPorts.includes(location.port);
+  if (import.meta.env.DEV || (isLocal && isBypassPort)) {
+    const o = (import.meta.env.VITE_DEV_UPLOAD_ORIGIN || 'http://127.0.0.1:3721').replace(/\/$/, '');
+    return `${o}${path.startsWith('/') ? path : `/${path}`}`;
+  }
+  return apiUrl(path);
 }
 
 export async function api(method, path, body = null, options = {}) {
@@ -137,10 +155,13 @@ export function uploadWithProgress({ method, path: p, formData, onProgress, sign
           data && typeof data === 'object' && !data.raw
             ? data.error || data.message
             : null;
-        const hint =
-          data?.raw && String(data.raw).trim().startsWith('<')
-            ? '（响应为 HTML，多为代理未转发到后端或路径前缀不匹配）'
-            : '';
+        let hint = '';
+        if (data?.raw && String(data.raw).trim().startsWith('<')) {
+          hint =
+            xhr.status === 413
+              ? '（413 且为 HTML：常见为 Nginx 请求体上限默认 1m、或 Cloudflare 等约 100MB 限制；请在反代 location 内设 client_max_body_size，或构建时设 VITE_UPLOAD_API_ORIGIN 直连 Node）'
+              : '（响应为 HTML，多为代理未转发到后端或路径前缀不匹配）';
+        }
         const e = new Error(msg ? `${msg}${hint}` : `HTTP ${xhr.status}${hint}`);
         e.status = xhr.status;
         if (data && typeof data === 'object' && !data.raw) e.data = data;

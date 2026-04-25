@@ -70,7 +70,7 @@ const fileInputRef = ref(null);
 const file = ref(null);
 const pickedName = ref('');
 const allowedTtls = ref([]);
-const maxFileSizeMb = ref(500);
+const maxFileSizeMb = ref(100);
 const loadError = ref('');
 
 const ttlMinutes = ref(1440);

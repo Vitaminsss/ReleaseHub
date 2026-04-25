@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const { MAX_UPLOAD_MB } = require('../upload-limits');
 
 /**
  * @typedef {object} TempTransferConfig
@@ -37,7 +38,7 @@ function loadTempTransferConfig(rootDir) {
   }
   defaultTtlMinutes = Math.min(defaultTtlMinutes, maxTtl);
   const maxMb = parseInt(process.env.TEMP_TRANSFER_MAX_FILE_SIZE_MB, 10);
-  const maxFileSizeBytes = (Number.isFinite(maxMb) && maxMb > 0 ? maxMb : 500) * 1024 * 1024;
+  const maxFileSizeBytes = (Number.isFinite(maxMb) && maxMb > 0 ? maxMb : MAX_UPLOAD_MB) * 1024 * 1024;
   const sweepSec = parseInt(process.env.TEMP_TRANSFER_SWEEP_INTERVAL_SECONDS, 10);
   const sweepIntervalMs = (Number.isFinite(sweepSec) && sweepSec >= 10 ? sweepSec : 60) * 1000;
   const rawEnabled = process.env.TEMP_TRANSFER_ENABLED;
