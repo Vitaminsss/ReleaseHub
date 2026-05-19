@@ -63,7 +63,7 @@
       <ShareLinkRow v-if="publicPageUrl" label="公开浏览页" :url="publicPageUrl" />
       <ShareLinkRow v-if="publicArchiveRootUrl" label="根目录 ZIP 直链" :url="publicArchiveRootUrl" />
       <ShareLinkRow v-if="publicJsonUrl" label="JSON" :url="publicJsonUrl" />
-      <p class="hint sm no-mt">访客可在浏览页进入子文件夹、单文件下载或打包 ZIP（超限会提示）。</p>
+      <p class="hint sm no-mt">公开页为卡片网格展示简介与版本；含子目录时可进入文件夹浏览或打包 ZIP。</p>
     </section>
 
     <section class="card upload-block" :class="{ 'section-dim': pageLoading }">
@@ -86,8 +86,19 @@
       <div v-else-if="uploadPct === -1" class="prog indet">上传中（无法计算进度）…</div>
     </section>
 
-    <section v-if="items.length" class="card browse-block" :class="{ 'section-dim': pageLoading }">
-      <h2>文件列表</h2>
+    <section v-if="items.length" class="card items-section" :class="{ 'section-dim': pageLoading }">
+      <div class="items-section-head">
+        <h2>资源文件</h2>
+        <button
+          v-if="hasNestedPaths"
+          type="button"
+          class="btn btn-sm btn-ghost"
+          @click="folderBrowse = !folderBrowse"
+        >
+          {{ folderBrowse ? '显示全部卡片' : '按文件夹浏览' }}
+        </button>
+      </div>
+      <template v-if="folderBrowse && hasNestedPaths">
       <nav class="file-crumbs" aria-label="路径">
         <button
           v-for="(c, i) in browseCrumbs"
@@ -108,10 +119,22 @@
           <button type="button" class="folder-row" @click="browsePath = f.path">📁 {{ f.name }}</button>
         </li>
       </ul>
+      </template>
       <transition-group name="res-card" tag="div" class="items-grid">
-      <article v-for="it in browseFiles" :key="it.id" class="card item-card">
+      <article v-for="it in displayItems" :key="it.id" class="card item-card">
         <header class="item-head">
-          <span class="fn path-font">{{ it.fileName }}</span>
+          <div class="item-title-block">
+            <div class="item-title-row">
+              <span class="item-title">{{ itemCardTitle(it) }}</span>
+              <span v-if="itemEdits[it.id]?.version?.trim()" class="item-ver">{{ itemEdits[it.id].version.trim() }}</span>
+            </div>
+            <span
+              v-if="itemCardSubtitle(it)"
+              class="item-path"
+              :class="{ 'path-font': folderBrowse && hasNestedPaths }"
+              :title="it.fileName"
+            >{{ itemCardSubtitle(it) }}</span>
+          </div>
           <span class="sz">{{ fmtSize(it.size) }}</span>
         </header>
         <div class="item-body">
@@ -186,6 +209,7 @@ const items = ref([]);
 const itemEdits = reactive({});
 const uploadPct = ref(null);
 const browsePath = ref('');
+const folderBrowse = ref(false);
 
 const displayLabel = computed(() => displayNameEdit.value.trim() || libraryName.value);
 
@@ -206,6 +230,10 @@ const browseCrumbs = computed(() => breadcrumbSegments(browsePath.value));
 const browseListing = computed(() => listDirectoryLevel(items.value, browsePath.value));
 const browseFolders = computed(() => browseListing.value.folders);
 const browseFiles = computed(() => browseListing.value.files);
+const hasNestedPaths = computed(() => items.value.some(it => String(it.fileName || '').includes('/')));
+const displayItems = computed(() =>
+  folderBrowse.value && hasNestedPaths.value ? browseFiles.value : items.value,
+);
 const browseArchiveUrl = computed(() => {
   if (!publicBase.value || !libraryName.value) return '';
   const q = browsePath.value ? `?path=${encodeURIComponent(browsePath.value)}` : '';
@@ -234,6 +262,26 @@ function enrichItem(it) {
     landingHref: `${base}/rd/${encodeURIComponent(name)}/${encPath}`,
     downloadUrl: `${base}/r/${encodeURIComponent(name)}/files/${encPath}`,
   };
+}
+
+function fileBaseName(path) {
+  const s = String(path || '');
+  const i = s.lastIndexOf('/');
+  return i >= 0 ? s.slice(i + 1) : s;
+}
+
+function itemCardTitle(it) {
+  const dn = itemEdits[it.id]?.displayName?.trim();
+  if (dn) return dn;
+  return fileBaseName(it.fileName) || it.fileName;
+}
+
+function itemCardSubtitle(it) {
+  const path = String(it.fileName || '');
+  const dn = itemEdits[it.id]?.displayName?.trim();
+  if (dn && dn !== fileBaseName(path)) return path;
+  if (path.includes('/')) return path;
+  return '';
 }
 
 function itemInSubfolder(it) {
@@ -674,12 +722,20 @@ h1 {
   color: var(--text3);
   margin-top: 8px;
 }
-.browse-block {
+.items-section {
   padding: 20px;
   margin-bottom: 20px;
 }
-.browse-block h2 {
-  margin: 0 0 12px;
+.items-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.items-section-head h2 {
+  margin: 0;
   font-size: 16px;
 }
 .file-crumbs {
@@ -737,37 +793,93 @@ h1 {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  border: 1px solid var(--border);
+  background: linear-gradient(168deg, #14110e 0%, #0e0c0a 52%, #12100e 100%);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  transition:
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    transform 0.22s ease;
+}
+.item-card:hover {
+  border-color: rgba(232, 160, 53, 0.38);
+  box-shadow:
+    0 26px 56px rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(232, 160, 53, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(-2px);
 }
 .item-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px;
-  padding: 14px 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding: 15px 16px 14px;
   border-bottom: 1px solid var(--border);
 }
-.fn {
-  font-weight: 700;
-  word-break: break-all;
+.item-title-block {
   flex: 1;
   min-width: 0;
-  font-size: 15px;
 }
-.sz {
+.item-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.item-title {
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.3;
+  color: var(--accent);
+  letter-spacing: -0.015em;
+  word-break: break-word;
+}
+.item-ver {
+  font-family: var(--font-path);
   font-size: 12px;
+  font-weight: 600;
   color: var(--text3);
+  letter-spacing: 0.06em;
   flex-shrink: 0;
 }
+.item-path {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text3);
+  overflow-wrap: anywhere;
+}
+.sz {
+  font-family: var(--font-path);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+  opacity: 0.92;
+}
 .item-body {
-  padding: 12px 16px;
+  padding: 12px 16px 14px;
   flex: 1;
+}
+.item-body .textarea.sm {
+  font-family: 'Fraunces', 'Noto Serif SC', 'Source Han Serif CN', serif;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #e3ddd4;
 }
 .item-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 11px 16px 12px;
   border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.18);
   margin-top: auto;
 }
 .muted {

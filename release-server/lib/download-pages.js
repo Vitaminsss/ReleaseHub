@@ -173,6 +173,99 @@ ul{list-style:none}
 </html>`;
 }
 
+function resourceLibraryPublicStyles() {
+  return `
+:root { --bg:#0a0908; --text:#f0ebe3; --text2:#9a9288; --text3:#6b6459; --accent:#e8a035; --border:rgba(235,230,223,0.09); --desc:#e3ddd4; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;margin:0;padding:24px 20px 40px;display:flex;flex-direction:column;align-items:center}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.022) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;width:100%;max-width:1040px;display:flex;flex-direction:column;align-items:center}
+.page-avatar{width:72px;height:72px;margin:0 auto 20px;border-radius:18px;background:linear-gradient(145deg,#f0b24a 0%,var(--accent) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#1a1208;box-shadow:0 12px 32px rgba(232,160,53,.2);letter-spacing:0;flex-shrink:0;font-family:'Manrope',system-ui,sans-serif}
+h1{font-family:'Manrope',system-ui,sans-serif;font-size:24px;font-weight:800;margin:0 0 14px;text-align:center;line-height:1.25;max-width:100%;letter-spacing:-.02em}
+.kicker{margin:-8px auto 16px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);text-align:center}
+.intro{width:100%;text-align:center;color:var(--text2);font-size:14px;line-height:1.75;margin:0 auto 22px;padding:0 8px;max-width:42rem;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-weight:450}
+.browse-toolbar{width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 16px;margin:0 0 18px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.22)}
+.breadcrumbs{font-size:13px;flex:1;min-width:0;overflow-wrap:anywhere;line-height:1.5}
+.crumb{color:var(--accent);text-decoration:none;font-weight:600}
+.crumb:hover{text-decoration:underline;text-underline-offset:3px}
+.crumb.current{color:var(--text);font-weight:700}
+.crumb-sep{margin:0 5px;opacity:.45;color:var(--text3)}
+.btn-zip{display:inline-flex;align-items:center;padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border-radius:7px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;font-family:'Manrope',system-ui,sans-serif;flex-shrink:0}
+.btn-zip:hover{filter:brightness(1.06);box-shadow:0 0 20px rgba(232,160,53,.28)}
+.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;width:100%;align-items:stretch}
+.res-card{position:relative;border:1px solid var(--border);background:linear-gradient(168deg,#14110e 0%,#0e0c0a 52%,#12100e 100%);border-radius:12px;padding:0;box-shadow:0 20px 50px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.04);display:flex;flex-direction:column;text-align:left;min-height:100%;overflow:hidden;transition:border-color .22s ease,box-shadow .22s ease,transform .22s ease}
+.res-card:hover,.res-card:focus-within{border-color:rgba(232,160,53,.38);box-shadow:0 26px 56px rgba(0,0,0,.48),0 0 0 1px rgba(232,160,53,.12),inset 0 1px 0 rgba(255,255,255,.06);transform:translateY(-2px)}
+.res-card--folder .res-card-head{border-bottom:none;padding-bottom:8px}
+.res-card-folder-link{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;padding:2px 0}
+.folder-glyph{font-size:28px;line-height:1}
+.folder-name{font-weight:700;font-size:17px;color:var(--accent);letter-spacing:-.015em}
+.folder-sub{display:block;font-size:12px;color:var(--text3);margin-top:4px;font-weight:600}
+.path-hint{display:block;font-size:11px;color:var(--text3);margin-top:6px;font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-weight:500;overflow-wrap:anywhere}
+.res-card-head{padding:15px 16px 14px;border-bottom:1px solid var(--border)}
+.res-card-title-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 14px}
+.res-card-title{display:block;flex:1;min-width:0;color:var(--accent);text-decoration:none;font-weight:700;font-size:17px;line-height:1.3;word-break:break-word;letter-spacing:-.015em;font-family:'Manrope',system-ui,sans-serif}
+.res-card-title:hover{text-decoration:underline;text-underline-offset:3px}
+.res-card-ver{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;flex-shrink:0}
+.res-card-main{flex:1;min-height:0;display:flex;flex-direction:column}
+.res-card-desc{padding:14px 16px 10px;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-size:15px;font-weight:500;font-style:normal;color:var(--desc);line-height:1.72;letter-spacing:.01em}
+.res-card-foot{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px 12px;border-top:1px solid var(--border);background:rgba(0,0,0,.18)}
+@media (prefers-reduced-motion:reduce){.res-card,.res-card:hover,.res-card:focus-within{transition:border-color .2s ease,box-shadow .2s ease;transform:none}}
+.res-sz{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:13px;font-weight:600;color:var(--text);letter-spacing:.04em;opacity:.92}
+.btn-dl{display:inline-flex;align-items:center;justify-content:center;padding:8px 15px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;border-radius:7px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s,transform .12s;font-family:'Manrope',system-ui,sans-serif}
+.btn-dl:hover{filter:brightness(1.06);box-shadow:0 0 20px rgba(232,160,53,.28);transform:translateY(-1px)}
+.btn-dl--ghost{background:transparent;border:1px solid rgba(232,160,53,.35);color:#f0c978}
+.btn-dl--ghost:hover{background:rgba(232,160,53,.1);box-shadow:none;transform:none}
+.res-empty{width:100%;text-align:center;color:var(--text2);font-size:14px;padding:32px 16px;border:1px dashed var(--border);border-radius:8px}`;
+}
+
+function buildResourceFileCardHtml(it) {
+  const title = (it.displayName && String(it.displayName).trim()) || it.fileName;
+  const verRaw = it.version != null && String(it.version).trim() ? String(it.version).trim() : '';
+  const verHtml = verRaw ? `<span class="res-card-ver">${htmlEsc(verRaw)}</span>` : '';
+  const descInner =
+    it.description && String(it.description).trim()
+      ? `<div class="res-card-desc">${formatPlainMultiline(String(it.description).trim())}</div>`
+      : '';
+  const mainBlock = descInner ? `<div class="res-card-main">${descInner}</div>` : '';
+  const pathHint =
+    it.fileName && String(title) !== String(it.fileName)
+      ? `<span class="path-hint">${htmlEsc(it.fileName)}</span>`
+      : '';
+  const landing = it.landingHref || it.directHref || '#';
+  return `<article class="res-card">
+  <header class="res-card-head">
+    <div class="res-card-title-row">
+      <a class="res-card-title" href="${htmlEsc(landing)}">${htmlEsc(title)}</a>
+      ${verHtml}
+    </div>
+    ${pathHint}
+  </header>
+  ${mainBlock}
+  <footer class="res-card-foot">
+    <span class="res-sz">${htmlEsc(fmtBytesServer(it.size))}</span>
+    <a class="btn-dl" href="${htmlEsc(it.directHref)}" download rel="noopener">⬇ 下载</a>
+  </footer>
+</article>`;
+}
+
+function buildFolderCardHtml(f) {
+  return `<article class="res-card res-card--folder">
+  <header class="res-card-head">
+    <a class="res-card-folder-link" href="${htmlEsc(f.browseUrl || '#')}">
+      <span class="folder-glyph" aria-hidden="true">📁</span>
+      <div>
+        <span class="folder-name">${htmlEsc(f.name)}</span>
+        <span class="folder-sub">进入文件夹</span>
+      </div>
+    </a>
+  </header>
+  <footer class="res-card-foot">
+    <span class="res-sz">文件夹</span>
+    <a class="btn-dl btn-dl--ghost" href="${htmlEsc(f.archiveUrl || '#')}">ZIP</a>
+  </footer>
+</article>`;
+}
+
 /** 资源库公开页：与后台版本卡片类似的响应式网格，每项一卡 */
 function renderResourceLibraryHtml(opts) {
   const { displayLabel, description, items } = opts;
@@ -185,31 +278,7 @@ function renderResourceLibraryHtml(opts) {
       ? `<div class="intro">${formatPlainMultiline(String(description).trim())}</div>`
       : '';
   const list = items || [];
-  const cards = list
-    .map(it => {
-      const title = (it.displayName && String(it.displayName).trim()) || it.fileName;
-      const verRaw = it.version != null && String(it.version).trim() ? String(it.version).trim() : '';
-      const verHtml = verRaw ? `<span class="res-card-ver">${htmlEsc(verRaw)}</span>` : '';
-      const descInner =
-        it.description && String(it.description).trim()
-          ? `<div class="res-card-desc">${formatPlainMultiline(String(it.description).trim())}</div>`
-          : '';
-      const mainBlock = descInner ? `<div class="res-card-main">${descInner}</div>` : '';
-      return `<article class="res-card">
-  <header class="res-card-head">
-    <div class="res-card-title-row">
-      <a class="res-card-title" href="${htmlEsc(it.landingHref)}">${htmlEsc(title)}</a>
-      ${verHtml}
-    </div>
-  </header>
-  ${mainBlock}
-  <footer class="res-card-foot">
-    <span class="res-sz">${htmlEsc(fmtBytesServer(it.size))}</span>
-    <a class="btn-dl" href="${htmlEsc(it.directHref)}" download rel="noopener">⬇ 下载</a>
-  </footer>
-</article>`;
-    })
-    .join('');
+  const cards = list.map(buildResourceFileCardHtml).join('');
   const gridInner =
     list.length === 0
       ? '<div class="res-empty">暂无资源</div>'
@@ -224,38 +293,13 @@ function renderResourceLibraryHtml(opts) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,480;0,9..144,560;1,9..144,450&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 <title>${htmlEsc(displayLabel)} — 资源库</title>
-<style>
-:root { --bg:#0a0908; --text:#f0ebe3; --text2:#9a9288; --text3:#6b6459; --accent:#e8a035; --border:rgba(235,230,223,0.09); --desc:#e3ddd4; }
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;margin:0;padding:24px 20px 40px;display:flex;flex-direction:column;align-items:center}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,53,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,53,.022) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0}
-.wrap{position:relative;z-index:1;width:100%;max-width:1040px;display:flex;flex-direction:column;align-items:center}
-.page-avatar{width:72px;height:72px;margin:0 auto 20px;border-radius:18px;background:linear-gradient(145deg,#f0b24a 0%,var(--accent) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#1a1208;box-shadow:0 12px 32px rgba(232,160,53,.2);letter-spacing:0;flex-shrink:0;font-family:'Manrope',system-ui,sans-serif}
-h1{font-family:'Manrope',system-ui,sans-serif;font-size:24px;font-weight:800;margin:0 0 14px;text-align:center;line-height:1.25;max-width:100%;letter-spacing:-.02em}
-.intro{width:100%;text-align:center;color:var(--text2);font-size:14px;line-height:1.75;margin:0 auto 22px;padding:0 8px;max-width:42rem;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-weight:450}
-.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;width:100%;align-items:stretch}
-.res-card{position:relative;border:1px solid var(--border);background:linear-gradient(168deg,#14110e 0%,#0e0c0a 52%,#12100e 100%);border-radius:12px;padding:0;box-shadow:0 20px 50px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.04);display:flex;flex-direction:column;text-align:left;min-height:100%;overflow:hidden;transition:border-color .22s ease,box-shadow .22s ease,transform .22s ease}
-.res-card:hover,.res-card:focus-within{border-color:rgba(232,160,53,.38);box-shadow:0 26px 56px rgba(0,0,0,.48),0 0 0 1px rgba(232,160,53,.12),inset 0 1px 0 rgba(255,255,255,.06);transform:translateY(-2px)}
-.res-card-head{padding:15px 16px 14px;border-bottom:1px solid var(--border)}
-.res-card-title-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 14px}
-.res-card-title{display:block;flex:1;min-width:0;color:var(--accent);text-decoration:none;font-weight:700;font-size:17px;line-height:1.3;word-break:break-word;letter-spacing:-.015em;font-family:'Manrope',system-ui,sans-serif}
-.res-card-title:hover{text-decoration:underline;text-underline-offset:3px}
-.res-card-ver{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;flex-shrink:0}
-.res-card-main{flex:1;min-height:0;display:flex;flex-direction:column}
-.res-card-desc{padding:14px 16px 10px;font-family:'Fraunces','Noto Serif SC','Source Han Serif CN',serif;font-size:15px;font-weight:500;font-style:normal;color:var(--desc);line-height:1.72;letter-spacing:.01em}
-.res-card-foot{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px 12px;border-top:1px solid var(--border);background:rgba(0,0,0,.18)}
-@media (prefers-reduced-motion:reduce){.res-card,.res-card:hover,.res-card:focus-within{transition:border-color .2s ease,box-shadow .2s ease;transform:none}}
-.res-sz{font-family:ui-monospace,'Cascadia Code','Segoe UI Mono',monospace;font-size:13px;font-weight:600;color:var(--text);letter-spacing:.04em;opacity:.92}
-.btn-dl{display:inline-flex;align-items:center;justify-content:center;padding:8px 15px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;border-radius:7px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208;transition:filter .15s,box-shadow .15s,transform .12s;font-family:'Manrope',system-ui,sans-serif}
-.btn-dl:hover{filter:brightness(1.06);box-shadow:0 0 20px rgba(232,160,53,.28);transform:translateY(-1px)}
-.res-empty{width:100%;text-align:center;color:var(--text2);font-size:14px;padding:32px 16px;border:1px dashed var(--border);border-radius:8px}
-</style>
+<style>${resourceLibraryPublicStyles()}</style>
 </head>
 <body>
 <div class="wrap">
   <div class="page-avatar" aria-hidden="true">${htmlEsc(initial)}</div>
   <h1>${htmlEsc(displayLabel)}</h1>
-  <p class="intro" style="margin-top:-8px;margin-bottom:16px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)">资源库</p>
+  <p class="kicker">资源库</p>
   ${introHtml}
   ${gridInner}
 </div>
@@ -458,7 +502,7 @@ function renderFolderBrowseHtml(opts) {
   const kindLabel = kind === 'temp' ? '临时分享' : '资源库';
   const introHtml =
     description && String(description).trim()
-      ? `<p class="intro">${formatPlainMultiline(String(description).trim())}</p>`
+      ? `<div class="intro">${formatPlainMultiline(String(description).trim())}</div>`
       : '';
   const crumbHtml = breadcrumbs
     .map((c, i) => {
@@ -468,73 +512,35 @@ function renderFolderBrowseHtml(opts) {
       return `<a class="crumb" href="${htmlEsc(href)}">${htmlEsc(c.label)}</a><span class="crumb-sep">/</span>`;
     })
     .join('');
-  const folderRows = folders
-    .map(
-      f => `<tr class="row-folder">
-  <td class="cell-name"><a href="${htmlEsc(f.browseUrl || '#')}">📁 ${htmlEsc(f.name)}</a></td>
-  <td class="cell-meta">文件夹</td>
-  <td class="cell-act"><a class="btn-sm" href="${htmlEsc(f.archiveUrl || archiveUrl)}">打包下载</a></td>
-</tr>`,
-    )
-    .join('');
-  const fileRows = files
-    .map(it => {
-      const title = (it.displayName && String(it.displayName).trim()) || it.fileName;
-      return `<tr class="row-file">
-  <td class="cell-name"><a href="${htmlEsc(it.landingHref || it.directHref)}">${htmlEsc(title)}</a><span class="path-hint">${htmlEsc(it.fileName)}</span></td>
-  <td class="cell-meta">${htmlEsc(fmtBytesServer(it.size))}</td>
-  <td class="cell-act"><a class="btn-sm btn-dl" href="${htmlEsc(it.directHref)}" download rel="noopener">下载</a></td>
-</tr>`;
-    })
-    .join('');
-  const tableBody =
-    folderRows || fileRows
-      ? folderRows + fileRows
-      : `<tr><td colspan="3" class="empty">此目录为空</td></tr>`;
+  const folderCards = (folders || []).map(buildFolderCardHtml).join('');
+  const fileCards = (files || []).map(buildResourceFileCardHtml).join('');
+  const allCards = folderCards + fileCards;
+  const gridInner = allCards
+    ? `<div class="items-grid">${allCards}</div>`
+    : '<div class="res-empty">此目录为空</div>';
   return `<!DOCTYPE html>
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="${faviconHref}" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<title>${htmlEsc(displayLabel)} — ${kindLabel}</title>
-<style>
-:root{--bg:#0a0908;--text:#f0ebe3;--text2:#9a9288;--accent:#e8a035;--border:rgba(235,230,223,.1)}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Source Sans 3',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:28px 20px 48px;line-height:1.5}
-.wrap{max-width:920px;margin:0 auto}
-h1{font-family:Manrope,system-ui,sans-serif;font-size:1.65rem;font-weight:800;margin:12px 0 8px}
-.kicker{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
-.intro{color:var(--text2);font-size:14px;margin:0 0 20px;line-height:1.7}
-.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 16px}
-.breadcrumbs{font-size:13px;flex:1;min-width:0;overflow-wrap:anywhere}
-.crumb{color:var(--accent);text-decoration:none}
-.crumb.current{color:var(--text)}
-.crumb-sep{margin:0 4px;opacity:.5}
-.btn-zip{display:inline-flex;padding:10px 16px;font-size:12px;font-weight:800;text-decoration:none;border-radius:6px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208}
-table{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border)}
-.cell-name a{color:var(--accent);font-weight:600;text-decoration:none;overflow-wrap:anywhere}
-.path-hint{display:block;font-size:11px;color:var(--text2);margin-top:4px;font-family:ui-monospace,monospace}
-.btn-sm{font-size:11px;padding:6px 12px;border-radius:5px;text-decoration:none;border:1px solid var(--border);color:var(--text)}
-.btn-dl{background:rgba(232,160,53,.15);color:#f0c978}
-.empty{text-align:center;color:var(--text2);padding:28px}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,480;0,9..144,560;1,9..144,450&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<title>${htmlEsc(displayLabel)} — ${htmlEsc(kindLabel)}</title>
+<style>${resourceLibraryPublicStyles()}</style>
 </head>
 <body>
 <div class="wrap">
-  <p class="kicker">${htmlEsc(kindLabel)}</p>
+  <div class="page-avatar" aria-hidden="true">${htmlEsc(initial)}</div>
   <h1>${htmlEsc(displayLabel)}</h1>
+  <p class="kicker">${htmlEsc(kindLabel)}</p>
   ${introHtml}
-  <div class="toolbar">
+  <div class="browse-toolbar">
     <nav class="breadcrumbs" aria-label="路径">${crumbHtml}</nav>
     <a class="btn-zip" href="${htmlEsc(archiveUrl)}">打包下载此目录 (ZIP)</a>
   </div>
-  <table>
-    <thead><tr><th>名称</th><th>大小</th><th>操作</th></tr></thead>
-    <tbody>${tableBody}</tbody>
-  </table>
+  ${gridInner}
 </div>
 </body>
 </html>`;

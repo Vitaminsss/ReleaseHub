@@ -45,7 +45,7 @@ const {
   renderResourceItemLandingHtml,
   renderFolderBrowseHtml,
 } = require('./download-pages');
-const { decodeUrlPathToRelative } = require('./path-utils');
+const { decodeUrlPathToRelative, normalizeRelativePath } = require('./path-utils');
 const { streamZipFromEntries } = require('./folder-archive');
 const {
   isValidLibraryName,
@@ -467,7 +467,29 @@ function registerRoutes(app) {
   app.get('/r/:name', (req, res) => {
     const { name } = req.params;
     const pathQ = req.query.path != null ? String(req.query.path) : '';
-    const payload = toPublicPayload(name, { path: pathQ });
+    const normPath = pathQ ? normalizeRelativePath(pathQ) : '';
+    if (!libraryExists(name)) return res.status(404).type('html').send(renderDownload404Html());
+    const idx = readIndex(name);
+    if (!idx) return res.status(404).type('html').send(renderDownload404Html());
+
+    if (!normPath) {
+      const detail = toAdminDetail(name);
+      const label = detail?.displayLabel || name;
+      const items = (idx.items || []).map(it => ({
+        ...it,
+        landingHref: itemLandingUrl(name, it.fileName),
+        directHref: itemDownloadUrl(name, it.fileName),
+      }));
+      return res.type('html').send(
+        renderResourceLibraryHtml({
+          displayLabel: label,
+          description: idx.description || '',
+          items,
+        }),
+      );
+    }
+
+    const payload = toPublicPayload(name, { path: normPath });
     if (!payload) return res.status(404).type('html').send(renderDownload404Html());
     res.type('html').send(
       renderFolderBrowseHtml({
@@ -485,6 +507,7 @@ function registerRoutes(app) {
           displayName: it.displayName,
           fileName: it.fileName,
           description: it.description,
+          version: it.version,
           size: it.size,
           landingHref: it.landingUrl,
           directHref: it.downloadUrl,
