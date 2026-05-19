@@ -26,7 +26,8 @@ function apiUrl(p) {
  * 为何不用「始终同源」的 apiUrl：
  * - `npm run build` 后 `import.meta.env.DEV` 为 false，若经 Vite 预览(4173) 或反代/ CDN，体积分支常见为 1MB(Nginx 默认) 或 100MB(部分 CDN)，会在到达 Node 前 413。
  * - 在本地 5173/4173 时直连 Node（与 server 默认 PORT 一致），可绕过前端的 dev/preview 代理体积分支。
- * - 自托管若需绕过某层反代，可设 `VITE_UPLOAD_API_ORIGIN` 指向能直达 Node 的根地址（如 `https://同域名:3721` 或内网地址）。
+ * - 生产部署：`deploy.sh` 在启用上传分流时会构建注入 `VITE_UPLOAD_API_ORIGIN`（如 `https://upload.example.com`）。
+ * - 手动自托管也可设该变量指向能直达 Node 的根地址（绕过 CDN / 反代体积分支）。
  */
 function uploadXhrUrl(p) {
   if (p.startsWith('http')) return p;

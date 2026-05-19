@@ -67,17 +67,35 @@ bash deploy.sh
 | `USE_HTTPS=0`   | 不尝试证书（仅 HTTP）；可配合 `DOMAIN` 生成 **BASE_URL**                                                                                   |
 | 未设置 `USE_HTTPS` | 在已装 Nginx 时自动尝试签发（见「HTTPS 自动试签发」）                                                                                            |
 | `DOMAIN`        | **公网域名**（如 `www.example.com`），须与 DNS 一致；**建议显式设置**。未设置时脚本会尝试 `hostname -f`（非内网保留名时采用）。`*.local` / `*.lan` 等内网保留名会被忽略         |
+| `UPLOAD_DOMAIN` | **大文件上传子域**（可选）。未设置且 `DOMAIN` 可用时，默认为 `upload.<apex>`（如 `www.example.com` → `upload.example.com`） |
+| `UPLOAD_SPLIT=0` | 禁用上传分流：不写入上传子域 Nginx、构建时不注入 `VITE_UPLOAD_API_ORIGIN` |
 | `CERTBOT_EMAIL` | Let's Encrypt 注册邮箱（可选；缺省为 `admin@域名`）                                                                                        |
 
 
 ```bash
 bash deploy.sh
 DOMAIN=www.example.com bash deploy.sh          # 指定域名，自动试签发 HTTPS（DNS 须已指向本机）
+DOMAIN=www.example.com bash deploy.sh          # 同上，并默认启用 upload.example.com 上传分流（2GB）
+UPLOAD_DOMAIN=files.example.com DOMAIN=www.example.com bash deploy.sh   # 自定义上传子域
+UPLOAD_SPLIT=0 DOMAIN=www.example.com bash deploy.sh   # 禁用上传分流（恢复仅主域上传）
 USE_HTTPS=0 DOMAIN=www.example.com bash deploy.sh   # 仅用 HTTP，BASE_URL 仍可用域名
 USE_NGINX=0 bash deploy.sh   # 不装 Nginx
 NGINX_PREFIX= bash deploy.sh   # 整站根路径 /（无前缀）
 NGINX_PREFIX=custom bash deploy.sh   # 自定义前缀 /custom/
 ```
+
+### 大文件上传分流（绕过 Cloudflare 等约 100MB 限制）
+
+在设置 `DOMAIN` 且未设 `UPLOAD_SPLIT=0` 时，`deploy.sh` 会：
+
+1. 写入独立 Nginx 配置 `/etc/nginx/conf.d/release-hub-upload.conf`（`server_name` 为上传子域，**根路径**反代 Node，`client_max_body_size` 默认 **2G**）。
+2. 主域 `location` 仍保持 **100M**（适合主站继续走 CDN 橙云）。
+3. 为上传子域尝试 Let's Encrypt（需 DNS 指向本机）；构建管理后台时注入 `VITE_UPLOAD_API_ORIGIN=https://upload.<apex>`。
+4. 在 `.env` 写入 `MAX_UPLOAD_MB=2048`、`TEMP_TRANSFER_MAX_FILE_SIZE_MB=2048`（重跑 deploy 会同步更新）。
+
+**Cloudflare**：请将 **上传子域**（如 `upload.example.com`）设为 **DNS only（灰云）**，A 记录指向源站；**主域可保持橙云**。灰云未生效时，上传仍可能被 CDN 限制在约 100MB。
+
+**使用**：浏览器仍打开主域管理后台登录；页内大文件上传会自动请求上传子域 API，无需改操作习惯。
 
 ### HTTPS 自动试签发（Let's Encrypt）
 
@@ -94,7 +112,7 @@ NGINX_PREFIX=custom bash deploy.sh   # 自定义前缀 /custom/
 - 安装 Node.js 20（若未安装）、PM2。
 - 若启用 Nginx：主 server 块写入 `/etc/nginx/conf.d/<根域标签>.conf`（由域名倒数第二段命名，如 `www.example.com` → `example.conf`；无可用域名时为 `_default.conf`）；Release Hub 的反向代理写在 `/etc/nginx/conf.d/locations/release-hub.conf`（`include` 进主 server 块）。HTTP 80 → `localhost:3721`；默认路径前缀为 `releasehub`，除非 `NGINX_PREFIX=` 空或自定义。可与其它服务共用同一主 server 块，各自只维护 `locations/` 下自己的片段。脚本会**删除**发行版自带的 `/etc/nginx/sites-enabled/default`，否则与无域名时的 `server_name _` 冲突，nginx 会忽略其一并导致反代不生效；若你依赖该默认站点请自行恢复后再合并配置。
 - **程序与数据目录**：`deploy.sh` 所在目录（与 `server.js` 同级），其中 `**releases/`** 存放安装包与 `latest.json`，`**.env`** 在同目录。
-- 首次生成 `.env`（含 `JWT_SECRET`、`ADMIN_PASSWORD_HASH`、`RELEASES_DIR`（指向本目录下 `releases/`）、`BASE_URL`、`PORT`）。启用 Nginx 且使用默认前缀时首次 `BASE_URL` 多为 `http://<公网IP>/releasehub`；无前缀（整站根）时为 `http://<公网IP>`；若配置了域名且 HTTPS 未成功，则可能为 `http://<域名>/...`；HTTPS 成功时为 `https://<域名>/...`；未启用 Nginx 时为 `http://<公网IP>:3721`。
+- 首次生成 `.env`（含 `JWT_SECRET`、`ADMIN_PASSWORD_HASH`、`RELEASES_DIR`（指向本目录下 `releases/`）、`BASE_URL`、`PORT`、`MAX_UPLOAD_MB` 等）。启用 Nginx 且使用默认前缀时首次 `BASE_URL` 多为 `http://<公网IP>/releasehub`；无前缀（整站根）时为 `http://<公网IP>`；若配置了域名且 HTTPS 未成功，则可能为 `http://<域名>/...`；HTTPS 成功时为 `https://<域名>/...`；未启用 Nginx 时为 `http://<公网IP>:3721`。
 - PM2 进程名：`release-hub`；防火墙在启用 Nginx 时通常放行 **80** 与 **3721**；仅在 HTTPS 成功时额外放行 **443**。
 
 **默认密码**：`rainy`，登录后请在「设置」中修改，并核对 **BASE_URL**。
@@ -183,7 +201,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 | 管理 · 单条 | `GET /api/temp-transfer/item/{id}`（需登录） |
 | 管理 · 取消 | `DELETE /api/temp-transfer/item/{id}`（需登录，立即删除文件与链） |
 
-环境变量（可选，未设时有默认值）：`TEMP_TRANSFER_ENABLED`、`TEMP_TRANSFER_DIR`、`TEMP_TRANSFER_DEFAULT_TTL_MINUTES`、`TEMP_TRANSFER_ALLOWED_TTLS`（逗号分隔，如 `30,60,180,360,720,1440`）、`TEMP_TRANSFER_MAX_FILE_SIZE_MB`（未设时默认 **100**，与全站单文件、Nginx 建议上限一致）、`TEMP_TRANSFER_SWEEP_INTERVAL_SECONDS`、`TEMP_TRANSFER_PENDING_MAX_AGE_MINUTES`（`pending/*.part` 超过该分钟数视为孤儿并删除，默认 **1440** 即 24 小时）。
+环境变量（可选，未设时有默认值）：`TEMP_TRANSFER_ENABLED`、`TEMP_TRANSFER_DIR`、`TEMP_TRANSFER_DEFAULT_TTL_MINUTES`、`TEMP_TRANSFER_ALLOWED_TTLS`（逗号分隔，如 `30,60,180,360,720,1440`）、`TEMP_TRANSFER_MAX_FILE_SIZE_MB`（未设时与 `MAX_UPLOAD_MB` 一致，deploy 默认 **2048**）、`TEMP_TRANSFER_SWEEP_INTERVAL_SECONDS`、`TEMP_TRANSFER_PENDING_MAX_AGE_MINUTES`（`pending/*.part` 超过该分钟数视为孤儿并删除，默认 **1440** 即 24 小时）。
 
 ---
 

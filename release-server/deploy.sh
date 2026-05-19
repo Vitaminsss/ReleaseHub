@@ -10,6 +10,8 @@
 #   SKIP_NGINX=1   等同于 USE_NGINX=0（兼容旧用法）
 #   NGINX_PREFIX   未设置时默认路径前缀 releasehub；显式 NGINX_PREFIX= 空字符串=整站根路径 /
 #   DOMAIN         公网域名（如 www.example.com），用于主 server 块与 Let's Encrypt
+#   UPLOAD_DOMAIN  大文件上传子域（可选；未设且 DOMAIN 可用时默认为 upload.<apex>）
+#   UPLOAD_SPLIT=0 禁用上传分流（不建 upload 子域、不注入 VITE_UPLOAD_API_ORIGIN）
 #
 # HTTPS（Let's Encrypt + Certbot，仅在已启用 Nginx 时）：
 #   USE_HTTPS=0    不尝试证书（仅 HTTP）
@@ -30,7 +32,13 @@ PORT=3721
 NGINX_ENABLED=0
 HTTPS_ENABLED=0
 DOMAIN_RESOLVED=""
+UPLOAD_DOMAIN_RESOLVED=""
+UPLOAD_HTTPS_ENABLED=0
 MAIN_NGINX_CONF=""
+MAIN_BODY_LIMIT="${MAIN_BODY_LIMIT:-100M}"
+UPLOAD_BODY_LIMIT="${UPLOAD_BODY_LIMIT:-2G}"
+MAX_UPLOAD_MB_DEFAULT="${MAX_UPLOAD_MB:-2048}"
+UPLOAD_NGINX_CONF="/etc/nginx/conf.d/release-hub-upload.conf"
 
 # 是否为不适合公网访问 / Let's Encrypt 的主机名（如 mDNS 的 *.local）。返回 0=是保留名应忽略
 domain_is_nonpublic_hostname() {
@@ -76,6 +84,199 @@ release_hub_resolve_domain() {
   else
     echo "▸ 使用 DOMAIN=$DOMAIN_RESOLVED"
   fi
+}
+
+# 从 FQDN 取 apex（最后两段），如 www.example.com → example.com
+domain_apex_from_fqdn() {
+  local d="$1"
+  echo "$d" | awk -F. '{print $(NF-1)"."$(NF)}'
+}
+
+# 上传子域：UPLOAD_SPLIT=0 禁用；UPLOAD_DOMAIN 显式；否则 upload.<apex>
+resolve_upload_domain() {
+  UPLOAD_DOMAIN_RESOLVED=""
+  UPLOAD_HTTPS_ENABLED=0
+  if [ "${UPLOAD_SPLIT:-}" = "0" ]; then
+    echo "▸ 上传分流已禁用（UPLOAD_SPLIT=0）"
+    return 0
+  fi
+  if [ "$USE_NGINX_RESOLVED" != "1" ]; then
+    return 0
+  fi
+  local explicit
+  explicit="$(echo "${UPLOAD_DOMAIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  if [ -n "$explicit" ]; then
+    UPLOAD_DOMAIN_RESOLVED="$explicit"
+    echo "▸ 上传子域: $UPLOAD_DOMAIN_RESOLVED（UPLOAD_DOMAIN）"
+    return 0
+  fi
+  if [ -n "$DOMAIN_RESOLVED" ] && ! domain_is_nonpublic_hostname "$DOMAIN_RESOLVED"; then
+    local apex
+    apex="$(domain_apex_from_fqdn "$DOMAIN_RESOLVED")"
+    UPLOAD_DOMAIN_RESOLVED="upload.${apex}"
+    echo "▸ 上传子域: $UPLOAD_DOMAIN_RESOLVED（默认 upload.<apex>）"
+  fi
+}
+
+# .env 键写入或更新（deploy 重跑时同步上传上限）
+env_upsert() {
+  local file="$1" key="$2" val="$3"
+  if [ ! -f "$file" ]; then
+    return 1
+  fi
+  if grep -q "^${key}=" "$file" 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=${val}|" "$file"
+  else
+    echo "${key}=${val}" >> "$file"
+  fi
+}
+
+ensure_upload_env_in_file() {
+  local file="$1"
+  [ -z "$UPLOAD_DOMAIN_RESOLVED" ] && return 0
+  env_upsert "$file" "MAX_UPLOAD_MB" "$MAX_UPLOAD_MB_DEFAULT"
+  env_upsert "$file" "TEMP_TRANSFER_MAX_FILE_SIZE_MB" "$MAX_UPLOAD_MB_DEFAULT"
+}
+
+# 上传子域 Nginx：根路径反代 Node，2G 体积分支（绕过主域 CDN 100MB）
+write_upload_server_block_http() {
+  local dom="$1"
+  [ -z "$dom" ] && return 1
+  echo "▸ 写入上传子域 Nginx（HTTP）: $UPLOAD_NGINX_CONF（server_name $dom）"
+  sudo tee "$UPLOAD_NGINX_CONF" > /dev/null <<NGX
+# Release Hub — 大文件上传专用子域（建议 Cloudflare DNS only / 灰云）
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${dom};
+
+    client_max_body_size ${UPLOAD_BODY_LIMIT};
+    client_body_timeout 600s;
+
+    location / {
+        proxy_pass http://127.0.0.1:${PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+}
+NGX
+}
+
+write_upload_server_block_https() {
+  local dom="$1"
+  [ -z "$dom" ] && return 1
+  echo "▸ 写入上传子域 Nginx（HTTPS）: $UPLOAD_NGINX_CONF（server_name $dom）"
+  sudo tee "$UPLOAD_NGINX_CONF" > /dev/null <<NGX
+# Release Hub — 大文件上传专用子域（建议 Cloudflare DNS only / 灰云）
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${dom};
+
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${dom};
+
+    ssl_certificate     /etc/letsencrypt/live/${dom}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${dom}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    client_max_body_size ${UPLOAD_BODY_LIMIT};
+    client_body_timeout 600s;
+
+    location / {
+        proxy_pass http://127.0.0.1:${PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+}
+NGX
+  UPLOAD_HTTPS_ENABLED=1
+}
+
+refresh_upload_nginx_block() {
+  [ -z "$UPLOAD_DOMAIN_RESOLVED" ] && return 0
+  if sudo test -f "/etc/letsencrypt/live/${UPLOAD_DOMAIN_RESOLVED}/fullchain.pem"; then
+    write_upload_server_block_https "$UPLOAD_DOMAIN_RESOLVED"
+  else
+    write_upload_server_block_http "$UPLOAD_DOMAIN_RESOLVED"
+  fi
+}
+
+# 为上传子域申请 Let's Encrypt（certonly）。成功返回 0
+issue_upload_letsencrypt() {
+  local dom="$1"
+  [ -z "$dom" ] && return 1
+  if ! command -v certbot &>/dev/null; then
+    echo "⚠ 未安装 certbot，跳过上传子域 HTTPS"
+    return 1
+  fi
+  if sudo test -f "/etc/letsencrypt/live/${dom}/fullchain.pem"; then
+    echo "▸ 上传子域证书已存在: $dom"
+    refresh_upload_nginx_block
+    return 0
+  fi
+  if ! dns_resolves_to_public_ip "$dom" "$PUBLIC_IP"; then
+    echo "⚠ 上传子域 DNS 未指向本机 $PUBLIC_IP，跳过 certbot（$dom）"
+    echo "  请在 Cloudflare 将 $dom 设为 DNS only（灰云）并添加 A 记录后重跑 deploy.sh"
+    return 1
+  fi
+  [ -z "$CERTBOT_EMAIL_VAL" ] && CERTBOT_EMAIL_VAL="admin@${dom}"
+  echo "▸ 上传子域 DNS 预检通过（$dom → $PUBLIC_IP）"
+  echo "▸ certbot 上传子域 dry-run: $dom"
+  set +e
+  sudo certbot certonly --nginx \
+    --dry-run \
+    --non-interactive \
+    --agree-tos \
+    --email "$CERTBOT_EMAIL_VAL" \
+    -d "$dom"
+  local dry_exit=$?
+  set -e
+  if [ "$dry_exit" -ne 0 ]; then
+    echo "⚠ 上传子域 certbot dry-run 失败（$dry_exit），保持 HTTP。可稍后: sudo certbot certonly --nginx -d $dom"
+    return 1
+  fi
+  echo "▸ 上传子域正式申请证书: $dom"
+  set +e
+  sudo certbot certonly --nginx \
+    --non-interactive \
+    --agree-tos \
+    --email "$CERTBOT_EMAIL_VAL" \
+    -d "$dom"
+  local cert_exit=$?
+  set -e
+  if [ "$cert_exit" -eq 0 ]; then
+    refresh_upload_nginx_block
+    if sudo nginx -t; then
+      sudo systemctl reload nginx
+      echo "✓ 上传子域 HTTPS 已启用: https://$dom"
+      return 0
+    fi
+    echo "⚠ 上传子域证书已签发但 nginx -t 失败，请检查 $UPLOAD_NGINX_CONF"
+    return 1
+  fi
+  echo "⚠ 上传子域 certbot 失败（$cert_exit），大文件上传将使用 HTTP: http://$dom"
+  return 1
 }
 
 # 移除 Ubuntu/Debian 自带 default 站点，否则与 server_name _ 重复，nginx 会忽略其一，导致 locations 不生效
@@ -127,7 +328,7 @@ server {
 ${listen_directive}
     server_name ${sn};
 
-    client_max_body_size 100M;
+    client_max_body_size ${MAIN_BODY_LIMIT};
     client_body_timeout 300s;
 
     include /etc/nginx/conf.d/locations/*.conf;
@@ -143,7 +344,7 @@ write_release_hub_location() {
 # Release Hub — 由 deploy.sh 管理
 # 必须在本 location 内限制：若主 server 由其他站点(如 HomePortal)创建且未设 client_max_body_size，会继承 http 的 1m 导致大文件 413
 location /${NGINX_PREFIX_SLUG}/ {
-    client_max_body_size 100M;
+    client_max_body_size ${MAIN_BODY_LIMIT};
     client_body_timeout 300s;
     proxy_pass http://localhost:${PORT}/;
     proxy_http_version 1.1;
@@ -162,7 +363,7 @@ NGX
 # Release Hub — 由 deploy.sh 管理（整站根路径）
 # 同上，避免主 server 未设 body 大小时默认 1m
 location / {
-    client_max_body_size 100M;
+    client_max_body_size ${MAIN_BODY_LIMIT};
     client_body_timeout 300s;
     proxy_pass http://localhost:${PORT};
     proxy_http_version 1.1;
@@ -207,7 +408,7 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-    client_max_body_size 100M;
+    client_max_body_size ${MAIN_BODY_LIMIT};
     client_body_timeout 300s;
 
     include /etc/nginx/conf.d/locations/*.conf;
@@ -313,6 +514,7 @@ fi
 
 # ── 域名解析（Nginx / BASE_URL / HTTPS 共用）──
 release_hub_resolve_domain
+resolve_upload_domain
 MAIN_NGINX_CONF="$(nginx_main_conf_path "$DOMAIN_RESOLVED")"
 echo "▸ 主 Nginx 配置文件: $MAIN_NGINX_CONF"
 
@@ -333,6 +535,11 @@ if [ "$USE_NGINX_RESOLVED" = "1" ]; then
       ensure_main_server_block
     fi
     write_release_hub_location
+    if [ -n "$UPLOAD_DOMAIN_RESOLVED" ]; then
+      refresh_upload_nginx_block
+    else
+      sudo rm -f "$UPLOAD_NGINX_CONF" 2>/dev/null || true
+    fi
     if sudo nginx -t; then
       sudo systemctl enable nginx
       sudo systemctl reload nginx
@@ -425,6 +632,9 @@ else
               sudo systemctl reload nginx
               HTTPS_ENABLED=1
               echo "✓ HTTPS 已启用（Let's Encrypt；Nginx 80/443 由 deploy.sh 写入并含 locations）"
+              if [ -n "$UPLOAD_DOMAIN_RESOLVED" ]; then
+                issue_upload_letsencrypt "$UPLOAD_DOMAIN_RESOLVED" || true
+              fi
             else
               echo "⚠ 写入 HTTPS 配置后 nginx -t 失败，回退为 HTTP-only 主配置"
               ensure_main_server_block
@@ -442,6 +652,15 @@ else
         echo "⚠ certbot 安装失败，保持 HTTP"
       fi
     fi
+  fi
+fi
+
+# 上传子域 HTTPS（主域证书已存在或本次未走主域 certbot 时补试）
+if [ "$NGINX_ENABLED" = "1" ] && [ -n "$UPLOAD_DOMAIN_RESOLVED" ] && [ "${USE_HTTPS:-}" != "0" ] \
+  && [ "$UPLOAD_HTTPS_ENABLED" != "1" ]; then
+  issue_upload_letsencrypt "$UPLOAD_DOMAIN_RESOLVED" || true
+  if sudo nginx -t 2>/dev/null; then
+    sudo systemctl reload nginx 2>/dev/null || true
   fi
 fi
 
@@ -481,10 +700,19 @@ ADMIN_PASSWORD_HASH=$DEFAULT_HASH
 RELEASES_DIR=$INSTALL_DIR/releases
 BASE_URL=$BASE_URL_VAL
 PORT=$PORT
+MAX_UPLOAD_MB=$MAX_UPLOAD_MB_DEFAULT
+TEMP_TRANSFER_MAX_FILE_SIZE_MB=$MAX_UPLOAD_MB_DEFAULT
 EOF
+  if [ -n "$UPLOAD_DOMAIN_RESOLVED" ]; then
+    echo "# UPLOAD_DOMAIN=$UPLOAD_DOMAIN_RESOLVED（大文件上传分流子域，浏览器构建见 VITE_UPLOAD_API_ORIGIN）" >> "$ENV_FILE"
+  fi
   echo "✓ 配置文件已生成: $ENV_FILE（BASE_URL=$BASE_URL_VAL）"
 else
   echo "✓ 配置文件已存在，跳过: $ENV_FILE"
+  if [ -n "$UPLOAD_DOMAIN_RESOLVED" ]; then
+    ensure_upload_env_in_file "$ENV_FILE"
+    echo "  已同步上传上限: MAX_UPLOAD_MB=$MAX_UPLOAD_MB_DEFAULT"
+  fi
   if [ "$NGINX_ENABLED" = "1" ]; then
     echo "  提示：已启用 Nginx。若下载链接仍不对，请在后台「设置」中修改 BASE_URL 或编辑 $ENV_FILE 后执行: pm2 restart $SERVICE_NAME"
   fi
@@ -507,8 +735,19 @@ if [ "$USE_NGINX_RESOLVED" = "1" ] && [ -n "$NGINX_PREFIX_SLUG" ]; then
   VITE_BASE="/${NGINX_PREFIX_SLUG}/"
 fi
 if [ -f "$INSTALL_DIR/frontend/package.json" ]; then
-  echo "▸ 构建管理后台 (Vue3 → public/，VITE_BASE=$VITE_BASE)..."
-  (cd "$INSTALL_DIR/frontend" && npm install && VITE_BASE="$VITE_BASE" npm run build)
+  VITE_UPLOAD_ORIGIN_VAL=""
+  if [ -n "$UPLOAD_DOMAIN_RESOLVED" ]; then
+    if [ "$UPLOAD_HTTPS_ENABLED" = "1" ]; then
+      VITE_UPLOAD_ORIGIN_VAL="https://${UPLOAD_DOMAIN_RESOLVED}"
+    else
+      VITE_UPLOAD_ORIGIN_VAL="http://${UPLOAD_DOMAIN_RESOLVED}"
+    fi
+    echo "▸ 构建管理后台 (Vue3 → public/，VITE_BASE=$VITE_BASE，VITE_UPLOAD_API_ORIGIN=$VITE_UPLOAD_ORIGIN_VAL)..."
+    (cd "$INSTALL_DIR/frontend" && npm install && VITE_BASE="$VITE_BASE" VITE_UPLOAD_API_ORIGIN="$VITE_UPLOAD_ORIGIN_VAL" npm run build)
+  else
+    echo "▸ 构建管理后台 (Vue3 → public/，VITE_BASE=$VITE_BASE)..."
+    (cd "$INSTALL_DIR/frontend" && npm install && VITE_BASE="$VITE_BASE" npm run build)
+  fi
 else
   echo "⚠ 未找到 frontend/package.json，跳过前端构建（请确认已同步完整仓库）"
 fi
@@ -620,6 +859,17 @@ else
   echo "  管理后台：http://$SERVER_IP:$PORT"
 fi
 echo "  默认密码：rainy（请登录后立即修改）"
+if [ -n "$UPLOAD_DOMAIN_RESOLVED" ]; then
+  echo ""
+  echo "  ── 大文件上传分流 ──"
+  if [ "$UPLOAD_HTTPS_ENABLED" = "1" ]; then
+    echo "  上传 API（>100MB，绕过主域 CDN）: https://${UPLOAD_DOMAIN_RESOLVED}/api/..."
+  else
+    echo "  上传 API（HTTP，建议尽快重跑 deploy 以签发 HTTPS）: http://${UPLOAD_DOMAIN_RESOLVED}/api/..."
+  fi
+  echo "  Cloudflare: 请将 ${UPLOAD_DOMAIN_RESOLVED} 设为 DNS only（灰云），主域可保持橙云"
+  echo "  单文件上限: ${MAX_UPLOAD_MB_DEFAULT}MB（Node + 上传子域 Nginx ${UPLOAD_BODY_LIMIT}）"
+fi
 echo ""
 echo "  查看日志：pm2 logs $SERVICE_NAME"
 echo "  重启服务：pm2 restart $SERVICE_NAME"
