@@ -43,7 +43,10 @@ const {
   renderVersionBrowserHtml,
   renderResourceLibraryHtml,
   renderResourceItemLandingHtml,
+  renderFolderBrowseHtml,
 } = require('./download-pages');
+const { decodeUrlPathToRelative } = require('./path-utils');
+const { streamZipFromEntries } = require('./folder-archive');
 const {
   isValidLibraryName,
   libraryExists,
@@ -62,6 +65,10 @@ const {
   toAdminDetail,
   toListSummary,
   readIndex,
+  libraryFilesDir,
+  entriesFromIndex,
+  libraryArchiveUrl,
+  libraryBrowseUrl,
 } = require('./resource-libraries');
 const { fileBadgeLabel } = require('./download-utils');
 const { registerTempTransferRoutes } = require('./temp-transfer/routes');
@@ -352,7 +359,7 @@ function registerRoutes(app) {
       next();
     },
     (req, res, next) => {
-      resourceLibraryUpload.array('files', 20)(req, res, err => {
+      resourceLibraryUpload.array('files', 100)(req, res, err => {
         if (!err) return next();
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(413).json({ error: `单个文件超过 ${MAX_UPLOAD_MB}MB 限制`, code: 'FILE_TOO_LARGE' });
@@ -381,14 +388,36 @@ function registerRoutes(app) {
   });
 
   app.get('/api/public/resources/:name', (req, res) => {
-    const payload = toPublicPayload(req.params.name);
+    const pathQ = req.query.path != null ? String(req.query.path) : '';
+    const payload = toPublicPayload(req.params.name, { path: pathQ });
     if (!payload) return res.status(404).json({ error: '资源库不存在' });
     res.json(payload);
   });
 
-  app.get('/r/:name/files/:filename', (req, res) => {
-    const { name, filename } = req.params;
-    const fp = resolveResourceFile(name, filename);
+  app.get('/r/:name/archive', (req, res) => {
+    const { name } = req.params;
+    if (!libraryExists(name)) return res.status(404).type('html').send(renderDownload404Html());
+    const idx = readIndex(name);
+    if (!idx) return res.status(404).type('html').send(renderDownload404Html());
+    const dirPath = req.query.path != null ? String(req.query.path) : '';
+    try {
+      streamZipFromEntries(res, libraryFilesDir(name), entriesFromIndex(idx), dirPath);
+    } catch (e) {
+      const status = e.status || 413;
+      if (req.accepts('json')) {
+        return res.status(status).json({ error: e.message, code: e.code });
+      }
+      return res.status(status).type('html').send(
+        `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>无法打包</title></head><body style="font-family:system-ui;padding:24px"><h1>无法打包下载</h1><p>${e.message}</p><p><a href="${libraryBrowseUrl(name, dirPath)}">返回浏览页</a></p></body></html>`,
+      );
+    }
+  });
+
+  app.get('/r/:name/files/*', (req, res) => {
+    const { name } = req.params;
+    const rel = decodeUrlPathToRelative(req.params[0]);
+    if (!rel) return res.status(404).type('html').send(renderDownload404Html());
+    const fp = resolveResourceFile(name, rel);
     if (!fp || !fs.existsSync(fp)) return res.status(404).type('html').send(renderDownload404Html());
     try {
       if (!fs.statSync(fp).isFile()) return res.status(404).type('html').send(renderDownload404Html());
@@ -398,9 +427,11 @@ function registerRoutes(app) {
     res.sendFile(fp);
   });
 
-  app.get('/rd/:name/:filename', (req, res) => {
-    const { name, filename } = req.params;
-    const fp = resolveResourceFile(name, filename);
+  app.get('/rd/:name/*', (req, res) => {
+    const { name } = req.params;
+    const rel = decodeUrlPathToRelative(req.params[0]);
+    if (!rel) return res.status(404).type('html').send(renderDownload404Html());
+    const fp = resolveResourceFile(name, rel);
     if (!fp || !fs.existsSync(fp)) return res.status(404).type('html').send(renderDownload404Html());
     let st;
     try {
@@ -410,13 +441,13 @@ function registerRoutes(app) {
     }
     if (!st.isFile()) return res.status(404).type('html').send(renderDownload404Html());
     const idx = readIndex(name);
-    const item = idx?.items.find(it => it.fileName === filename);
+    const item = idx?.items.find(it => it.fileName === rel);
     const pub = toPublicPayload(name);
     const libraryLabel = pub?.displayLabel || name;
-    const displayTitle = (item?.displayName && String(item.displayName).trim()) || filename;
+    const displayTitle = (item?.displayName && String(item.displayName).trim()) || path.basename(rel);
     const description = item?.description || '';
-    const badge = fileBadgeLabel(filename);
-    const downloadHref = itemDownloadUrl(name, filename);
+    const badge = fileBadgeLabel(path.basename(rel));
+    const downloadHref = itemDownloadUrl(name, rel);
     const itemVersion =
       item?.version != null && String(item.version).trim() ? String(item.version).trim() : '';
     res.type('html').send(
@@ -424,7 +455,7 @@ function registerRoutes(app) {
         libraryName: libraryLabel,
         displayTitle,
         itemVersion,
-        filename,
+        filename: rel,
         description,
         size: st.size,
         badge,
@@ -435,21 +466,29 @@ function registerRoutes(app) {
 
   app.get('/r/:name', (req, res) => {
     const { name } = req.params;
-    const payload = toPublicPayload(name);
+    const pathQ = req.query.path != null ? String(req.query.path) : '';
+    const payload = toPublicPayload(name, { path: pathQ });
     if (!payload) return res.status(404).type('html').send(renderDownload404Html());
-    const items = payload.items.map(it => ({
-      displayName: it.displayName,
-      fileName: it.fileName,
-      description: it.description,
-      size: it.size,
-      landingHref: itemLandingUrl(name, it.fileName),
-      directHref: it.downloadUrl,
-    }));
     res.type('html').send(
-      renderResourceLibraryHtml({
+      renderFolderBrowseHtml({
+        kind: 'resource',
         displayLabel: payload.displayLabel,
         description: payload.description,
-        items,
+        breadcrumbs: payload.breadcrumbs.map(c => ({
+          ...c,
+          browseHref: libraryBrowseUrl(name, c.path),
+        })),
+        currentPath: payload.path,
+        archiveUrl: payload.archiveUrl,
+        folders: payload.folders,
+        files: payload.files.map(it => ({
+          displayName: it.displayName,
+          fileName: it.fileName,
+          description: it.description,
+          size: it.size,
+          landingHref: it.landingUrl,
+          directHref: it.downloadUrl,
+        })),
       }),
     );
   });

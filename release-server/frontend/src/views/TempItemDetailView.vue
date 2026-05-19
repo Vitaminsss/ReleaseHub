@@ -8,7 +8,10 @@
             {{ item?.originalName || '临时文件' }}
             <span v-if="pageLoading" class="loading-pill">载入中…</span>
           </h1>
-          <p class="pkg-sub">单文件 · 到期即删 · 标识 <code>{{ itemIdShort }}</code></p>
+          <p class="pkg-sub">
+            {{ item?.kind === 'folder' ? `文件夹 · ${item.fileCount || 0} 个文件` : '单文件' }}
+            · 到期即删 · 标识 <code>{{ itemIdShort }}</code>
+          </p>
         </div>
         <span class="badge-type temp-pill">临时</span>
       </div>
@@ -34,19 +37,40 @@
 
     <section v-if="item && publicBase" class="card api-block" :class="{ 'section-dim': pageLoading }">
       <h2>对外链接</h2>
-      <p class="hint sm no-mt">「分享页」为访客落地页，含剩余时间与下载；直链为文件流。JSON 供脚本查询。</p>
-      <ShareLinkRow v-if="item.landingUrl" label="分享页" :url="item.landingUrl" />
-      <ShareLinkRow v-if="item.downloadUrl" label="直链（下载）" :url="item.downloadUrl" />
+      <p class="hint sm no-mt">
+        文件夹：分享页可浏览子目录；单文件：分享页含倒计时与下载。JSON 供脚本查询。
+      </p>
+      <ShareLinkRow v-if="item.landingUrl" :label="item.kind === 'folder' ? '浏览页' : '分享页'" :url="item.landingUrl" />
+      <ShareLinkRow v-if="item.archiveUrl" label="根目录 ZIP 直链" :url="item.archiveUrl" />
+      <ShareLinkRow
+        v-if="item.kind !== 'folder' && item.downloadUrl"
+        label="直链（下载）"
+        :url="item.downloadUrl"
+      />
       <ShareLinkRow v-if="item.metaUrl" label="JSON 元信息" :url="item.metaUrl" />
     </section>
 
     <section v-if="item" class="card block meta-panel">
-      <h2>文件信息</h2>
+      <h2>{{ item.kind === 'folder' ? '文件夹信息' : '文件信息' }}</h2>
       <ul class="meta-list">
         <li><span class="k">大小</span><span class="v mono">{{ fmtSize(item.size) }}</span></li>
+        <li v-if="item.kind === 'folder'">
+          <span class="k">文件数</span><span class="v">{{ item.fileCount || (item.entries || []).length }}</span>
+        </li>
         <li><span class="k">下载次数</span><span class="v">{{ item.downloadCount ?? 0 }}</span></li>
         <li v-if="item.mimeType"><span class="k">类型</span><span class="v mono sm">{{ item.mimeType }}</span></li>
         <li><span class="k">创建</span><span class="v">{{ item.createdAt }}</span></li>
+      </ul>
+    </section>
+
+    <section v-if="item?.kind === 'folder' && entryList.length" class="card block tree-panel">
+      <h2>文件树</h2>
+      <ul class="entry-list">
+        <li v-for="ent in entryList" :key="ent.relativePath" class="entry-row">
+          <span class="entry-path path-font">{{ ent.relativePath }}</span>
+          <span class="entry-size mono">{{ fmtSize(ent.size) }}</span>
+          <button type="button" class="btn btn-sm btn-ghost" @click="copyEntryLink(ent)">复制直链</button>
+        </li>
       </ul>
     </section>
   </div>
@@ -61,6 +85,7 @@ import { formatBytes } from '@/utils/format-bytes';
 import { formatRemainingSec } from '@/utils/format-remaining';
 import ShareLinkRow from '@/components/ShareLinkRow.vue';
 import { suggestedPublicBaseFromVite } from '@/utils/public-url';
+import { encodePathForUrl } from '@/utils/file-tree';
 
 const route = useRoute();
 const router = useRouter();
@@ -90,6 +115,23 @@ let tickTimer = null;
 const nowTick = ref(Date.now());
 function fmtSize(n) {
   return formatBytes(n);
+}
+
+const entryList = computed(() => {
+  const ents = item.value?.entries;
+  if (!Array.isArray(ents)) return [];
+  return [...ents].sort((a, b) =>
+    String(a.relativePath).localeCompare(String(b.relativePath), undefined, { numeric: true }),
+  );
+});
+
+function copyEntryLink(ent) {
+  if (!item.value?.token || !publicBase.value) return;
+  const url = `${publicBase.value}/tt/${encodeURIComponent(item.value.token)}/files/${encodePathForUrl(ent.relativePath)}`;
+  navigator.clipboard.writeText(url).then(
+    () => toast('已复制'),
+    () => toast('复制失败', 'error'),
+  );
 }
 
 const liveRemaining = computed(() => {
@@ -324,5 +366,38 @@ h1 {
 .meta-list .v.sm {
   font-size: 12px;
   opacity: 0.9;
+}
+.tree-panel {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.entry-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.entry-path {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.entry-size {
+  font-size: 11px;
+  color: var(--text3);
+}
+.path-font {
+  font-family: var(--font-path, 'IBM Plex Mono'), ui-monospace, monospace;
+  font-size: 12px;
 }
 </style>

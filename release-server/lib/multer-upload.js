@@ -23,14 +23,28 @@ const upload = multer({
 });
 
 const { libraryFilesDir, ensureLibraryFilesDir } = require('./resource-libraries');
+const { normalizeRelativePath, resolveUnderRoot } = require('./path-utils');
 
 const resourceLibraryStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const name = req.params.name;
     ensureLibraryFilesDir(name);
-    cb(null, libraryFilesDir(name));
+    const rel = normalizeRelativePath(file.originalname) || normalizeRelativePath(path.basename(file.originalname));
+    if (!rel) return cb(new Error('无效文件路径'));
+    const abs = resolveUnderRoot(libraryFilesDir(name), rel);
+    if (!abs) return cb(new Error('无效文件路径'));
+    try {
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      cb(null, path.dirname(abs));
+    } catch (e) {
+      cb(e);
+    }
   },
-  filename: (req, file, cb) => cb(null, file.originalname),
+  filename: (req, file, cb) => {
+    const rel = normalizeRelativePath(file.originalname);
+    if (!rel) return cb(new Error('无效文件路径'));
+    cb(null, path.basename(rel));
+  },
 });
 
 const resourceLibraryUpload = multer({

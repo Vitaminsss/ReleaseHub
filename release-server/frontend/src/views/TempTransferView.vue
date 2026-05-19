@@ -5,7 +5,7 @@
       <div class="title-block">
         <div class="titles">
           <h1>新的临时文件</h1>
-          <p class="pkg-sub">单文件分享，到期自动删除。链接与设置中的 <code>BASE_URL</code> 一致。</p>
+          <p class="pkg-sub">单文件或文件夹分享，到期自动删除。链接与设置中的 <code>BASE_URL</code> 一致。</p>
         </div>
         <span class="badge-type">temp</span>
       </div>
@@ -15,27 +15,17 @@
 
     <section v-else class="card upload-block" :class="{ 'section-dim': uploading }">
       <h2>上传</h2>
-      <p class="hint">单文件最大 {{ maxFileSizeMb }} MB。可选有效期须为服务端允许列表中的值。</p>
+      <p class="hint">单文件最大 {{ maxFileSizeMb }} MB（文件夹为各文件分别计）。可选有效期须为服务端允许列表中的值。</p>
 
-      <div
-        class="drop-zone"
-        :class="{ drag: dragActive, disabled: uploading }"
-        @dragover.prevent="!uploading && (dragActive = true)"
-        @dragleave="dragActive = false"
-        @drop.prevent="onDrop"
-        @click="!uploading && fileInputRef?.click()"
-      >
-        <input
-          ref="fileInputRef"
-          type="file"
-          class="hidden-input"
-          :disabled="uploading"
-          @change="onFileChange"
-        />
-        <span>{{
-          uploading ? '正在上传…' : '拖拽文件到此处或点击上传'
-        }}</span>
-      </div>
+      <FolderAwareDropzone
+        :disabled="uploading"
+        :hint="
+          uploading
+            ? '正在上传…'
+            : '拖拽文件或文件夹到此处，或点击选择（自动识别目录结构）'
+        "
+        @items="onUploadItems"
+      />
 
       <label class="lbl">有效期</label>
       <select v-model="ttlMinutes" class="input" :disabled="uploading || !allowedTtls.length">
@@ -62,12 +52,12 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, uploadWithProgress } from '@/api/client';
 import { useToast } from '@/composables/useToast';
+import FolderAwareDropzone from '@/components/FolderAwareDropzone.vue';
+import { appendToFormData, describeUploadBatch } from '@/composables/useFolderUpload';
 
 const router = useRouter();
 const { toast } = useToast();
 
-const fileInputRef = ref(null);
-const file = ref(null);
 const pickedName = ref('');
 const allowedTtls = ref([]);
 const maxFileSizeMb = ref(100);
@@ -76,8 +66,6 @@ const loadError = ref('');
 const ttlMinutes = ref(1440);
 const uploading = ref(false);
 const uploadPct = ref(/** @type {number | null} */ (null));
-const dragActive = ref(false);
-
 function formatTtl(m) {
   if (m === 1440) return '24 小时';
   if (m < 60) return `${m} 分钟`;
@@ -85,28 +73,11 @@ function formatTtl(m) {
   return `${m} 分钟`;
 }
 
-function pickFile(f) {
-  if (!f) return;
-  file.value = f;
-  pickedName.value = f.name;
-}
-
-function onFileChange(e) {
-  const f = e?.target?.files?.[0];
-  if (f) {
-    pickFile(f);
-    doUpload();
-  }
-}
-
-function onDrop(e) {
-  dragActive.value = false;
-  if (uploading.value) return;
-  const f = e.dataTransfer?.files?.[0];
-  if (f) {
-    pickFile(f);
-    doUpload();
-  }
+async function onUploadItems(list) {
+  if (!list?.length || loadError.value) return;
+  const desc = describeUploadBatch(list);
+  pickedName.value = desc.label || list[0].file.name;
+  await doUpload(list, desc);
 }
 
 async function loadAllowed() {
@@ -129,26 +100,48 @@ async function loadAllowed() {
   }
 }
 
-async function doUpload() {
-  if (!file.value) return;
-  if (loadError.value) return;
-  const fd = new FormData();
-  fd.append('file', file.value);
-  fd.append('ttlMinutes', String(ttlMinutes.value));
+async function doUpload(list, desc) {
+  if (!list?.length || loadError.value) return;
   uploading.value = true;
   uploadPct.value = 0;
+  const isFolder = list.length > 1 || list.some(it => it.relativePath.includes('/'));
+  if (isFolder && list.length > 100) {
+    toast('临时文件夹一次最多 100 个文件', 'error');
+    uploading.value = false;
+    uploadPct.value = null;
+    return;
+  }
   try {
-    const data = await uploadWithProgress({
-      method: 'POST',
-      path: '/api/temp-transfer/upload',
-      formData: fd,
-      onProgress: n => {
-        uploadPct.value = n;
-      },
-    });
-    toast('已创建临时文件');
-    if (data?.id) {
-      router.push(`/temp-transfer/${encodeURIComponent(data.id)}`);
+    let lastData = null;
+    if (isFolder) {
+      const fd = new FormData();
+      appendToFormData(fd, list, 'files');
+      fd.append('ttlMinutes', String(ttlMinutes.value));
+      if (desc?.rootName) fd.append('folderName', desc.rootName);
+      lastData = await uploadWithProgress({
+        method: 'POST',
+        path: '/api/temp-transfer/upload',
+        formData: fd,
+        onProgress: n => {
+          uploadPct.value = n;
+        },
+      });
+    } else {
+      const fd = new FormData();
+      fd.append('file', list[0].file);
+      fd.append('ttlMinutes', String(ttlMinutes.value));
+      lastData = await uploadWithProgress({
+        method: 'POST',
+        path: '/api/temp-transfer/upload',
+        formData: fd,
+        onProgress: n => {
+          uploadPct.value = n;
+        },
+      });
+    }
+    toast(desc?.isFolder ? `已创建临时文件夹（${desc.label}）` : '已创建临时文件');
+    if (lastData?.id) {
+      router.push(`/temp-transfer/${encodeURIComponent(lastData.id)}`);
     } else {
       router.push({ path: '/', hash: '#temp-hub' });
     }
@@ -157,8 +150,6 @@ async function doUpload() {
   } finally {
     uploading.value = false;
     uploadPct.value = null;
-    if (fileInputRef.value) fileInputRef.value.value = '';
-    file.value = null;
     pickedName.value = '';
   }
 }

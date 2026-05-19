@@ -440,6 +440,106 @@ function renderTempTransferGoneHtml() {
 <body><div style="max-width:28rem"><h1>文件已删除或已过期</h1><p>此临时链接已无法使用。</p></div></body></html>`;
 }
 
+/** 资源库 / 临时传输：目录浏览（选择性下载 + 文件夹 ZIP 直链） */
+function renderFolderBrowseHtml(opts) {
+  const {
+    kind = 'resource',
+    displayLabel,
+    description,
+    breadcrumbs = [],
+    archiveUrl,
+    folders = [],
+    files = [],
+  } = opts;
+  const initial = pageAvatarInitial(displayLabel);
+  const initialSvg = svgTextEsc(initial);
+  const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#e8a035"/><text x="16" y="21" text-anchor="middle" fill="#1a1208" font-size="15" font-weight="700" font-family="system-ui,sans-serif">${initialSvg}</text></svg>`;
+  const faviconHref = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
+  const kindLabel = kind === 'temp' ? '临时分享' : '资源库';
+  const introHtml =
+    description && String(description).trim()
+      ? `<p class="intro">${formatPlainMultiline(String(description).trim())}</p>`
+      : '';
+  const crumbHtml = breadcrumbs
+    .map((c, i) => {
+      const isLast = i === breadcrumbs.length - 1;
+      if (isLast) return `<span class="crumb current">${htmlEsc(c.label)}</span>`;
+      const href = c.browseHref || c.href || '#';
+      return `<a class="crumb" href="${htmlEsc(href)}">${htmlEsc(c.label)}</a><span class="crumb-sep">/</span>`;
+    })
+    .join('');
+  const folderRows = folders
+    .map(
+      f => `<tr class="row-folder">
+  <td class="cell-name"><a href="${htmlEsc(f.browseUrl || '#')}">📁 ${htmlEsc(f.name)}</a></td>
+  <td class="cell-meta">文件夹</td>
+  <td class="cell-act"><a class="btn-sm" href="${htmlEsc(f.archiveUrl || archiveUrl)}">打包下载</a></td>
+</tr>`,
+    )
+    .join('');
+  const fileRows = files
+    .map(it => {
+      const title = (it.displayName && String(it.displayName).trim()) || it.fileName;
+      return `<tr class="row-file">
+  <td class="cell-name"><a href="${htmlEsc(it.landingHref || it.directHref)}">${htmlEsc(title)}</a><span class="path-hint">${htmlEsc(it.fileName)}</span></td>
+  <td class="cell-meta">${htmlEsc(fmtBytesServer(it.size))}</td>
+  <td class="cell-act"><a class="btn-sm btn-dl" href="${htmlEsc(it.directHref)}" download rel="noopener">下载</a></td>
+</tr>`;
+    })
+    .join('');
+  const tableBody =
+    folderRows || fileRows
+      ? folderRows + fileRows
+      : `<tr><td colspan="3" class="empty">此目录为空</td></tr>`;
+  return `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="${faviconHref}" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<title>${htmlEsc(displayLabel)} — ${kindLabel}</title>
+<style>
+:root{--bg:#0a0908;--text:#f0ebe3;--text2:#9a9288;--accent:#e8a035;--border:rgba(235,230,223,.1)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Source Sans 3',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:28px 20px 48px;line-height:1.5}
+.wrap{max-width:920px;margin:0 auto}
+h1{font-family:Manrope,system-ui,sans-serif;font-size:1.65rem;font-weight:800;margin:12px 0 8px}
+.kicker{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
+.intro{color:var(--text2);font-size:14px;margin:0 0 20px;line-height:1.7}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 16px}
+.breadcrumbs{font-size:13px;flex:1;min-width:0;overflow-wrap:anywhere}
+.crumb{color:var(--accent);text-decoration:none}
+.crumb.current{color:var(--text)}
+.crumb-sep{margin:0 4px;opacity:.5}
+.btn-zip{display:inline-flex;padding:10px 16px;font-size:12px;font-weight:800;text-decoration:none;border-radius:6px;background:linear-gradient(180deg,#f0b24a 0%,var(--accent) 100%);color:#1a1208}
+table{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border)}
+.cell-name a{color:var(--accent);font-weight:600;text-decoration:none;overflow-wrap:anywhere}
+.path-hint{display:block;font-size:11px;color:var(--text2);margin-top:4px;font-family:ui-monospace,monospace}
+.btn-sm{font-size:11px;padding:6px 12px;border-radius:5px;text-decoration:none;border:1px solid var(--border);color:var(--text)}
+.btn-dl{background:rgba(232,160,53,.15);color:#f0c978}
+.empty{text-align:center;color:var(--text2);padding:28px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">${htmlEsc(kindLabel)}</p>
+  <h1>${htmlEsc(displayLabel)}</h1>
+  ${introHtml}
+  <div class="toolbar">
+    <nav class="breadcrumbs" aria-label="路径">${crumbHtml}</nav>
+    <a class="btn-zip" href="${htmlEsc(archiveUrl)}">打包下载此目录 (ZIP)</a>
+  </div>
+  <table>
+    <thead><tr><th>名称</th><th>大小</th><th>操作</th></tr></thead>
+    <tbody>${tableBody}</tbody>
+  </table>
+</div>
+</body>
+</html>`;
+}
+
 module.exports = {
   htmlEsc,
   renderDownload404Html,
@@ -447,6 +547,7 @@ module.exports = {
   renderVersionBrowserHtml,
   renderResourceLibraryHtml,
   renderResourceItemLandingHtml,
+  renderFolderBrowseHtml,
   renderTempTransferInfoPageHtml,
   renderTempTransferGoneHtml,
 };

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
+const { resolveUnderRoot } = require('../path-utils');
 
 /**
  * 本地磁盘存储（临时文件 blob）
@@ -22,6 +23,20 @@ class LocalStorageProvider {
     return path.join(this.blobsDir, `${id}.bin`);
   }
 
+  /** @returns {string} 文件夹传输根目录 */
+  folderPath(id) {
+    return path.join(this.blobsDir, id);
+  }
+
+  /**
+   * @param {string} id
+   * @param {string} relativePath
+   * @returns {string | null}
+   */
+  entryPath(id, relativePath) {
+    return resolveUnderRoot(this.folderPath(id), relativePath);
+  }
+
   /**
    * 将已落盘的临时文件移动为最终 blob
    * @param {string} fromAbsPath
@@ -38,13 +53,26 @@ class LocalStorageProvider {
     return fs.createReadStream(this.blobPath(id));
   }
 
-  async exists(id) {
+  async exists(id, opts = {}) {
+    if (opts.kind === 'folder') {
+      try {
+        const s = await fsp.stat(this.folderPath(id));
+        return s.isDirectory();
+      } catch {
+        return false;
+      }
+    }
     const p = this.blobPath(id);
     try {
       const s = await fsp.stat(p);
       return s.isFile();
     } catch {
-      return false;
+      try {
+        const s = await fsp.stat(this.folderPath(id));
+        return s.isDirectory();
+      } catch {
+        return false;
+      }
     }
   }
 
@@ -55,6 +83,31 @@ class LocalStorageProvider {
     } catch (e) {
       if (e && e.code !== 'ENOENT') throw e;
     }
+    const dir = this.folderPath(id);
+    try {
+      await fsp.rm(dir, { recursive: true, force: true });
+    } catch (e) {
+      if (e && e.code !== 'ENOENT') throw e;
+    }
+  }
+
+  /**
+   * @param {string} fromAbsPath
+   * @param {string} id
+   * @param {string} relativePath
+   */
+  async putFolderEntryFromFile(fromAbsPath, id, relativePath) {
+    const dest = this.entryPath(id, relativePath);
+    if (!dest) throw new Error('Invalid path');
+    await fsp.mkdir(path.dirname(dest), { recursive: true });
+    await fsp.rename(fromAbsPath, dest);
+  }
+
+  /** @returns {import('fs').ReadStream} */
+  createReadStreamEntry(id, relativePath) {
+    const p = this.entryPath(id, relativePath);
+    if (!p) throw new Error('Invalid path');
+    return fs.createReadStream(p);
   }
 
   /**

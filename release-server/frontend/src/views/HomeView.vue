@@ -27,16 +27,24 @@
             class="app-tile card temp-tile"
             @click="goTemp(it)"
           >
-            <div class="lib-tile-header">
-              <div class="lib-title-block">
-                <span class="name temp-filename">{{ it.originalName || '未命名' }}</span>
-                <span class="pkg-id temp-id" :title="it.id">#{{ it.id.slice(0, 8) }}</span>
+            <div class="lib-tile-header temp-header">
+              <div class="lib-title-block temp-title-block">
+                <span class="name temp-filename" :title="it.originalName || '未命名'">{{
+                  it.originalName || '未命名'
+                }}</span>
               </div>
-              <span class="lib-count temp-remain mono">{{ remLabel(it) }}</span>
+              <div class="temp-meta-row">
+                <span class="pkg-id temp-id" :title="it.id">#{{ it.id.slice(0, 8) }}</span>
+                <span class="temp-remain mono">{{ remLabel(it) }}</span>
+              </div>
             </div>
             <div class="lib-growth temp-sheen" aria-hidden="true" />
             <div class="lib-footer lib-footer--pillOnly">
-              <span class="lib-pill lib-pill--temp">临时 · 单文件</span>
+              <span class="lib-pill lib-pill--temp">{{
+                it.kind === 'folder'
+                  ? `临时 · 文件夹 · ${it.fileCount || 0} 个文件`
+                  : '临时 · 单文件'
+              }}</span>
             </div>
           </button>
         </div>
@@ -441,6 +449,22 @@ h1 {
 }
 .temp-grid {
   margin-top: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.temp-header {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.temp-title-block {
+  min-width: 0;
+}
+.temp-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
 }
 .temp-tile {
   text-align: left;
@@ -457,7 +481,8 @@ h1 {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 .temp-id {
   font-size: 10px;
@@ -467,9 +492,9 @@ h1 {
 .temp-remain {
   font-size: 12px;
   color: #e8a035;
-  max-width: 8.5rem;
-  text-align: right;
-  line-height: 1.3;
+  line-height: 1.35;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 .lib-pill--temp {
   background: linear-gradient(90deg, rgba(232, 160, 53, 0.18) 0%, rgba(60, 45, 20, 0.5) 100%);
@@ -489,6 +514,6 @@ h1 {
   opacity: 0.85;
 }
 .mono {
-  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-family: var(--font-path, 'IBM Plex Mono'), ui-monospace, monospace;
 }
 </style>

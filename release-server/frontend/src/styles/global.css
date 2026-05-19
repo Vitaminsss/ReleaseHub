@@ -12,10 +12,11 @@
   --ok: #52d48a;
   --radius: 10px;
   --radius-sm: 6px;
-  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  /* index.html 已预载 Google Fonts */
+  --font: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: var(--font);
   --font-display: 'Outfit', var(--font);
-  --font-mono-anno: 'Share Tech Mono', ui-monospace, 'Cascadia Code', monospace;
+  --font-path: 'IBM Plex Mono', 'Share Tech Mono', ui-monospace, 'Cascadia Code', monospace;
+  --font-mono-anno: var(--font-path);
 }
 
 *,
@@ -28,7 +29,8 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  font-family: var(--font);
+  font-family: var(--font-body);
+  line-height: 1.55;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -161,13 +163,13 @@ button.app-tile.lib-card {
 .app-tile .pkg-id {
   display: inline-block;
   max-width: 100%;
-  font-family: var(--font-mono-anno);
+  font-family: var(--font-path);
   font-size: 10.5px;
   font-weight: 400;
   letter-spacing: 0.06em;
   line-height: 1.4;
   color: rgba(180, 170, 155, 0.85);
-  word-break: break-all;
+  overflow-wrap: anywhere;
   padding: 3px 7px 3px 8px;
   border-radius: 4px;
   background: linear-gradient(180deg, rgba(232, 160, 53, 0.07) 0%, rgba(0, 0, 0, 0.12) 100%);

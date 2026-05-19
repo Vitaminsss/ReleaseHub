@@ -99,6 +99,31 @@ describe('TempTransferStore', () => {
     assert.ok(!fs.existsSync(stale));
   });
 
+  test('createFromFolderUpload 多文件目录与 meta', async () => {
+    const staging = path.join(root, 'pending', 'fold-stg');
+    await fsp.mkdir(staging, { recursive: true });
+    const f1 = path.join(staging, 'f1.txt');
+    const f2 = path.join(staging, 'sub', 'f2.txt');
+    await fsp.mkdir(path.dirname(f2), { recursive: true });
+    await fsp.writeFile(f1, 'aa', 'utf-8');
+    await fsp.writeFile(f2, 'bbb', 'utf-8');
+    const rec = await store.createFromFolderUpload(
+      { originalName: '我的夹', ttlMinutes: 30 },
+      [
+        { originalname: 'f1.txt', path: f1, size: 2 },
+        { originalname: 'sub/f2.txt', path: f2, size: 3 },
+      ],
+    );
+    assert.strictEqual(rec.kind, 'folder');
+    assert.strictEqual(rec.fileCount, 2);
+    assert.strictEqual(rec.entries.length, 2);
+    const dir = path.join(root, 'blobs', rec.id);
+    assert.ok(fs.existsSync(path.join(dir, 'f1.txt')));
+    assert.ok(fs.existsSync(path.join(dir, 'sub', 'f2.txt')));
+    await store.hardDeleteTransfer(rec);
+    assert.ok(!fs.existsSync(dir));
+  });
+
   test('getDirectoryStats 返回各子目录文件计数', async () => {
     const st = await store.getDirectoryStats();
     assert.strictEqual(st.rootDir, path.resolve(root));

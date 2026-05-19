@@ -62,3 +62,9 @@
 - **子路径部署**（默认 Nginx 前缀 `releasehub`）时，浏览器访问形如 `https://域名/releasehub/`，前端资源与 `fetch` 使用同一前缀（如 `/releasehub/api/...`），经反代后 Node 仍收到 `/api/...`。
 - 本地开发：在 `frontend/` 执行 `npm install` && `npm run dev`（默认 `VITE_BASE=/`，Vite 将 `/api`、`/d`、`/app` 等代理到 `3721`）；生产构建由 `deploy.sh` 根据 `NGINX_PREFIX` 注入 `VITE_BASE`。
 - **通用**类型版本目录名不强制 `v` 前缀；**Tauri** 仍为严格 SemVer + `v*` 目录习惯。
+
+## 资源库与临时传输 · 文件夹（新增能力）
+
+- **资源库**：旧版扁平 `fileName` 与 `GET /r/{库名}/files/{单段文件名}` 行为不变；新增嵌套路径、浏览页、`/archive` ZIP。管理端 `POST .../upload` 仍可用，现支持一次最多 **100** 个 `files` part。
+- **临时传输**：旧版单文件 `meta` 无 `kind` 字段时视为 **`file`**；`GET /tt/{token}` 直链与 `GET /tt/p/{token}` 单文件分享页不变。文件夹传输 `kind: "folder"`，根直链 **302** 到浏览页；新增 `/tt/{token}/files/*`、`/tt/{token}/archive`、`/api/temp-transfer/{token}/browse`。
+- **磁盘**：旧临时记录仍为 `blobs/{id}.bin`；新文件夹为 `blobs/{id}/` 目录，与旧数据可并存。

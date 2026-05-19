@@ -184,7 +184,7 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 磁盘结构（均在 `TEMP_TRANSFER` 根目录下，管理后台「设置」页会显示绝对路径与各子目录文件数）：
 
 - `pending/`：上传中的临时分片（`*.part`），超过一定时间未完成的会被自动清理
-- `blobs/`：已接收的临时文件实体，文件名为 `{16位hex id}.bin`，**不是**原始文件名
+- `blobs/`：已接收的临时文件实体。单文件为 `{16位hex id}.bin`；**文件夹**为 `{id}/` 目录（按相对路径存放子文件）
 - `meta/`：每条传输的 JSON 元数据
 - `token-index/`：分享 token 到 id 的索引小文件
 
@@ -192,9 +192,13 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 
 | 说明 | 路径 / 方法 |
 | ---- | ------------- |
-| 上传 | `POST /api/temp-transfer/upload`，`multipart/form-data`：`file`（必填）、`ttlMinutes`（可选，须在允许列表中） |
-| 公开 · 分享页 | `GET /tt/p/{token}`（说明、剩余时间、下载按钮；过期/删除 `410` HTML） |
-| 直链（文件流） | `GET /tt/{token}`（成功 `200`；`413` / `422` 等见接口错误码） |
+| 上传 · 单文件 | `POST /api/temp-transfer/upload`，`file` + 可选 `ttlMinutes` |
+| 上传 · 文件夹 | 同上，`files`（多 part，第三参数为相对路径）+ 可选 `folderName`、`ttlMinutes`（一次最多 **100** 个文件） |
+| 公开 · 分享页 | `GET /tt/p/{token}`（单文件：说明与倒计时；**文件夹**：目录浏览，`?path=` 进入子目录） |
+| 直链（文件流） | `GET /tt/{token}`（单文件 `200`；文件夹根 token **302** 到浏览页） |
+| 文件夹内单文件 | `GET /tt/{token}/files/{相对路径}` |
+| 文件夹 ZIP | `GET /tt/{token}/archive?path=`（deflate 轻度压缩；默认约 **500MB / 500 文件** 上限，超限 `413`） |
+| 浏览 JSON | `GET /api/temp-transfer/{token}/browse?path=` |
 | 元信息 JSON | `GET /api/temp-transfer/{token}/meta` |
 | 允许 TTL 与默认 | `GET /api/temp-transfer/allowed-ttls` |
 | 管理 · 列表 | `GET /api/temp-transfer/list`（需 `Authorization: Bearer`） |
@@ -202,6 +206,20 @@ node -e "const b=require('bcryptjs'); console.log(b.hashSync('你的新密码', 
 | 管理 · 取消 | `DELETE /api/temp-transfer/item/{id}`（需登录，立即删除文件与链） |
 
 环境变量（可选，未设时有默认值）：`TEMP_TRANSFER_ENABLED`、`TEMP_TRANSFER_DIR`、`TEMP_TRANSFER_DEFAULT_TTL_MINUTES`、`TEMP_TRANSFER_ALLOWED_TTLS`（逗号分隔，如 `30,60,180,360,720,1440`）、`TEMP_TRANSFER_MAX_FILE_SIZE_MB`（未设时与 `MAX_UPLOAD_MB` 一致，deploy 默认 **2048**）、`TEMP_TRANSFER_SWEEP_INTERVAL_SECONDS`、`TEMP_TRANSFER_PENDING_MAX_AGE_MINUTES`（`pending/*.part` 超过该分钟数视为孤儿并删除，默认 **1440** 即 24 小时）。
+
+### 资源库与文件夹分享
+
+管理后台同一上传区可拖入或选择**多文件 / 嵌套文件夹**（`webkitGetAsEntry` / `showDirectoryPicker`）。磁盘在 `resource-libraries/<库名>/files/` 下按**相对路径**存储；`index.json` 中 `fileName` 可含 `/`（旧数据无 `/` 的仍视为根目录文件）。
+
+| 说明 | 路径 |
+| ---- | ---- |
+| 公开浏览 | `GET /r/{库名}?path=`（HTML 目录页，面包屑 + 单文件下载） |
+| 单文件直链 | `GET /r/{库名}/files/{相对路径}` |
+| 文件夹 ZIP | `GET /r/{库名}/archive?path=` |
+| 公开 JSON | `GET /api/public/resources/{库名}?path=` |
+| 管理上传 | `POST /api/resources/{库名}/upload`，`files` 多 part（相对路径为 `originalname`） |
+
+ZIP 打包与环境变量 `ARCHIVE_MAX_BYTES`、`ARCHIVE_MAX_FILES`（默认 500MB / 500 文件）与临时传输共用逻辑。
 
 ---
 

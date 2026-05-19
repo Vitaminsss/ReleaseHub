@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const CONFIG = require('./config');
+const { normalizeRelativePath, resolveUnderRoot, encodeRelativePathForUrl } = require('./path-utils');
+const { listDirectoryLevel, breadcrumbSegments, archiveBaseName } = require('./file-tree');
 
 const LIB_NAME_RE = /^[a-zA-Z0-9_-]+$/;
 const FILES_SUBDIR = 'files';
@@ -169,53 +171,79 @@ function renameLibrary(oldName, newName) {
   return { success: true, name: newName };
 }
 
-function resolveResourceFile(libraryName, filename) {
-  try {
-    const base = path.resolve(libraryFilesDir(libraryName));
-    const root = path.resolve(resourceLibrariesRoot());
-    if (!base.startsWith(root + path.sep) && base !== root) return null;
-    const fp = path.resolve(base, filename);
-    if (!fp.startsWith(base + path.sep)) return null;
-    return fp;
-  } catch {
-    return null;
-  }
+function resolveResourceFile(libraryName, relativePath) {
+  const norm = normalizeRelativePath(relativePath);
+  if (!norm) return null;
+  return resolveUnderRoot(libraryFilesDir(libraryName), norm);
 }
 
 function itemDownloadUrl(libraryName, fileName) {
-  return `${CONFIG.BASE_URL}/r/${encodeURIComponent(libraryName)}/files/${encodeURIComponent(fileName)}`;
+  const enc = encodeRelativePathForUrl(fileName);
+  return `${CONFIG.BASE_URL}/r/${encodeURIComponent(libraryName)}/files/${enc}`;
 }
 
 function itemLandingUrl(libraryName, fileName) {
-  return `${CONFIG.BASE_URL}/rd/${encodeURIComponent(libraryName)}/${encodeURIComponent(fileName)}`;
+  const enc = encodeRelativePathForUrl(fileName);
+  return `${CONFIG.BASE_URL}/rd/${encodeURIComponent(libraryName)}/${enc}`;
+}
+
+function libraryBrowseUrl(libraryName, dirPath = '') {
+  const base = `${CONFIG.BASE_URL}/r/${encodeURIComponent(libraryName)}`;
+  const p = dirPath ? normalizeRelativePath(dirPath) : '';
+  if (!p) return base;
+  return `${base}?path=${encodeURIComponent(p)}`;
+}
+
+function libraryArchiveUrl(libraryName, dirPath = '') {
+  const base = `${CONFIG.BASE_URL}/r/${encodeURIComponent(libraryName)}/archive`;
+  const p = dirPath ? normalizeRelativePath(dirPath) : '';
+  if (!p) return base;
+  return `${base}?path=${encodeURIComponent(p)}`;
+}
+
+/** @returns {string[]} relative paths of all files under files dir */
+function listAllFilesRelative(libraryName) {
+  const root = libraryFilesDir(libraryName);
+  if (!fs.existsSync(root)) return [];
+  const out = [];
+  function walk(dir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const ent of entries) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) walk(full);
+      else if (ent.isFile()) {
+        const rel = path.relative(root, full).split(path.sep).join('/');
+        const norm = normalizeRelativePath(rel);
+        if (norm) out.push(norm);
+      }
+    }
+  }
+  walk(root);
+  return out.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
 function syncItemsWithDisk(name) {
   const idx = readIndex(name);
   if (!idx) return null;
-  const dir = libraryFilesDir(name);
-  if (!fs.existsSync(dir)) ensureLibraryFilesDir(name);
-  const onDisk = new Set(
-    fs.existsSync(dir)
-      ? fs.readdirSync(dir).filter(f => {
-          try {
-            return fs.statSync(path.join(dir, f)).isFile();
-          } catch {
-            return false;
-          }
-        })
-      : [],
-  );
+  ensureLibraryFilesDir(name);
+  const onDisk = listAllFilesRelative(name);
   const byFile = new Map(idx.items.map(it => [it.fileName, it]));
   const nextItems = [];
   for (const fileName of onDisk) {
-    const fp = path.join(dir, fileName);
+    const fp = resolveResourceFile(name, fileName);
+    if (!fp) continue;
     let st;
     try {
       st = fs.statSync(fp);
     } catch {
       continue;
     }
+    if (!st.isFile()) continue;
     const prev = byFile.get(fileName);
     if (prev) {
       nextItems.push({
@@ -242,8 +270,8 @@ function syncItemsWithDisk(name) {
 
 function registerUpload(name, originalname, size) {
   if (!libraryExists(name)) return { error: '资源库不存在', status: 404 };
-  const fn = String(originalname || '').trim();
-  if (!fn || fn.includes('/') || fn.includes('\\') || fn === '.' || fn === '..') {
+  const fn = normalizeRelativePath(originalname);
+  if (!fn) {
     return { error: '无效文件名', status: 400 };
   }
   const idx = readIndex(name);
@@ -287,9 +315,9 @@ function registerUploadBatch(name, multerFiles) {
   if (!idx) return { error: '索引损坏', status: 500 };
   const uploaded = [];
   for (const f of list) {
-    const fn = String(f.originalname || '').trim();
-    if (!fn || fn.includes('/') || fn.includes('\\') || fn === '.' || fn === '..') {
-      return { error: `无效文件名：${fn || '(空)'}`, status: 400 };
+    const fn = normalizeRelativePath(f.originalname);
+    if (!fn) {
+      return { error: `无效文件路径：${f.originalname || '(空)'}`, status: 400 };
     }
     const fp = f.path || resolveResourceFile(name, fn);
     if (!fp || !fs.existsSync(fp)) {
@@ -378,17 +406,49 @@ function displayLabelFromIndex(idx, fallbackName) {
   return n || fallbackName;
 }
 
-function toPublicPayload(name) {
+function entriesFromIndex(idx) {
+  return idx.items.map(it => ({
+    relativePath: it.fileName,
+    fileName: it.fileName,
+    ...it,
+  }));
+}
+
+function toPublicPayload(name, opts = {}) {
   const idx = readIndex(name);
   if (!idx) return null;
   const label = displayLabelFromIndex(idx, name);
-  const items = [...idx.items].sort((a, b) => a.fileName.localeCompare(b.fileName, undefined, { numeric: true }));
+  const entries = entriesFromIndex(idx);
+  const currentPath = opts.path != null ? String(opts.path) : '';
+  const normPath = currentPath ? normalizeRelativePath(currentPath) : '';
+  const listing = listDirectoryLevel(entries, normPath || '');
+  const crumbs = breadcrumbSegments(normPath || '');
   return {
     name,
     displayName: idx.displayName || null,
     displayLabel: label,
     description: idx.description || '',
-    items: items.map(it => ({
+    path: normPath || '',
+    breadcrumbs: crumbs,
+    browseUrl: libraryBrowseUrl(name, normPath || ''),
+    archiveUrl: libraryArchiveUrl(name, normPath || ''),
+    folders: listing.folders.map(f => ({
+      ...f,
+      browseUrl: libraryBrowseUrl(name, f.path),
+      archiveUrl: libraryArchiveUrl(name, f.path),
+    })),
+    files: listing.files.map(it => ({
+      id: it.id,
+      fileName: it.relativePath,
+      displayName: it.displayName || '',
+      description: it.description || '',
+      version: it.version || '',
+      size: it.size,
+      updatedAt: it.updatedAt,
+      downloadUrl: itemDownloadUrl(name, it.relativePath),
+      landingUrl: itemLandingUrl(name, it.relativePath),
+    })),
+    items: entries.map(it => ({
       id: it.id,
       fileName: it.fileName,
       displayName: it.displayName || '',
@@ -451,9 +511,14 @@ module.exports = {
   resolveResourceFile,
   itemDownloadUrl,
   itemLandingUrl,
+  libraryBrowseUrl,
+  libraryArchiveUrl,
+  listAllFilesRelative,
+  entriesFromIndex,
   toPublicPayload,
   toAdminDetail,
   toListSummary,
   libraryFilesDir,
   ensureLibraryFilesDir,
+  archiveBaseName,
 };

@@ -3,6 +3,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const { LocalStorageProvider } = require('./local-storage');
+const { normalizeRelativePath } = require('../path-utils');
 
 /** @typedef {'active'|'expired'|'deleted'} TransferStatus */
 
@@ -17,6 +18,10 @@ const { LocalStorageProvider } = require('./local-storage');
  * @property {string} expireAt
  * @property {TransferStatus} status
  * @property {number} [downloadCount]
+ * @property {'file'|'folder'} [kind]
+ * @property {number} [fileCount]
+ * @property {number} [totalSize]
+ * @property {{ relativePath: string, size: number }[]} [entries]
  */
 
 /**
@@ -127,6 +132,96 @@ class TempTransferStore {
     return rec;
   }
 
+  /**
+   * 多文件文件夹传输（multer 已落盘 pending，originalname 为相对路径）
+   * @param {{ originalName: string, ttlMinutes: number }} fields
+   * @param {import('multer').File[]} multerFiles
+   */
+  async createFromFolderUpload(fields, multerFiles) {
+    const list = Array.isArray(multerFiles) ? multerFiles : [];
+    if (!list.length) {
+      const err = new Error('没有文件');
+      err.code = 'NO_FILES';
+      throw err;
+    }
+    const id = randomId();
+    const token = randomToken();
+    const now = new Date();
+    const expireAt = new Date(now.getTime() + fields.ttlMinutes * 60 * 1000);
+    const entries = [];
+    let totalSize = 0;
+    this.initDirs();
+    const tip = this.tokenIndexPath(token);
+    if (!tip) {
+      const err = new Error('Invalid token path');
+      err.code = 'INVALID_TOKEN';
+      throw err;
+    }
+    const metaFile = this.metaPath(id);
+    try {
+      await fsp.mkdir(this.storage.folderPath(id), { recursive: true });
+      for (const f of list) {
+        const rel = normalizeRelativePath(f.originalname);
+        if (!rel) {
+          const err = new Error(`无效路径：${f.originalname || '(空)'}`);
+          err.code = 'INVALID_PATH';
+          throw err;
+        }
+        if (!f.path) {
+          const err = new Error(`上传文件缺失：${rel}`);
+          err.code = 'UPLOAD_MISSING';
+          throw err;
+        }
+        let st;
+        try {
+          st = await fsp.stat(f.path);
+        } catch {
+          const err = new Error(`无法读取：${rel}`);
+          err.code = 'UPLOAD_MISSING';
+          throw err;
+        }
+        if (!st.isFile()) {
+          const err = new Error(`非文件：${rel}`);
+          err.code = 'INVALID_PATH';
+          throw err;
+        }
+        await this.storage.putFolderEntryFromFile(f.path, id, rel);
+        entries.push({ relativePath: rel, size: st.size });
+        totalSize += st.size;
+      }
+      /** @type {TransferRecord} */
+      const rec = {
+        id,
+        token,
+        kind: 'folder',
+        originalName: fields.originalName || '文件夹',
+        size: totalSize,
+        totalSize,
+        fileCount: entries.length,
+        mimeType: null,
+        entries,
+        createdAt: now.toISOString(),
+        expireAt: expireAt.toISOString(),
+        status: 'active',
+        downloadCount: 0,
+      };
+      await fsp.writeFile(metaFile, JSON.stringify(rec, null, 0), 'utf-8');
+      await fsp.writeFile(tip, id, 'utf-8');
+      return rec;
+    } catch (e) {
+      try {
+        await fsp.unlink(tip);
+      } catch {}
+      try {
+        await fsp.unlink(metaFile);
+      } catch {}
+      try {
+        await this.storage.delete(id);
+      } catch {}
+      throw e;
+    }
+  }
+
   /** @param {string} id */
   async readRecord(id) {
     const p = this.metaPath(id);
@@ -190,7 +285,15 @@ class TempTransferStore {
    */
   async hardDeleteTransfer(rec) {
     const id = rec.id;
-    await this.storage.deleteWithRetry(id);
+    if (rec.kind === 'folder') {
+      try {
+        await fsp.rm(this.storage.folderPath(id), { recursive: true, force: true });
+      } catch (e) {
+        if (e && e.code !== 'ENOENT') throw e;
+      }
+    } else {
+      await this.storage.deleteWithRetry(id);
+    }
     const tip = this.tokenIndexPath(rec.token);
     if (tip) {
       try {
@@ -462,8 +565,10 @@ class TempTransferStore {
       out.push({
         id: rec.id,
         token: rec.token,
+        kind: rec.kind === 'folder' ? 'folder' : 'file',
         originalName: rec.originalName,
         size: rec.size,
+        fileCount: rec.fileCount || (rec.kind === 'folder' ? (rec.entries || []).length : 1),
         mimeType: rec.mimeType || null,
         createdAt: rec.createdAt,
         expireAt: rec.expireAt,

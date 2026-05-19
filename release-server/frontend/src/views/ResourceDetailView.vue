@@ -60,33 +60,23 @@
 
     <section v-if="publicBase" class="card api-block" :class="{ 'section-dim': pageLoading }">
       <h2>对外链接</h2>
-      <ShareLinkRow v-if="publicPageUrl" label="公开下载页" :url="publicPageUrl" />
+      <ShareLinkRow v-if="publicPageUrl" label="公开浏览页" :url="publicPageUrl" />
+      <ShareLinkRow v-if="publicArchiveRootUrl" label="根目录 ZIP 直链" :url="publicArchiveRootUrl" />
       <ShareLinkRow v-if="publicJsonUrl" label="JSON" :url="publicJsonUrl" />
-      <p class="hint sm no-mt">访客打开公开页可浏览资源卡片并下载。</p>
+      <p class="hint sm no-mt">访客可在浏览页进入子文件夹、单文件下载或打包 ZIP（超限会提示）。</p>
     </section>
 
     <section class="card upload-block" :class="{ 'section-dim': pageLoading }">
-      <h2>上传安装包</h2>
-      <div
-        class="drop-zone"
-        :class="{ drag: dragActive, disabled: pageLoading || uploading }"
-        @dragover.prevent="!pageLoading && (dragActive = true)"
-        @dragleave="dragActive = false"
-        @drop.prevent="onDrop"
-        @click="!pageLoading && !uploading && fileInputRef?.click()"
-      >
-        <input
-          ref="fileInputRef"
-          type="file"
-          multiple
-          class="hidden-input"
-          :disabled="pageLoading || uploading"
-          @change="onFileChange"
-        />
-        <span>{{
-          uploading ? '正在上传…' : '拖拽文件到此处或点击上传（同文件名会覆盖并保留元数据）'
-        }}</span>
-      </div>
+      <h2>上传文件</h2>
+      <FolderAwareDropzone
+        :disabled="pageLoading || uploading"
+        :hint="
+          uploading
+            ? '正在上传…'
+            : '拖拽文件或文件夹到此处，或点击选择（自动识别目录结构；同名覆盖并保留元数据）'
+        "
+        @items="onUploadItems"
+      />
       <div v-if="uploadPct != null && uploadPct >= 0" class="prog">
         <div class="prog-bar">
           <div class="prog-fill" :style="{ width: uploadPct + '%' }" />
@@ -96,10 +86,32 @@
       <div v-else-if="uploadPct === -1" class="prog indet">上传中（无法计算进度）…</div>
     </section>
 
-    <transition-group name="res-card" tag="div" class="items-grid">
-      <article v-for="it in items" :key="it.id" class="card item-card">
+    <section v-if="items.length" class="card browse-block" :class="{ 'section-dim': pageLoading }">
+      <h2>文件列表</h2>
+      <nav class="file-crumbs" aria-label="路径">
+        <button
+          v-for="(c, i) in browseCrumbs"
+          :key="c.path"
+          type="button"
+          class="crumb-btn"
+          :class="{ current: i === browseCrumbs.length - 1 }"
+          @click="browsePath = c.path"
+        >
+          {{ c.label }}
+        </button>
+      </nav>
+      <p v-if="browseArchiveUrl" class="hint sm">
+        <button type="button" class="btn btn-sm btn-ghost" @click="copy(browseArchiveUrl)">复制当前目录 ZIP 直链</button>
+      </p>
+      <ul v-if="browseFolders.length" class="folder-list">
+        <li v-for="f in browseFolders" :key="f.path">
+          <button type="button" class="folder-row" @click="browsePath = f.path">📁 {{ f.name }}</button>
+        </li>
+      </ul>
+      <transition-group name="res-card" tag="div" class="items-grid">
+      <article v-for="it in browseFiles" :key="it.id" class="card item-card">
         <header class="item-head">
-          <span class="fn">{{ it.fileName }}</span>
+          <span class="fn path-font">{{ it.fileName }}</span>
           <span class="sz">{{ fmtSize(it.size) }}</span>
         </header>
         <div class="item-body">
@@ -122,6 +134,12 @@
           <button type="button" class="btn btn-sm btn-ghost" @click="copy(itemLanding(it))">复制说明页</button>
           <button type="button" class="btn btn-sm btn-ghost" @click="copy(itemDirect(it))">复制直链</button>
           <button
+            v-if="itemInSubfolder(it)"
+            type="button"
+            class="btn btn-sm btn-ghost"
+            @click="copy(itemFolderZip(it))"
+          >复制所在文件夹 ZIP</button>
+          <button
             type="button"
             class="btn btn-sm btn-ghost danger"
             :disabled="deletingItem === it.id || savingItem === it.id || pageLoading"
@@ -131,7 +149,8 @@
           </button>
         </div>
       </article>
-    </transition-group>
+      </transition-group>
+    </section>
     <p v-if="!pageLoading && !items.length" class="muted empty-hint">暂无文件，请上传。</p>
   </div>
 </template>
@@ -142,6 +161,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { api, uploadWithProgress } from '@/api/client';
 import { useToast } from '@/composables/useToast';
 import ShareLinkRow from '@/components/ShareLinkRow.vue';
+import FolderAwareDropzone from '@/components/FolderAwareDropzone.vue';
+import { appendToFormData, describeUploadBatch } from '@/composables/useFolderUpload';
+import { listDirectoryLevel, breadcrumbSegments, encodePathForUrl } from '@/utils/file-tree';
 import { suggestedPublicBaseFromVite } from '@/utils/public-url';
 
 const route = useRoute();
@@ -162,9 +184,8 @@ const uploading = ref(false);
 const items = ref([]);
 /** 每项编辑草稿；键与 items[].id 对齐，模板 v-model 依赖此对象已存在 */
 const itemEdits = reactive({});
-const dragActive = ref(false);
-const fileInputRef = ref(null);
 const uploadPct = ref(null);
+const browsePath = ref('');
 
 const displayLabel = computed(() => displayNameEdit.value.trim() || libraryName.value);
 
@@ -176,6 +197,20 @@ const publicJsonUrl = computed(() =>
     ? `${publicBase.value}/api/public/resources/${encodeURIComponent(libraryName.value)}`
     : '',
 );
+const publicArchiveRootUrl = computed(() =>
+  publicBase.value && libraryName.value
+    ? `${publicBase.value}/r/${encodeURIComponent(libraryName.value)}/archive`
+    : '',
+);
+const browseCrumbs = computed(() => breadcrumbSegments(browsePath.value));
+const browseListing = computed(() => listDirectoryLevel(items.value, browsePath.value));
+const browseFolders = computed(() => browseListing.value.folders);
+const browseFiles = computed(() => browseListing.value.files);
+const browseArchiveUrl = computed(() => {
+  if (!publicBase.value || !libraryName.value) return '';
+  const q = browsePath.value ? `?path=${encodeURIComponent(browsePath.value)}` : '';
+  return `${publicBase.value}/r/${encodeURIComponent(libraryName.value)}/archive${q}`;
+});
 
 function suggestedBase() {
   return suggestedPublicBaseFromVite();
@@ -193,11 +228,27 @@ async function loadSettingsBase() {
 function enrichItem(it) {
   const name = libraryName.value;
   const base = publicBase.value;
+  const encPath = encodePathForUrl(it.fileName);
   return {
     ...it,
-    landingHref: `${base}/rd/${encodeURIComponent(name)}/${encodeURIComponent(it.fileName)}`,
-    downloadUrl: `${base}/r/${encodeURIComponent(name)}/files/${encodeURIComponent(it.fileName)}`,
+    landingHref: `${base}/rd/${encodeURIComponent(name)}/${encPath}`,
+    downloadUrl: `${base}/r/${encodeURIComponent(name)}/files/${encPath}`,
   };
+}
+
+function itemInSubfolder(it) {
+  return String(it.fileName || '').includes('/');
+}
+
+function itemFolderZip(it) {
+  const base = publicBase.value;
+  const name = libraryName.value;
+  if (!base || !name) return '';
+  const parts = String(it.fileName).split('/');
+  parts.pop();
+  const dir = parts.join('/');
+  const q = dir ? `?path=${encodeURIComponent(dir)}` : '';
+  return `${base}/r/${encodeURIComponent(name)}/archive${q}`;
 }
 
 function primeItemEdits(list) {
@@ -369,55 +420,58 @@ async function confirmDeleteLibrary() {
   }
 }
 
-async function doUpload(files) {
-  if (!files?.length || pageLoading.value) return;
+const UPLOAD_BATCH = 50;
+
+async function doUploadItems(uploadItems) {
+  if (!uploadItems?.length || pageLoading.value) return;
+  const desc = describeUploadBatch(uploadItems);
   uploading.value = true;
-  const fd = new FormData();
-  for (const f of files) fd.append('files', f);
   uploadPct.value = 0;
+  let totalUploaded = 0;
+  let failed = 0;
   try {
-    const data = await uploadWithProgress({
-      method: 'POST',
-      path: `/api/resources/${encodeURIComponent(libraryName.value)}/upload`,
-      formData: fd,
-      onProgress: pct => {
-        uploadPct.value = pct < 0 ? -1 : pct;
-      },
-    });
-    const uploaded = data?.uploaded || [];
-    for (const u of uploaded) {
-      const e = enrichItem(u);
-      const ix = items.value.findIndex(x => x.fileName === e.fileName);
-      if (ix >= 0) items.value.splice(ix, 1);
-      items.value.push(e);
+    for (let i = 0; i < uploadItems.length; i += UPLOAD_BATCH) {
+      const batch = uploadItems.slice(i, i + UPLOAD_BATCH);
+      const fd = new FormData();
+      appendToFormData(fd, batch);
+      const data = await uploadWithProgress({
+        method: 'POST',
+        path: `/api/resources/${encodeURIComponent(libraryName.value)}/upload`,
+        formData: fd,
+        onProgress: pct => {
+          uploadPct.value = pct < 0 ? -1 : pct;
+        },
+      });
+      const uploaded = data?.uploaded || [];
+      totalUploaded += uploaded.length;
+      for (const u of uploaded) {
+        const e = enrichItem(u);
+        const ix = items.value.findIndex(x => x.fileName === e.fileName);
+        if (ix >= 0) items.value.splice(ix, 1);
+        items.value.push(e);
+        itemEdits[u.id] = {
+          displayName: u.displayName || '',
+          version: u.version || '',
+          description: u.description || '',
+        };
+      }
     }
     items.value.sort((a, b) => a.fileName.localeCompare(b.fileName, undefined, { numeric: true }));
-    for (const u of uploaded) {
-      itemEdits[u.id] = {
-        displayName: u.displayName || '',
-        version: u.version || '',
-        description: u.description || '',
-      };
-    }
-    toast(uploaded.length ? `已上传 ${uploaded.length} 个文件` : '上传完成');
+    const msg =
+      failed > 0
+        ? `${desc.label}：成功 ${totalUploaded}，失败 ${failed}`
+        : `${desc.label}：已上传 ${totalUploaded} 个文件`;
+    toast(msg);
   } catch (e) {
     toast(e.message || '上传失败', 'error');
   } finally {
     uploading.value = false;
     uploadPct.value = null;
-    dragActive.value = false;
   }
 }
 
-function onDrop(e) {
-  dragActive.value = false;
-  doUpload([...e.dataTransfer.files]);
-}
-
-function onFileChange(e) {
-  const files = e.target.files ? [...e.target.files] : [];
-  e.target.value = '';
-  doUpload(files);
+function onUploadItems(list) {
+  doUploadItems(list);
 }
 
 watch(
@@ -619,6 +673,58 @@ h1 {
   font-size: 12px;
   color: var(--text3);
   margin-top: 8px;
+}
+.browse-block {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.browse-block h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+.file-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.crumb-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 2px 4px;
+  font: inherit;
+}
+.crumb-btn.current {
+  color: var(--text);
+  cursor: default;
+}
+.folder-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+}
+.folder-row {
+  width: 100%;
+  text-align: left;
+  background: rgba(232, 160, 53, 0.06);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.folder-row:hover {
+  border-color: rgba(232, 160, 53, 0.35);
+}
+.path-font {
+  font-family: var(--font-path, 'IBM Plex Mono'), ui-monospace, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 .items-grid {
   display: grid;
